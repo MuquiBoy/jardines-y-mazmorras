@@ -1,7 +1,7 @@
 services:
   - type: web
     name: jardines-y-mazmorras
-    runtime: node
+    runtime: node`r`n    plan: free
     buildCommand: ""
     startCommand: node server.js
     autoDeployTrigger: commit
