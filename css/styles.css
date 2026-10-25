@@ -58,6 +58,7 @@ canvas#game {
     z-index: 100;
     text-align: center;
     padding: 24px;
+    overflow-y: auto;
     background:
         repeating-linear-gradient(
             0deg,
@@ -91,6 +92,35 @@ canvas#game {
     letter-spacing: 0.3em;
     text-transform: uppercase;
 }
+
+/* ===== Private co-op lobby (prototype) ===== */
+.coop-panel {
+    width: min(720px, 94vw);
+    max-height: 48vh;
+    overflow: auto;
+    margin: 0.5rem 0 1rem;
+    padding: 1rem;
+    background: rgba(20, 15, 16, 0.94);
+    border: 2px solid var(--amber-dim);
+    color: var(--bone);
+    font-family: Arial, sans-serif;
+    text-align: left;
+    line-height: 1.5;
+}
+.coop-panel h2 { color: var(--amber); font: 700 0.95rem var(--font-pixel); margin-bottom: 0.8rem; text-align: center; }
+.coop-label { display: inline-block; margin: 0.35rem 0.5rem 0.35rem 0; color: var(--amber); font-size: 0.85rem; }
+.coop-panel input, .coop-panel select {
+    min-height: 38px; padding: 0.45rem; margin: 0.25rem 0.5rem 0.25rem 0;
+    color: var(--bone); background: var(--void); border: 1px solid var(--wall); font: 0.9rem Arial, sans-serif;
+}
+.coop-panel .btn { padding: 0.65rem 0.8rem; margin: 0.4rem 0.4rem 0.3rem 0; font: 700 0.68rem Arial, sans-serif; letter-spacing: 0.04em; }
+.coop-panel .btn:disabled, #start-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+.coop-actions { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+#coop-status { min-height: 1.5rem; margin-top: 0.35rem; color: var(--sick); font: 0.82rem Arial, sans-serif; overflow-wrap: anywhere; }
+.coop-invite { display: block; margin: 0.4rem 0; color: var(--amber); font: 0.75rem Arial, sans-serif; overflow-wrap: anywhere; }
+.coop-players { margin: 0.5rem 0 0.4rem 1.25rem; font: 0.9rem Arial, sans-serif; }
+.coop-stage-note { color: #e9a64b; font: 0.78rem Arial, sans-serif; }
+.net-game-status { position: absolute; z-index: 10; top: 0.5rem; left: 50%; transform: translateX(-50%); padding: 0.25rem 0.5rem; color: var(--sick); background: rgba(7,5,10,.75); font: 0.75rem Arial, sans-serif; pointer-events: none; }
 
 /* ===== Buttons — heavy slabs, no radius, no gradients ===== */
 .btn {

@@ -33,6 +33,7 @@
     const audio = new AudioSystem();
     const ui = new UI(canvas, minimapCanvas);
     const game = new Game(canvas, ui, audio);
+    window.abyssGame = game;
 
     // Music tracks are optional: drop files in audio/ and they play, otherwise
     // the game runs with effects only.
@@ -65,7 +66,8 @@
 
     document.getElementById('restart-btn').addEventListener('click', (e) => {
         e.preventDefault();
-        startGame();
+        if (game.coopMode) window.coopClient.send({ type: 'restart' });
+        else startGame();
     });
 
     document.getElementById('resume-btn').addEventListener('click', (e) => {
@@ -134,6 +136,7 @@
         ui.setMuted(audio.toggleMute());
         if (document.activeElement) document.activeElement.blur();
     });
+    window.startOfflineGame = startGame;
     ui.setMuted(audio.muted);
 
     // Show start screen

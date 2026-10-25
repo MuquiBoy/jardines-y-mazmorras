@@ -42,6 +42,13 @@ class Player {
 
         // Angle for spiral enemies (not used by player, but kept for reference)
         this.angle = 0;
+        this.character = 'aji';
+    }
+
+    setCharacter(characterId) {
+        const role = CHARACTER_ROLES[characterId] || CHARACTER_ROLES.aji;
+        role.apply(this);
+        return role;
     }
 
     /**
@@ -200,19 +207,23 @@ class Player {
         }
 
         const r = this.radius;
+        const px = this.renderX ?? this.x;
+        const py = this.renderY ?? this.y;
+        const accents = { aji: '#ef632b', invocador: '#a66ad4', carguero: '#70ad55', gunslinger: '#d8b54b' };
+        const core = accents[this.character] || PALETTE.playerCore;
 
         // Aim indicator first, so the body sits on top of it
-        const ax = this.x + this.aimX * (r + 12);
-        const ay = this.y + this.aimY * (r + 12);
+        const ax = px + this.aimX * (r + 12);
+        const ay = py + this.aimY * (r + 12);
         pixelRect(ctx, ax, ay, 6, 6, PALETTE.playerAim);
 
         // Body: dark outline, bone plate, amber core
-        pixelRect(ctx, this.x, this.y, r * 2 + 4, r * 2 + 4, PALETTE.void);
-        pixelRect(ctx, this.x, this.y, r * 2, r * 2, PALETTE.player);
-        pixelRect(ctx, this.x, this.y, r, r, PALETTE.playerCore);
+        pixelRect(ctx, px, py, r * 2 + 4, r * 2 + 4, PALETTE.void);
+        pixelRect(ctx, px, py, r * 2, r * 2, PALETTE.player);
+        pixelRect(ctx, px, py, r, r, core);
 
         // Muzzle stub pointing where shots will go
-        pixelRect(ctx, this.x + this.aimX * r, this.y + this.aimY * r, 7, 7, PALETTE.playerCore);
+        pixelRect(ctx, px + this.aimX * r, py + this.aimY * r, 7, 7, core);
     }
 
     /** Get current stat display string. */

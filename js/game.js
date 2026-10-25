@@ -152,7 +152,7 @@ class Game {
     bindInput() {
         window.addEventListener('keydown', (e) => {
             this.input.keys[e.code] = true;
-            if (e.code === 'Space') this.togglePause();
+            if (e.code === 'Space' && !this.coopMode) this.togglePause();
             if (e.code === 'KeyM') this.ui.setMuted(this.audio.toggleMute());
         });
 
@@ -764,6 +764,9 @@ class Game {
         }
 
         if (this.player && this.player.health > 0) this.player.draw(ctx);
+        for (const player of this.remotePlayers || []) {
+            if (player.health > 0) player.draw(ctx);
+        }
 
         // Objective chevron. Without an exit to head for, a player would be
         // hunting a boss room blind across a 7000px map, so the marker points

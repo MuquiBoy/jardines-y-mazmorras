@@ -1,4 +1,4 @@
-# Abyss Engine
+# Jardines y Mazmorras
 
 *A procedural bullet hell that runs in the browser.*
 
@@ -57,9 +57,36 @@ fixed spot, which is what makes them usable without looking down. A portrait
 viewport shows a rotate prompt instead — a bullet hell needs simultaneous
 movement and aim, and portrait puts both thumbs over the play area.
 
-## Running it locally
+## Ejecutar la versión cooperativa local
 
-There is no build step. Any static file server works:
+Para jugar cooperativo requiere Node.js; no hay paquetes de terceros que instalar.
+
+```bash
+node server.js
+```
+
+En Windows también puedes iniciar el servidor haciendo doble clic en
+`INICIAR-JUEGO.bat`; deja abierta la ventana mientras juegas.
+
+Abre `http://localhost:8080`, crea una sala y comparte el enlace con hasta dos
+amigos. El servidor conserva la autoridad del movimiento, mazmorra y combate.
+Para jugar sin conexión, abre `index.html` y elige **Jugar sin conexión**; esa
+ruta usa la campaña individual original y no requiere que el servidor esté activo.
+
+La sala es local al proceso y se pierde cuando se detiene el servidor. Un enlace
+con `localhost` solo sirve en esa máquina; jugar por Internet requiere desplegar
+el servidor con WebSocket seguro y compartir una dirección pública.
+
+## Documentación del proyecto
+
+- [Visión del juego](docs/PROJECT_VISION.md)
+- [Auditoría de la base y licencias](docs/BASE_CODE_AUDIT.md)
+- [Arquitectura multijugador](docs/MULTIPLAYER_ARCHITECTURE.md)
+- [Plan de desarrollo y avance](docs/DEVELOPMENT_PLAN.md)
+
+## Ejecutar la versión individual original
+
+There is no build step for the original single-player game. Any static file server works:
 
 ```bash
 git clone https://github.com/jorge-erdb/abyss-engine.git
@@ -68,8 +95,16 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Opening `index.html` straight from disk (`file://`) also works, since every
-script is a plain classic `<script>` tag with no module or fetch usage.
+Para multijugador, siempre entra por la dirección local del servidor; `file://`
+no puede abrir conexiones de grupo.
+
+## Publicación web
+
+`render.yaml` configura un único servicio web para servir el juego y su conexión
+WebSocket cooperativa desde el mismo dominio. Al enlazar el repositorio a Render,
+cada actualización de `main` vuelve a publicar la demo. Las partidas guardadas en
+memoria se reinician si el servicio se reinicia o se despliega una actualización.
+No incluir los MP3 en el repositorio público hasta confirmar su licencia.
 
 ## Architecture
 
@@ -295,3 +330,4 @@ history of the ones already fixed — are tracked in [BUGS.md](BUGS.md).
 ## License
 
 MIT — see [LICENSE](LICENSE).
+

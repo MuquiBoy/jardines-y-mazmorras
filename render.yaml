@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: jardines-y-mazmorras
+    runtime: node
+    buildCommand: ""
+    startCommand: node server.js
+    autoDeployTrigger: commit
+    healthCheckPath: /
