@@ -38,20 +38,23 @@
     // Music tracks are optional: drop files in audio/ and they play, otherwise
     // the game runs with effects only.
     audio.setTracks([
-        'audio/savage-engine',        // floor 1 — leanest of the three
-        'audio/engine-of-the-abyss',
-        'audio/hydraulic-siege'
+        'audio/rins-theme_loop.ogg', // floor 1 — chiptune fantasy battle
+        'audio/savage-engine',       // floor 2
+        'audio/engine-of-the-abyss', // floor 3
+        'audio/hydraulic-siege'      // floor 4 and onward
     ]);
 
-    function startGame() {
+    function startGame(characterId = 'pistolero', testRoom = false) {
         // Browsers start an AudioContext suspended; only a user gesture may
         // resume it, so this has to happen here rather than at load.
         audio.unlock();
-        audio.playMusic(0);
-        requestFullscreenIfTouch();
-        if (touch) touch.releaseAll();
-        game.start();
-        game.startLoop();
+        RoomTemplateLibrary.load().then(() => {
+            audio.playMusic(0);
+            requestFullscreenIfTouch();
+            if (touch) touch.releaseAll();
+            game.start(characterId, testRoom);
+            game.startLoop();
+        });
         // Blur any focused element so keyboard events reach window listeners
         if (document.activeElement) document.activeElement.blur();
         // Also set focus to the canvas itself to ensure key events are captured
@@ -88,12 +91,20 @@
     // ===== Touch =====
     const touchLayer = document.getElementById('touch-layer');
     const touchPause = document.getElementById('touch-pause');
+    const touchReload = document.getElementById('touch-reload');
 
     if (TouchControls.isTouchDevice()) {
         document.body.classList.add('touch-device');
         touchLayer.classList.remove('hidden');
         touchPause.classList.remove('hidden');
+        touchReload.classList.remove('hidden');
         touch = new TouchControls(game.input, touchLayer);
+        touchLayer.addEventListener('pointerdown', () => audio.unlock(), { once: true });
+        touchReload.addEventListener('click', (e) => {
+            e.preventDefault();
+            game.input.keys.KeyR = true;
+            setTimeout(() => { game.input.keys.KeyR = false; }, 150);
+        });
 
         touchPause.addEventListener('click', (e) => {
             e.preventDefault();
@@ -137,6 +148,7 @@
         if (document.activeElement) document.activeElement.blur();
     });
     window.startOfflineGame = startGame;
+    window.startTestRoom = (characterId) => startGame(characterId, true);
     ui.setMuted(audio.muted);
 
     // Show start screen

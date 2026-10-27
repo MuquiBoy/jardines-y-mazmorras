@@ -76,6 +76,21 @@ class Enemy {
         this.alive = true;
         this.deathTimer = 0;
         this.angle = 0; // for rotation animations
+        this.burnTimer = 0;
+        this.burnTickTimer = 0;
+        this.burnDamage = 0;
+        this.burnInterval = 24;
+        this.burnPulse = 0;
+        // Navigation cache. Enemies share the map's A* grid by asking for a
+        // route every few frames instead of every frame.
+        this._navPath = null;
+        this._navGoal = null;
+        this._navIndex = 0;
+        this._navTimer = 0;
+        this._navMap = null;
+        this._retreatGoal = null;
+        this._retreatTimer = 0;
+        this._dodgeSign = Math.random() < 0.5 ? -1 : 1;
     }
 
     update(player, enemies, map) {
@@ -86,18 +101,157 @@ class Enemy {
      * Move by a delta, respecting walls when a map is supplied.
      *
      * Resolved per axis so an enemy pressed against a wall slides along it.
-     * This is what keeps enemies inside the room they were spawned in — they
-     * have no pathfinding, so without it a chaser would walk through walls and
-     * a kiting shooter would back straight out of the level.
+     * Returns whether the body actually moved, which lets the navigation code
+     * detect a blocked step and sidestep instead of grinding in place.
      */
     moveBy(dx, dy, map) {
         if (!map) {
             this.x += dx;
             this.y += dy;
-            return;
+            return dx !== 0 || dy !== 0;
         }
+        const startX = this.x, startY = this.y;
         if (map.canOccupy(this.x + dx, this.y, this.radius)) this.x += dx;
         if (map.canOccupy(this.x, this.y + dy, this.radius)) this.y += dy;
+        return this.x !== startX || this.y !== startY;
+    }
+
+    /** One short step toward a point, clamped so it never overshoots. */
+    _stepToward(targetX, targetY, map, speed) {
+        const dx = targetX - this.x, dy = targetY - this.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance < 0.001) return false;
+        const step = Math.min(speed, distance);
+        return this.moveBy((dx / distance) * step, (dy / distance) * step, map);
+    }
+
+    /**
+     * Walk toward a world point, routing around red walls when the straight
+     * line is blocked.
+     *
+     * A* results are cached for a few frames and only recomputed when the
+     * target drifts, the route runs out, or the map changes. While the target
+     * stays in sight the enemy moves directly, so open-room pursuit is smooth
+     * and does not pay for pathfinding at all.
+     */
+    steerTo(targetX, targetY, map, speed = this.speed) {
+        if (!map) return this._stepToward(targetX, targetY, null, speed);
+
+        const distance = Math.hypot(targetX - this.x, targetY - this.y);
+        if (distance > 1400) {
+            // Too far to matter (and too expensive to route to): idle cleanly
+            // instead of pressing into a wall somewhere across the floor.
+            this._navPath = null;
+            return false;
+        }
+
+        if (this._navTimer > 0) this._navTimer--;
+        const sameGoal = this._navGoal &&
+            Math.hypot(targetX - this._navGoal.x, targetY - this._navGoal.y) <= 56;
+        if (!sameGoal) {
+            this._navGoal = { x: targetX, y: targetY };
+            this._navTimer = 0;
+        }
+
+        const direct = distance <= 560 && map.hasLineOfSight(this.x, this.y, targetX, targetY, this.radius);
+        if (direct) {
+            this._navPath = null;
+            this._navIndex = 0;
+            this._navMap = map;
+            if (this._stepToward(targetX, targetY, map, speed)) return true;
+            // A straight line that samples clean can still be blocked when the
+            // step is split per axis; sidestep once so it does not freeze.
+            this._dodge(map, speed);
+            return false;
+        }
+
+        const stale = !direct && (!this._navPath || this._navIndex >= this._navPath.length ||
+            this._navMap !== map || this._navTimer <= 0);
+        if (stale) this._planNav(targetX, targetY, map);
+
+        let waypoint = this._navPath && this._navPath[this._navIndex];
+        while (waypoint && Math.hypot(waypoint.x - this.x, waypoint.y - this.y) <= 12) {
+            this._navIndex++;
+            waypoint = this._navPath[this._navIndex];
+        }
+        if (!waypoint) return this._stepToward(targetX, targetY, map, speed);
+
+        const moved = this._stepToward(waypoint.x, waypoint.y, map, speed);
+        if (!moved) {
+            this._navTimer = 0;
+            this._dodge(map, speed);
+        }
+        return moved;
+    }
+
+    /** Recompute the cached A* route to a target. */
+    _planNav(targetX, targetY, map) {
+        this._navPath = map.findPath(this.x, this.y, targetX, targetY, this.radius, 6000);
+        this._navIndex = 0;
+        this._navMap = map;
+        this._navTimer = 18 + Math.floor(Math.random() * 12);
+    }
+
+    /**
+     * Sidestep perpendicular to the intended direction for a single frame.
+     * This is the escape hatch for corners where both axes are blocked.
+     */
+    _dodge(map, speed) {
+        const goalX = this._navGoal ? this._navGoal.x : this.x + Math.cos(this.angle);
+        const goalY = this._navGoal ? this._navGoal.y : this.y + Math.sin(this.angle);
+        const dx = goalX - this.x, dy = goalY - this.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance < 0.001) return false;
+        const nx = -dy / distance, ny = dx / distance;
+        if (this.moveBy(nx * this._dodgeSign * speed, ny * this._dodgeSign * speed, map)) return true;
+        this._dodgeSign *= -1;
+        return this.moveBy(-nx * this._dodgeSign * speed, -ny * this._dodgeSign * speed, map);
+    }
+
+    /**
+     * Back away from a threat, preferring a visible free spot behind the
+     * enemy. When the room is a dead end it follows an A* route to the best
+     * reachable escape instead of walking into the wall.
+     */
+    retreatFrom(threatX, threatY, map, speed = this.speed) {
+        if (!map) return this._stepToward(this.x * 2 - threatX, this.y * 2 - threatY, null, speed);
+
+        const dx = this.x - threatX, dy = this.y - threatY;
+        const threatDistance = Math.hypot(dx, dy) || 1;
+
+        if (this._retreatTimer > 0) {
+            this._retreatTimer--;
+            if (this._retreatGoal &&
+                map.hasLineOfSight(this.x, this.y, this._retreatGoal.x, this._retreatGoal.y, this.radius) &&
+                Math.hypot(this._retreatGoal.x - threatX, this._retreatGoal.y - threatY) > threatDistance + 24) {
+                return this.steerTo(this._retreatGoal.x, this._retreatGoal.y, map, speed);
+            }
+        }
+
+        const base = Math.atan2(dy, dx);
+        const offsets = [0, 0.45, -0.45, 0.9, -0.9, 1.4, -1.4, 2.0, -2.0];
+        const reach = 190;
+        let fallback = null;
+        for (const offset of offsets) {
+            const angle = base + offset;
+            const goalX = this.x + Math.cos(angle) * reach;
+            const goalY = this.y + Math.sin(angle) * reach;
+            if (!map.canOccupy(goalX, goalY, this.radius)) continue;
+            if (Math.hypot(goalX - threatX, goalY - threatY) <= threatDistance + 24) continue;
+            if (map.hasLineOfSight(this.x, this.y, goalX, goalY, this.radius)) {
+                this._retreatGoal = { x: goalX, y: goalY };
+                this._retreatTimer = 30;
+                return this.steerTo(goalX, goalY, map, speed);
+            }
+            if (!fallback) fallback = { x: goalX, y: goalY };
+        }
+        if (fallback) {
+            this._retreatGoal = fallback;
+            this._retreatTimer = 30;
+            return this.steerTo(fallback.x, fallback.y, map, speed);
+        }
+        // Nowhere to go: hold ground and keep firing.
+        return false;
     }
 
     shootTowardPlayer(angle, speed = 3) {
@@ -155,6 +309,24 @@ class Enemy {
         this.shootTimer = Math.round(this.shootCooldown * (0.6 + Math.random() * 0.6));
     }
 
+    applyBurn(burn) {
+        this.burnDamage = Math.max(this.burnDamage || 0, burn.damage);
+        this.burnInterval = burn.interval;
+        this.burnTimer = Math.max(this.burnTimer || 0, burn.duration);
+        if (!this.burnTickTimer || this.burnTickTimer > this.burnInterval) this.burnTickTimer = this.burnInterval;
+    }
+
+    updateBurn() {
+        if (!this.alive || this.burnTimer <= 0) return false;
+        this.burnTimer--;
+        this.burnTickTimer--;
+        if (this.burnTickTimer > 0) return false;
+        this.burnTickTimer = this.burnInterval;
+        this.burnPulse = (this.burnPulse || 0) + 1;
+        this.takeDamage(this.burnDamage);
+        return true;
+    }
+
     takeDamage(amount) {
         this.health -= amount;
         if (this.health <= 0) {
@@ -172,6 +344,11 @@ class Enemy {
         pixelRect(ctx, this.x, this.y, size, size, dark);
         pixelRect(ctx, this.x, this.y, size * 0.45, size * 0.45, lit);
         this.drawHealth(ctx, size);
+        if (this.burnTimer > 0) {
+            const pulse = Math.sin((this.burnPulse || 0) * 1.7 + this.x) * 3;
+            pixelRect(ctx, this.x - size * 0.3, this.y - size * 0.55 - pulse, 5, 7, '#ff7428');
+            pixelRect(ctx, this.x + size * 0.3, this.y - size * 0.45 + pulse, 4, 6, '#ffd34e');
+        }
     }
 
     /** Health as discrete pips above the body — no smooth bars at this scale. */
@@ -194,6 +371,182 @@ class Enemy {
     }
 }
 
+// ===== Cochinilla Perforamuros — fixed-wall laser tester =====
+class CochinillaPerforamuros extends Enemy {
+    static sprites = null;
+    static walkFrames = null;
+    static walkFrameDurations = null;
+    static walkPromise = null;
+    static chargeFrames = null;
+    static chargePromise = null;
+    constructor(x, y, room, wall = 'left') {
+        super(x, y, 'cochinilla-perforamuros');
+        this.name = 'Cochinilla Perforamuros'; this.health = this.maxHealth = 36;
+        this.radius = 7; this.speed = 1.1; this.color = '#d9c6a1'; this.xpValue = 0;
+        this.room = room; this.wall = wall; this.phase = 'move';
+        this.phaseTimer = 180 + Math.floor(Math.random() * 241);
+        this.moveSign = Math.random() < 0.5 ? -1 : 1; this.lockedX = x; this.lockedY = y;
+        this.warnFrames = 54; this.beamFrames = 180; this.recoverFrames = 120;
+        this.beamWidth = 28;
+        this.animationTick = 0; this.walkFrames = CochinillaPerforamuros.walkFrames;
+        this.loadSprites();
+        this.loadWalkFrames();
+        this.loadChargeFrames();
+    }
+    loadSprites() {
+        if (CochinillaPerforamuros.sprites || typeof Image === 'undefined') return;
+        const root = '00-sprites/enemigos/cochinilla_perforamuros/';
+        const load = file => { const image = new Image(); image.src = root + file; return image; };
+        CochinillaPerforamuros.sprites = { charging: load('charging_cochinilla_perforamuros.png'), attack: load('attack_cochinilla_perforamuros.png') };
+    }
+    async loadWalkFrames() {
+        if (CochinillaPerforamuros.walkFrames) { this.walkFrames = CochinillaPerforamuros.walkFrames; return; }
+        if (typeof DecompressionStream === 'undefined') return;
+        if (!CochinillaPerforamuros.walkPromise) CochinillaPerforamuros.walkPromise = (async () => {
+            const response = await fetch('00-sprites/enemigos/cochinilla_perforamuros/walk_cochinilla_perforamuros.aseprite?v=walk-frames-0-25x');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = new DataView(await response.arrayBuffer());
+            const frameCount = data.getUint16(6, true), frames = [], durations = [];
+            let frameOffset = 128;
+            for (let f = 0; f < frameCount; f++) {
+                const frameBytes = data.getUint32(frameOffset, true), chunkCount = data.getUint16(frameOffset + 6, true);
+                durations.push(data.getUint16(frameOffset + 8, true) || 100);
+                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true);
+                const ctx = canvas.getContext('2d'); let chunkOffset = frameOffset + 16;
+                for (let c = 0; c < chunkCount; c++) {
+                    const size = data.getUint32(chunkOffset, true), type = data.getUint16(chunkOffset + 4, true), q = chunkOffset + 6;
+                    if (type === 0x2005 && data.getUint16(q + 7, true) === 2) {
+                        const x = data.getInt16(q + 2, true), y = data.getInt16(q + 4, true);
+                        const w = data.getUint16(q + 16, true), h = data.getUint16(q + 18, true);
+                        const start = q + 20, end = chunkOffset + size;
+                        const stream = new Blob([new Uint8Array(data.buffer, start, end - start)]).stream().pipeThrough(new DecompressionStream('deflate'));
+                        const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
+                        ctx.putImageData(new ImageData(rgba, w, h), x, y);
+                    }
+                    chunkOffset += size;
+                }
+                frames.push(canvas); frameOffset += frameBytes;
+            }
+            return { frames, durations };
+        })();
+        try {
+            const animation = await CochinillaPerforamuros.walkPromise;
+            this.walkFrames = CochinillaPerforamuros.walkFrames = animation.frames;
+            CochinillaPerforamuros.walkFrameDurations = animation.durations;
+        }
+        catch (error) { CochinillaPerforamuros.walkPromise = null; console.warn('No se pudo cargar la caminata Aseprite de la Cochinilla.', error); }
+    }
+    async loadChargeFrames() {
+        if (CochinillaPerforamuros.chargeFrames) { this.chargeFrames = CochinillaPerforamuros.chargeFrames; return; }
+        if (typeof DecompressionStream === 'undefined') return;
+        if (!CochinillaPerforamuros.chargePromise) CochinillaPerforamuros.chargePromise = (async () => {
+            const response = await fetch('00-sprites/enemigos/cochinilla_perforamuros/charging_cochinilla_perforamuros.aseprite');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = new DataView(await response.arrayBuffer());
+            const frameCount = data.getUint16(6, true), frames = [];
+            let frameOffset = 128;
+            for (let f = 0; f < frameCount; f++) {
+                const frameBytes = data.getUint32(frameOffset, true), chunkCount = data.getUint16(frameOffset + 6, true);
+                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true);
+                const ctx = canvas.getContext('2d'); let chunkOffset = frameOffset + 16;
+                for (let c = 0; c < chunkCount; c++) {
+                    const size = data.getUint32(chunkOffset, true), type = data.getUint16(chunkOffset + 4, true), q = chunkOffset + 6;
+                    if (type === 0x2005 && data.getUint16(q + 7, true) === 2) {
+                        const x = data.getInt16(q + 2, true), y = data.getInt16(q + 4, true);
+                        const w = data.getUint16(q + 16, true), h = data.getUint16(q + 18, true);
+                        const stream = new Blob([new Uint8Array(data.buffer, q + 20, chunkOffset + size - q - 20)]).stream().pipeThrough(new DecompressionStream('deflate'));
+                        const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
+                        ctx.putImageData(new ImageData(rgba, w, h), x, y);
+                    }
+                    chunkOffset += size;
+                }
+                frames.push(canvas); frameOffset += frameBytes;
+            }
+            return frames;
+        })();
+        try { this.chargeFrames = CochinillaPerforamuros.chargeFrames = await CochinillaPerforamuros.chargePromise; }
+        catch (error) { CochinillaPerforamuros.chargePromise = null; console.warn('No se pudo cargar la animación de carga de la Cochinilla.', error); }
+    }
+    update() {
+        const r = this.room, inset = 13;
+        const previousPhase = this.phase;
+        if (this.phase === 'move') {
+            this.animationTick++;
+            if (this.wall === 'left' || this.wall === 'right') {
+                this.y += this.speed * this.moveSign;
+                if (this.y < r.y + inset || this.y > r.y + r.h - inset) { this.y = Math.max(r.y + inset, Math.min(r.y + r.h - inset, this.y)); this.moveSign *= -1; }
+            } else {
+                this.x += this.speed * this.moveSign;
+                if (this.x < r.x + inset || this.x > r.x + r.w - inset) { this.x = Math.max(r.x + inset, Math.min(r.x + r.w - inset, this.x)); this.moveSign *= -1; }
+            }
+            if (--this.phaseTimer <= 0) { this.phase = 'warning'; this.phaseTimer = this.warnFrames; this.lockedX = this.x; this.lockedY = this.y; }
+        } else {
+            this.x = this.lockedX; this.y = this.lockedY;
+            if (--this.phaseTimer <= 0) {
+                if (this.phase === 'warning') { this.phase = 'beam'; this.phaseTimer = this.beamFrames; }
+                else if (this.phase === 'beam') { this.phase = 'recover'; this.phaseTimer = this.recoverFrames; }
+                else { this.phase = 'move'; this.phaseTimer = 180 + Math.floor(Math.random() * 241); }
+            }
+        }
+        return this.phase !== previousPhase ? this.phase : null;
+    }
+    takeDamage(amount) {
+        // The shell is vulnerable only while the laser is actively exposed.
+        if (!this.alive || this.phase !== 'beam') return false;
+        super.takeDamage(amount);
+        return true;
+    }
+    touchesBeam(p) {
+        if (this.phase !== 'beam') return false;
+        const horizontal = this.wall === 'left' || this.wall === 'right';
+        return horizontal ? Math.abs(p.y - this.y) <= this.beamWidth / 2 + p.radius && p.x + p.radius >= this.room.x && p.x - p.radius <= this.room.x + this.room.w
+            : Math.abs(p.x - this.x) <= this.beamWidth / 2 + p.radius && p.y + p.radius >= this.room.y && p.y - p.radius <= this.room.y + this.room.h;
+    }
+    draw(ctx) {
+        const horizontal = this.wall === 'left' || this.wall === 'right';
+        const sx = this.wall === 'left' ? this.room.x : this.wall === 'right' ? this.room.x + this.room.w : this.x;
+        const sy = this.wall === 'top' ? this.room.y : this.wall === 'bottom' ? this.room.y + this.room.h : this.y;
+        if (this.phase === 'warning' || this.phase === 'beam') {
+            ctx.save(); ctx.globalAlpha = this.phase === 'warning' ? 0.55 : 0.9;
+            ctx.strokeStyle = this.phase === 'warning' ? '#fff5d6' : '#ff402c'; ctx.lineWidth = this.beamWidth;
+            ctx.beginPath(); ctx.moveTo(horizontal ? sx : this.x, horizontal ? this.y : sy);
+            ctx.lineTo(horizontal ? (this.wall === 'left' ? this.room.x + this.room.w : this.room.x) : this.x,
+                horizontal ? this.y : (this.wall === 'top' ? this.room.y + this.room.h : this.room.y)); ctx.stroke(); ctx.restore();
+        }
+        const sprite = CochinillaPerforamuros.sprites;
+        let walkImage = null;
+        if (this.walkFrames?.length) {
+            const durations = CochinillaPerforamuros.walkFrameDurations || this.walkFrames.map(() => 100);
+            const cycleMs = durations.reduce((sum, duration) => sum + duration, 0);
+            // Match the Aseprite preview playback speed shown for this revision.
+            let frameMs = (this.animationTick * 1000 / 60 * 0.25) % cycleMs;
+            let frameIndex = 0;
+            while (frameIndex < durations.length - 1 && frameMs >= durations[frameIndex]) frameMs -= durations[frameIndex++];
+            walkImage = this.walkFrames[frameIndex];
+        }
+        // Keep a solid shell sprite under the short charge overlay. The
+        // charging art is mostly transparent and looked like the enemy blinked out.
+        // During the attack, show the attack PNG alone for the full beam phase.
+        const baseImage = this.phase === 'beam' ? sprite?.attack : (walkImage || sprite?.attack);
+        const chargeFrame = this.chargeFrames?.length
+            ? this.chargeFrames[Math.min(this.chargeFrames.length - 1, Math.floor((this.warnFrames - this.phaseTimer) * this.chargeFrames.length / this.warnFrames))]
+            : sprite?.charging;
+        const actionImage = this.phase === 'warning' ? chargeFrame : null;
+        const wallRotation = { top: 0, right: Math.PI / 2, bottom: Math.PI, left: -Math.PI / 2 }[this.wall] || 0;
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(wallRotation);
+        let drewSprite = false;
+        if (baseImage?.complete !== false && baseImage && (baseImage.naturalWidth || baseImage.width)) {
+            ctx.drawImage(baseImage, -12, -8, 24, 16); drewSprite = true;
+        }
+        if (actionImage?.complete !== false && actionImage && (actionImage.naturalWidth || actionImage.width)) {
+            ctx.drawImage(actionImage, -12, -8, 24, 16); drewSprite = true;
+        }
+        if (!drewSprite) this.drawBody(ctx, '#705843', '#e1c49b', 24);
+        ctx.restore();
+        this.drawHealth(ctx, 24);
+    }
+}
+
 // ===== BasicEnemy — Chaser =====
 class BasicEnemy extends Enemy {
     constructor(x, y) {
@@ -213,12 +566,12 @@ class BasicEnemy extends Enemy {
     }
 
     update(player, enemies, map) {
-        // Move toward player
+        // Route around walls instead of pushing straight into them.
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 0) {
-            this.moveBy((dx / dist) * this.speed, (dy / dist) * this.speed, map);
+            this.steerTo(player.x, player.y, map);
         }
 
         // Shoot toward player
@@ -258,9 +611,14 @@ class ShooterEnemy extends Enemy {
 
         // Keep distance: back off inside 180px, close in beyond 250px
         if (dist < 180) {
-            this.moveBy(-(dx / dist) * this.speed, -(dy / dist) * this.speed, map);
+            this.retreatFrom(player.x, player.y, map);
         } else if (dist > 250) {
-            this.moveBy((dx / dist) * this.speed, (dy / dist) * this.speed, map);
+            this.steerTo(player.x, player.y, map);
+        } else {
+            // In the firing band: drop any stale route so it does not resume
+            // a chase when the player moves again.
+            this._navPath = null;
+            this._navTimer = 0;
         }
 
         // Shoot
@@ -306,7 +664,7 @@ class SpiralEnemy extends Enemy {
 
         // Move slowly toward player, stop at ~150px
         if (dist > 140) {
-            this.moveBy((dx / dist) * this.speed, (dy / dist) * this.speed, map);
+            this.steerTo(player.x, player.y, map);
         }
 
         // Spiral bullet pattern
@@ -344,13 +702,57 @@ class BossEnemy extends Enemy {
         this.centerX = x;
         this.centerY = y;
         this.driftAngle = 0;
+        this.orbitRadiusX = 80;
+        this.orbitRadiusY = 60;
+        this.room = null;
+        this._driftStall = 0;
+    }
+
+    /**
+     * Drift target that still fits the boss body. The orbit circle is shrunk
+     * until the 40px footprint is on walkable floor, and (when the room is
+     * known) inside the boss hall. This keeps the desired path away from red
+     * wall lines and blue obstacles instead of only stopping after impact.
+     */
+    _orbitTarget(map) {
+        if (!map) return {
+            x: this.centerX + Math.cos(this.driftAngle) * this.orbitRadiusX,
+            y: this.centerY + Math.sin(this.driftAngle) * this.orbitRadiusY
+        };
+        const room = this.room || map.bossRoom || null;
+        const cos = Math.cos(this.driftAngle), sin = Math.sin(this.driftAngle);
+        for (let scale = 1; scale >= 0.2; scale -= 0.1) {
+            const x = this.centerX + cos * this.orbitRadiusX * scale;
+            const y = this.centerY + sin * this.orbitRadiusY * scale;
+            if (!map.canOccupy(x, y, this.radius)) continue;
+            if (room && map.pointInRoom(x, y) !== room) continue;
+            return { x, y };
+        }
+        return { x: this.x, y: this.y };
+    }
+
+    /** Map-aware orbit movement; never assigns a position without collision. */
+    _drift(map) {
+        const target = this._orbitTarget(map);
+        if (!map) { this.x = target.x; this.y = target.y; return; }
+        if (this.steerTo(target.x, target.y, map, this.speed)) {
+            this._driftStall = 0;
+            return;
+        }
+        // Blocked by a wall or obstacle: turn the orbit and try again instead
+        // of pressing into the same corner forever.
+        if (++this._driftStall > 12) {
+            this._driftStall = 0;
+            this.driftAngle += Math.PI / 2;
+        }
     }
 
     update(player, enemies, map) {
-        // Drift in a slow circle around center
+        // Drift in a slow circle around center, but move through the same
+        // collision grid as every other enemy: the boss is far too large to
+        // be teleported across authored red walls or blue obstacles.
         this.driftAngle += 0.01;
-        this.x = this.centerX + Math.cos(this.driftAngle) * 80;
-        this.y = this.centerY + Math.sin(this.driftAngle) * 60;
+        this._drift(map);
 
         // Phase changes
         this.phaseTimer++;

@@ -29,7 +29,8 @@ class AudioSystem {
         const noop = () => {};
         return {
             unlock: noop, setMuted: noop, toggleMute: () => false, muted: false,
-            shoot: noop, enemyShoot: noop, enemyHit: noop, enemyDeath: noop,
+            shoot: noop, sniperShot: noop, flameShot: noop, burnTick: noop, summonAttack: noop, enemyShoot: noop, enemyHit: noop, enemyDeath: noop,
+            cochinillaCharge: noop, setCochinillaBeam: noop,
             playerHurt: noop, pickup: noop, levelUp: noop, descend: noop,
             gameOver: noop, setTracks: noop, playMusic: noop, nextTrack: noop,
             stopMusic: noop
@@ -42,6 +43,7 @@ class AudioSystem {
         this.sfxGain = null;
         this.musicGain = null;
         this.voices = 0;
+        this.cochinillaBeamVoice = null;
 
         this.musicEl = null;   // fallback path only
         this.musicSrc = null;  // Web Audio path
@@ -186,6 +188,76 @@ class AudioSystem {
         this.noise({ dur: 0.05, gain: 0.06, from: 3200, to: 700 });
     }
 
+    /** Sharper two-part chiptune crack for the sniper rifle. */
+    sniperShot() {
+        this.tone({ type: 'triangle', from: 1180, to: 190, dur: 0.16, gain: 0.22 });
+        this.noise({ dur: 0.07, gain: 0.11, from: 5200, to: 650, q: 0.8 });
+        this.tone({ type: 'square', from: 1480, to: 1180, dur: 0.045, gain: 0.06, delay: 0.035 });
+    }
+
+    /** Short retro flame burst with a noisy, descending edge. */
+    flameShot() {
+        this.noise({ dur: 0.13, gain: 0.12, from: 1800, to: 420, q: 0.65 });
+        this.tone({ type: 'sawtooth', from: 460, to: 105, dur: 0.16, gain: 0.11 });
+    }
+
+    /** Three soft, rounded retro pulses during the cochinilla's warning. */
+    cochinillaCharge() {
+        for (let i = 0; i < 3; i++) {
+            this.tone({ type: 'triangle', from: 260 + i * 55, to: 190 + i * 35, dur: 0.11, gain: 0.09, delay: i * 0.2 });
+        }
+    }
+
+    /** Sustain one synthesized retro beam while the cochinilla is attacking. */
+    setCochinillaBeam(active) {
+        if (!active) {
+            const voice = this.cochinillaBeamVoice;
+            if (!voice) return;
+            this.cochinillaBeamVoice = null;
+            const now = this.ctx.currentTime;
+            voice.gain.gain.cancelScheduledValues(now);
+            voice.gain.gain.setTargetAtTime(0.0001, now, 0.035);
+            for (const node of voice.nodes) {
+                try { node.stop(now + 0.16); } catch (_) { /* already stopped */ }
+            }
+            setTimeout(() => { this.voices = Math.max(0, this.voices - 1); }, 220);
+            return;
+        }
+        if (this.cochinillaBeamVoice || !this.canPlay()) return;
+
+        const now = this.ctx.currentTime;
+        const gain = this.ctx.createGain();
+        const low = this.ctx.createOscillator();
+        const edge = this.ctx.createOscillator();
+        const grit = this.ctx.createBufferSource();
+        const filter = this.ctx.createBiquadFilter();
+        const noiseBuffer = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * 0.25), this.ctx.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseData.length; i++) noiseData[i] = Math.random() * 2 - 1;
+
+        low.type = 'sawtooth'; low.frequency.setValueAtTime(118, now);
+        edge.type = 'square'; edge.frequency.setValueAtTime(236, now);
+        grit.buffer = noiseBuffer; grit.loop = true;
+        filter.type = 'bandpass'; filter.frequency.setValueAtTime(1450, now); filter.Q.value = 0.8;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.10, now + 0.06);
+        low.connect(gain); edge.connect(gain); grit.connect(filter); filter.connect(gain);
+        gain.connect(this.sfxGain);
+        low.start(now); edge.start(now); grit.start(now);
+        this.cochinillaBeamVoice = { gain, nodes: [low, edge, grit] };
+        this.voices++;
+    }
+
+    /** Quiet crackle used for fire damage ticks. */
+    burnTick() {
+        this.noise({ dur: 0.045, gain: 0.035, from: 2600, to: 900, q: 0.7 });
+        this.tone({ type: 'square', from: 150, to: 90, dur: 0.04, gain: 0.025 });
+    }
+
+    summonAttack() {
+        this.tone({ type: 'triangle', from: 420, to: 760, dur: 0.08, gain: 0.06 });
+    }
+
     enemyShoot() {
         const j = 0.9 + Math.random() * 0.2;
         this.tone({ type: 'sawtooth', from: 300 * j, to: 130 * j, dur: 0.12, gain: 0.08 });
@@ -236,7 +308,7 @@ class AudioSystem {
     // ===== Music =====
 
     /**
-     * Register music tracks. Each entry is a base path without extension.
+     * Register tracks by path; files with no extension default to MP3.
      *
      * Nothing here fails loudly: if the files are absent the game runs with
      * effects only, so the repo stays playable without any audio committed.
@@ -313,12 +385,13 @@ class AudioSystem {
         if (!this.tracks.length || !this.unlocked || !this.ctx) return;
         this.trackIndex = ((index % this.tracks.length) + this.tracks.length) % this.tracks.length;
         const base = this.tracks[this.trackIndex];
+        const source = /\.(?:mp3|ogg|wav)(?:\?.*)?$/i.test(base) ? base : base + '.mp3';
 
         this.stopMusic();
         const token = ++this.musicToken; // guards against a slow load landing late
 
         try {
-            const res = await fetch(`${base}.mp3`);
+            const res = await fetch(source);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const bytes = await res.arrayBuffer();
             const buffer = await this.ctx.decodeAudioData(bytes);
@@ -333,18 +406,18 @@ class AudioSystem {
             src.connect(this.musicGain);
             src.start(0, start);
             this.musicSrc = src;
-            this.musicInfo = { base, start: +start.toFixed(2), end: +end.toFixed(2) };
+            this.musicInfo = { base, source, start: +start.toFixed(2), end: +end.toFixed(2) };
         } catch (_) {
             // No fetch/decode available (file://) or the file is missing.
             // Fall back to a plain element; the fade gap returns, but the game
             // still has music rather than none.
-            this.playMusicFallback(base, token);
+            this.playMusicFallback(source, token);
         }
     }
 
-    playMusicFallback(base, token) {
+    playMusicFallback(source, token) {
         try {
-            const el = new Audio(`${base}.mp3`);
+            const el = new Audio(source);
             el.loop = true;
             el.volume = 0.45;
             el.muted = this.muted;

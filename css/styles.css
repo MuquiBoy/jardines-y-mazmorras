@@ -561,3 +561,86 @@ body.touch-device .rotate-gate { }
 
 .mute-btn.muted { color: #6b5347; }
 .mute-btn:active { color: #fff; background: var(--blood); }
+
+/* ===== Jardines y Mazmorras — identity for the start screen ===== */
+#start-screen {
+    background:
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 2px, transparent 2px 4px),
+        linear-gradient(90deg, rgba(5, 18, 7, .94), rgba(7, 24, 8, .82) 50%, rgba(5, 18, 7, .94)),
+        radial-gradient(ellipse at 50% 18%, rgba(81, 255, 0, .22), transparent 48%),
+        radial-gradient(ellipse at 50% 60%, #10230d 0%, #050906 76%);
+}
+#start-screen .game-title {
+    display: flex;
+    flex-direction: column;
+    gap: .11em;
+    margin-bottom: .45em;
+    color: #c7ff00;
+    font-size: clamp(1.15rem, 5vw, 3rem);
+    line-height: 1.38;
+    letter-spacing: .015em;
+    text-shadow: 3px 3px 0 #28560b, 6px 6px 0 rgba(0, 0, 0, .9), 0 0 22px rgba(115, 255, 0, .35);
+}
+#start-screen .game-title span:last-child { color: #73ff00; }
+#start-screen .subtitle {
+    margin-bottom: 1.25em;
+    color: #b7dc49;
+    letter-spacing: .19em;
+    text-shadow: 0 0 12px rgba(115, 255, 0, .3);
+}
+#start-screen .build-marker {
+    color: #729642;
+    font-size: .48rem;
+    letter-spacing: .16em;
+}
+#start-screen .controls-info {
+    margin-top: 1em;
+    color: #71836a;
+}
+#start-screen .controls-info strong { color: #baff00; }
+#start-screen .coop-panel {
+    border-color: #65ff00;
+    background: linear-gradient(135deg, rgba(11, 26, 11, .97), rgba(8, 16, 9, .97));
+    box-shadow: 0 0 0 3px rgba(75, 170, 15, .16), 0 0 28px rgba(83, 255, 0, .12);
+}
+#start-screen .coop-panel h2,
+#start-screen .coop-label,
+#start-screen .coop-invite { color: #baff00; }
+#start-screen #coop-status { color: #83ff45; }
+#start-screen .coop-stage-note { color: #b8d273; }
+#start-screen .btn {
+    color: #eaffd8;
+    background: #18380c;
+    box-shadow: inset 0 0 0 3px #73ff00, inset 0 0 0 6px #091708, 6px 6px 0 rgba(0, 0, 0, .8);
+}
+#start-screen .btn:hover,
+#start-screen .btn:focus-visible {
+    color: #fff;
+    background: #285c10;
+    box-shadow: inset 0 0 0 3px #d6ff00, inset 0 0 0 6px #091708, 6px 6px 0 rgba(0, 0, 0, .8);
+}
+#start-screen .btn:active {
+    box-shadow: inset 0 0 0 3px #d6ff00, inset 0 0 0 6px #091708, 2px 2px 0 rgba(0, 0, 0, .8);
+}
+@media (max-width: 560px) {
+    #start-screen .game-title { font-size: clamp(1.02rem, 6vw, 1.65rem); }
+    #start-screen .subtitle { letter-spacing: .08em; }
+    #start-screen .coop-panel { max-height: 42vh; padding: .75rem; }
+}
+.touch-reload {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 70;
+    width: 52px;
+    height: 52px;
+    font-family: var(--font-pixel);
+    font-size: 0.7rem;
+    color: var(--amber);
+    background: var(--panel);
+    border: 0;
+    box-shadow: inset 0 0 0 3px var(--wall), inset 0 0 0 6px var(--void);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.touch-reload.hidden { display: none; }

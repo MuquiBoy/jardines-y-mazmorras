@@ -1,12 +1,13 @@
 # Music
 
-Three tracks, one per floor, cycling back to the first on floor 4.
+Four tracks run in floor order; the sequence loops after floor 4.
 
 | Order | File | Length | Looped body |
 |---|---|---|---|
-| Floor 1 | `savage-engine.mp3` | 1:02 | 0:00 – 0:57 |
-| Floor 2 | `engine-of-the-abyss.mp3` | 1:08 | 0:00 – 1:05 |
-| Floor 3 | `hydraulic-siege.mp3` | 1:21 | 0:00 – 1:16 |
+| Floor 1 | rins-theme_loop.ogg | about 2.2 MB | authored seamless loop |
+| Floor 2 | savage-engine.mp3 | 1:02 | 0:00 – 0:57 |
+| Floor 3 | engine-of-the-abyss.mp3 | 1:08 | 0:00 – 1:05 |
+| Floor 4 | hydraulic-siege.mp3 | 1:21 | 0:00 – 1:16 |
 
 The rotation is set in `js/main.js` (`audio.setTracks([...])`). Add files and
 entries together and it grows.
@@ -43,3 +44,13 @@ returns. Serve over HTTP to get proper looping.
 
 Missing files are not an error. The game fails quietly and runs with sound
 effects only.
+
+## Free-to-use track
+
+Rin's Theme (Loopable chiptune, adventure/battle BGM) by request is labeled CC0 on OpenGameArt.
+Credit is optional; included here out of appreciation.
+Source and license: https://opengameart.org/content/rins-theme-loopable-chiptune-adventurebattle-bgm (CC0).
+
+## Sound effects
+
+Player effects are synthesized directly in js/audio.js with Web Audio, so they are original project sounds and require no third-party sound files or external license. The Tirador has a sharp, layered chiptune crack; the Piromano has a noisy descending flame burst, with a quieter pixel crackle for burn ticks. These effects are used in both local and authoritative multiplayer play.

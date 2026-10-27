@@ -6,26 +6,29 @@
     const panel = document.createElement('section');
     panel.className = 'coop-panel';
     panel.innerHTML = `
-        <h2>COOPERATIVE LOBBY</h2>
+        <h2>REFUGIO DE EXPEDICIÓN</h2>
         <label class="coop-label" for="coop-name">Nombre</label>
         <input id="coop-name" maxlength="20" value="Jugador" autocomplete="nickname">
-        <label class="coop-label" for="coop-character">Clase</label>
+        <label class="coop-label" for="coop-character">Rol</label>
         <select id="coop-character">
-            <option value="aji">Piromano Ají — atacante</option>
-            <option value="invocador">Invocador — abanico</option>
-            <option value="carguero">Carguero — resistente</option>
-            <option value="gunslinger">Pistolero — cadencia</option>
+            <option value="pistolero">Pistolero</option>
+            <option value="tirador">Tirador</option>
+            <option value="perdigonero">Perdigonero</option>
+            <option value="invocador">Invocador</option>
+            <option value="piromano">Piromano</option>
+            <option value="bastion">Bastión</option>
         </select>
         <div class="coop-actions">
             <button id="coop-create" class="btn">Crear sala</button>
             <button id="coop-solo" class="btn">Jugar en solitario</button>
             <button id="coop-offline" class="btn">Jugar sin conexión</button>
+            <button id="coop-test" class="btn">Sala de pruebas 0-0</button>
             <button id="coop-copy" class="btn" disabled>Copiar invitación</button>
         </div>
         <div id="coop-status" role="status" aria-live="polite">Conectando con el servidor local…</div>
         <a id="coop-invite" class="coop-invite" hidden></a>
         <ol id="coop-players" class="coop-players"></ol>
-        <p id="coop-stage-note" class="coop-stage-note">Hasta tres jugadores comparten la mazmorra. Cada rol tiene estadísticas y estilo de disparo propios.</p>`;
+        <p id="coop-stage-note" class="coop-stage-note">Hasta tres jugadores comparten la mazmorra.</p>`;
     screen.insertBefore(panel, screen.querySelector('.controls-info'));
 
     const name = panel.querySelector('#coop-name');
@@ -36,9 +39,10 @@
     const createButton = panel.querySelector('#coop-create');
     const soloButton = panel.querySelector('#coop-solo');
     const offlineButton = panel.querySelector('#coop-offline');
+    const testButton = panel.querySelector('#coop-test');
     const copyButton = panel.querySelector('#coop-copy');
     const startButton = document.getElementById('start-btn');
-    startButton.textContent = 'Iniciar partida';
+    startButton.textContent = 'Iniciar expedición';
     startButton.disabled = true;
     startButton.title = 'Invita a otra persona o elige jugar en solitario.';
     createButton.disabled = true;
@@ -51,7 +55,7 @@
         roomId: null,
         playerId: null,
         hostId: null,
-        selectedCharacter: 'aji',
+        selectedCharacter: 'pistolero',
         socket: null,
         send(data) { if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(data)); },
         requestStart() { this.send({ type: 'start' }); }
@@ -103,7 +107,7 @@
                 }
             }
             character.value = (message.players.find(p => p.id === client.playerId) || {}).character || character.value;
-            const labels = { aji: 'Piromano Ají', invocador: 'Invocador', carguero: 'Carguero', gunslinger: 'Pistolero' };
+            const labels = { pistolero: 'Pistolero', tirador: 'Tirador', perdigonero: 'Perdigonero', invocador: 'Invocador', piromano: 'Piromano', bastion: 'Bastión' };
             players.replaceChildren(...message.players.map(p => {
                 const li = document.createElement('li');
                 li.textContent = `${p.name} — ${labels[p.character] || p.character}${p.id === message.hostId ? ' · anfitrión' : ''}`;
@@ -135,10 +139,15 @@
 
     createButton.addEventListener('click', () => client.send({ type: 'create', name: name.value, character: client.selectedCharacter }));
     soloButton.addEventListener('click', () => client.send({ type: 'create', name: name.value, character: client.selectedCharacter, solo: true }));
+    testButton.addEventListener('click', () => {
+        client.gameEnabled = false;
+        screen.classList.add('hidden');
+        window.startTestRoom(client.selectedCharacter);
+    });
     offlineButton.addEventListener('click', () => {
         client.gameEnabled = false;
         screen.classList.add('hidden');
-        window.startOfflineGame();
+        window.startOfflineGame(client.selectedCharacter);
     });
     character.addEventListener('change', () => {
         client.selectedCharacter = character.value;

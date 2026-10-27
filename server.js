@@ -6,16 +6,28 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const Simulation = require('./server/simulation');
+const { listRoomTemplateFiles } = require('./server/template-catalog');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 8080;
 const MAX_PLAYERS = 3;
 const rooms = new Map();
 const sockets = new Set();
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.mp3': 'audio/mpeg', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.svg': 'image/svg+xml' };
 
 const server = http.createServer((req, res) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
+    if (pathname === '/api/room-templates') {
+        try {
+            const catalog = listRoomTemplateFiles(path.join(ROOT, 'assets', 'plantillas-salas'));
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+            res.end(JSON.stringify(catalog));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+            res.end(JSON.stringify({ error: 'No se pudo leer la carpeta de plantillas.' }));
+        }
+        return;
+    }
     const requested = pathname === '/' ? '/index.html' : decodeURIComponent(pathname);
     const file = path.resolve(ROOT, `.${requested}`);
     if (!file.startsWith(ROOT + path.sep) && file !== path.join(ROOT, 'index.html')) {
@@ -143,9 +155,9 @@ function handle(socket, message) {
         const aimY = clampNumber(message.aimY, -1, 1);
         const aimLength = Math.hypot(aimX, aimY) || 1;
         player.input = { moveX: moveLength > 1 ? moveX / moveLength : moveX, moveY: moveLength > 1 ? moveY / moveLength : moveY,
-            aimX: aimX / aimLength, aimY: aimY / aimLength, fire: message.fire === true };
+            aimX: aimX / aimLength, aimY: aimY / aimLength, fire: message.fire === true, reload: message.reload === true };
     } else if (message.type === 'select' && room.phase === 'lobby') {
-        if (!['aji', 'invocador', 'carguero', 'gunslinger'].includes(message.character)) return;
+        if (!['pistolero', 'tirador', 'perdigonero', 'invocador', 'piromano', 'bastion'].includes(message.character)) return;
         player.character = message.character;
         broadcast(room);
     } else if (message.type === 'start') {
@@ -161,13 +173,13 @@ function cleanName(value) {
     return String(value || 'Jugador').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 20) || 'Jugador';
 }
 function validCharacter(value) {
-    return ['aji', 'invocador', 'carguero', 'gunslinger'].includes(value) ? value : 'aji';
+    return ['pistolero', 'tirador', 'perdigonero', 'invocador', 'piromano', 'bastion'].includes(value) ? value : 'pistolero';
 }
 function clampNumber(value, min, max) {
     const number = Number(value);
     return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : 0;
 }
-function neutralInput() { return { moveX: 0, moveY: 0, aimX: 0, aimY: -1, fire: false }; }
+function neutralInput() { return { moveX: 0, moveY: 0, aimX: 0, aimY: -1, fire: false, reload: false }; }
 function detach(socket) {
     sockets.delete(socket);
     const room = rooms.get(socket._room);

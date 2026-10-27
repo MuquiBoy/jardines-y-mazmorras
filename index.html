@@ -4,23 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Abyss Engine — Roguelite cooperativo</title>
-    <meta name="description" content="Descend a procedurally generated dungeon, kill the boss to open the way down. A browser bullet hell with roguelite upgrades and hand-rolled pixel rendering — no game engine, no dependencies.">
-    <meta name="theme-color" content="#0a0a0f">
+    <title>Jardines y Mazmorras — Roguelite cooperativo</title>
+    <meta name="description" content="Explora Jardines y Mazmorras, un roguelite cooperativo de fantasía y acción en pixel art.">
+    <meta name="theme-color" content="#091708">
 
     <!-- Social preview -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Abyss Engine — Procedural Bullet Hell">
-    <meta property="og:description" content="Descend a procedurally generated dungeon, kill the boss to open the way down. A browser bullet hell with roguelite upgrades and hand-rolled pixel rendering — no game engine, no dependencies.">
+    <meta property="og:title" content="Jardines y Mazmorras — Roguelite cooperativo">
+    <meta property="og:description" content="Explora una mazmorra viva, elige tu rol y sobrevive a una expedición cooperativa.">
     <meta name="twitter:card" content="summary">
 
     <!-- Inline SVG favicon: the player dot on the game's background -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0f'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%232196f3' stroke='%2364b5f6' stroke-width='2'/%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23091708'/%3E%3Cpath d='M16 27C4 20 8 5 16 4c8 1 12 16 0 23Z' fill='%2373ff00' stroke='%23d6ff00' stroke-width='2'/%3E%3Cpath d='M16 7v17' stroke='%231b4d10' stroke-width='2'/%3E%3C/svg%3E">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=abyss-v2">
+    <link rel="stylesheet" href="css/styles.css?v=jardines-v2">
 </head>
 <body>
     <canvas id="game"></canvas>
@@ -28,16 +28,17 @@
 
     <!-- Start Screen -->
     <div id="start-screen" class="screen active">
-        <h1 class="game-title">ABYSS ENGINE</h1>
-        <p class="subtitle">Procedural Bullet Hell</p>
-        <button id="start-btn" class="btn">Start Game</button>
-        <p class="build-marker">build: abyss-v2</p>
+        <h1 class="game-title" aria-label="Jardines y Mazmorras"><span>JARDINES</span><span>Y MAZMORRAS</span></h1>
+        <p class="subtitle">Una expedición de fantasía en 16 bits</p>
+        <button id="start-btn" class="btn">Iniciar expedición</button>
+        <p class="build-marker">DEMO COOPERATIVA · VERSIÓN DE PRUEBA</p>
         <div class="controls-info">
-            <p><strong>WASD</strong> — Move</p>
-            <p><strong>Mouse</strong> — Aim</p>
-            <p><strong>Click</strong> — Shoot</p>
-            <p><strong>Space</strong> — Pause</p>
-            <p><strong>M</strong> — Mute</p>
+            <p><strong>WASD</strong> — Moverse</p>
+            <p><strong>Ratón</strong> — Apuntar</p>
+            <p><strong>Clic</strong> — Disparar</p>
+            <p><strong>R</strong> — Recargar</p>
+            <p><strong>Espacio</strong> — Pausar</p>
+            <p><strong>M</strong> — Silenciar</p>
         </div>
     </div>
 
@@ -58,6 +59,7 @@
                 </div>
                 <span id="xp-text" class="bar-text">Lv 1 — 0 / 50</span>
             </div>
+            <div id="ammo-text" class="stats-display">CARGADOR 15 / 15</div>
             <div id="stats-display" class="stats-display">
                 DMG: 10 | SPD: 3.0 | BULLETS: 1
             </div>
@@ -101,6 +103,7 @@
         <div id="stick-aim" class="stick stick-fire"><div class="stick-knob"></div></div>
     </div>
     <button id="touch-pause" class="touch-pause hidden" aria-label="Pause">II</button>
+    <button id="touch-reload" class="touch-reload hidden" aria-label="Recargar">R</button>
     <button id="mute-btn" class="mute-btn" type="button" aria-label="Silenciar sonido" aria-pressed="false">SND</button>
 
     <!-- Portrait gate: twin-stick needs the width -->
@@ -110,18 +113,19 @@
         <p class="rotate-sub">Landscape only</p>
     </div>
 
-    <script src="js/palette.js?v=abyss-v2"></script>
-    <script src="js/audio.js?v=abyss-v2"></script>
-    <script src="js/characters/roles.js?v=roles-v1"></script>
-    <script src="js/player.js?v=abyss-v2"></script>
-    <script src="js/bullet.js?v=abyss-v2"></script>
-    <script src="js/enemy.js?v=abyss-v2"></script>
-    <script src="js/map.js?v=abyss-v2"></script>
-    <script src="js/ui.js?v=abyss-v2"></script>
-    <script src="js/game.js?v=abyss-v2"></script>
+    <script src="js/palette.js?v=pixel-zoom-200-v1"></script>
+    <script src="js/audio.js?v=cochinilla-beam-loop-v2"></script>
+    <script src="js/characters/roles.js?v=roles-player-sprites-colors-v2"></script>
+    <script src="js/player.js?v=player-role-sprites-v1"></script>
+    <script src="js/bullet.js?v=bastion-ricochet-v1"></script>
+    <script src="js/enemy.js?v=boss-wall-physics-v11"></script>
+    <script src="js/room-templates.js?v=folder-catalog-v4"></script>
+    <script src="js/map.js?v=authored-floor-void-v7"></script>
+    <script src="js/ui.js?v=ammo-hud-v1"></script>
+    <script src="js/game.js?v=camera-zoom-200-v9"></script>
     <script src="js/touch.js?v=abyss-v2"></script>
-    <script src="js/coop-game.js?v=coop-v2"></script>
-    <script src="js/coop-lobby.js?v=coop-v1"></script>
-    <script src="js/main.js?v=abyss-v2"></script>
+    <script src="js/coop-game.js?v=template-masks-v4"></script>
+    <script src="js/coop-lobby.js?v=jardines-v2"></script>
+    <script src="js/main.js?v=color-mask-template-v1"></script>
 </body>
 </html>

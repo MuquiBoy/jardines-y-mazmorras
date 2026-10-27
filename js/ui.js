@@ -18,6 +18,7 @@ class UI {
         this.xpBar = document.getElementById('xp-bar');
         this.xpText = document.getElementById('xp-text');
         this.statsDisplay = document.getElementById('stats-display');
+        this.ammoText = document.getElementById('ammo-text');
     }
 
     /** Update HUD bars from player data. */
@@ -33,8 +34,11 @@ class UI {
         this.xpBar.style.width = `${xpPercent}%`;
         this.xpText.textContent = `Lv ${player.level} — ${player.xp} / ${xpNeeded}`;
 
-        // Stats
-        this.statsDisplay.textContent = `${player.getStatsString()} | FLOOR: ${floor}`;
+        // Role ammo and reload state
+        if (this.ammoText) this.ammoText.textContent = player.reloadTimer > 0
+            ? `RECARGANDO ${Math.ceil(player.reloadTimer / 60)}s`
+            : `CARGADOR ${player.ammo} / ${player.ammoCapacity}`;
+        this.statsDisplay.textContent = `${player.getStatsString()} | PISO: ${floor}`;
     }
 
     /** Draw minimap. */

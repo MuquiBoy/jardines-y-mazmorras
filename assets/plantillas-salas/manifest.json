@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "revision": "6c85e8d43a6185e7",
+  "cellWorldSize": 40,
+  "sourcePixelsPerCell": 40,
+  "templates": {
+    "entry": [
+      "entry/inicio 1_entry.png"
+    ],
+    "hub": [
+      "hub/pasillo 1_hub.png",
+      "hub/pasillo corto_hub.png",
+      "hub/pasillo l_hub.png",
+      "hub/pasillo tuberia_hub.png"
+    ],
+    "combat": [
+      "combat/sala grande_3 puertas y barricada_combat.png",
+      "combat/sala grande_columneta 1_combat.png",
+      "combat/sala media_columna 1 cerrado_combat.png",
+      "combat/sala media_columna 1_combat.png",
+      "combat/sala media_columna 2_combat.png",
+      "combat/sala media_forma i_combat.png"
+    ],
+    "combat-hard": [
+      "combat-hard/sala gigante_union por esquina_combat-hard.png",
+      "combat-hard/sala grande_3 puertas_combat-hard.png",
+      "combat-hard/sala grande_centro angosto_combat-hard.png",
+      "combat-hard/sala grande_vacia_combat-hard.png",
+      "combat-hard/sala grande_vacio 2_combat-hard.png"
+    ],
+    "treasure": [
+      "treasure/sala tesoro 1_treasure.png",
+      "treasure/sala tesoro 2_treasure.png"
+    ],
+    "boss": [
+      "boss/sala gigante jefe_boss.png"
+    ]
+  }
+}

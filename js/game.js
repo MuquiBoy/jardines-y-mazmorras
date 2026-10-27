@@ -70,6 +70,7 @@ class Game {
         this.enemyBullets = [];    // enemy bullets
         this.xpOrbs = [];
         this.particles = [];
+        this.summons = [];
 
         // Map
         this.map = null;
@@ -136,11 +137,12 @@ class Game {
     /**
      * Visible world size, in world units.
      *
-     * The backing store is PIXEL_SIZE times smaller than the window, so canvas
-     * dimensions are not world dimensions — camera maths must use these.
+     * The backing store is PIXEL_SIZE times smaller than the window and the
+     * camera is zoomed by CAMERA_ZOOM, so canvas dimensions are not world
+     * dimensions — camera maths must use these.
      */
-    get viewWidth()  { return this.canvas.width * PIXEL_SIZE; }
-    get viewHeight() { return this.canvas.height * PIXEL_SIZE; }
+    get viewWidth()  { return this.canvas.width * PIXEL_SIZE / CAMERA_ZOOM; }
+    get viewHeight() { return this.canvas.height * PIXEL_SIZE / CAMERA_ZOOM; }
 
     /** Kick the camera and flash the screen — called on player damage. */
     addImpact(shakeFrames, flashFrames) {
@@ -154,6 +156,7 @@ class Game {
             this.input.keys[e.code] = true;
             if (e.code === 'Space' && !this.coopMode) this.togglePause();
             if (e.code === 'KeyM') this.ui.setMuted(this.audio.toggleMute());
+            if (e.code === 'F3' && this.map) { this.map.debugLayout = !this.map.debugLayout; e.preventDefault(); }
         });
 
         window.addEventListener('keyup', (e) => {
@@ -162,12 +165,15 @@ class Game {
 
         this.canvas.addEventListener('mousemove', (e) => {
             const rect = this.canvas.getBoundingClientRect();
-            this.input.mouseX = e.clientX - rect.left;
-            this.input.mouseY = e.clientY - rect.top;
+            // Client coordinates are screen pixels; aim is resolved in world
+            // units, so undo the backing-store ratio and the camera zoom.
+            const scale = (this.canvas.width / rect.width) * PIXEL_SIZE / CAMERA_ZOOM;
+            this.input.mouseX = (e.clientX - rect.left) * scale;
+            this.input.mouseY = (e.clientY - rect.top) * scale;
         });
 
         this.canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) this.input.mouseDown = true;
+            if (e.button === 0) { this.audio.unlock(); this.input.mouseDown = true; }
         });
 
         // Bound to the window, not the canvas: releasing the button after the
@@ -193,14 +199,17 @@ class Game {
     }
 
     /** Start a new game. */
-    start() {
+    start(characterId = 'pistolero', testRoom = false) {
+        this.testRoom = testRoom;
         this.enemiesKilled = 0;
         this.roomsCleared = 0;
         this.floor = 1;
 
         // Create player at map center
         this.player = new Player(0, 0);
-        this.generateMap();
+        this.player.setCharacter(characterId);
+        if (this.testRoom) this.generateTestRoom();
+        else this.generateMap();
 
         // Reset input
         this.input.mouseDown = false;
@@ -229,8 +238,8 @@ class Game {
 
     /** Generate a new map and populate it. */
     generateMap() {
-        this.map = new DungeonMap(7000, 7000);
-        this.map.generate();
+        this.map = new DungeonMap(14000, 14000);
+        this.map.generate(this.floor);
 
         // Place player at start
         this.player.x = this.map.playerStart.x;
@@ -249,13 +258,40 @@ class Game {
         this.enemyBullets = [];
         this.xpOrbs = [];
         this.particles = [];
+        this.summons = [];
     }
 
+    /** Build a deterministic isolated arena for enemy behavior checks. */
+    generateTestRoom() {
+        this.map = new DungeonMap(2400, 1800);
+        this.map.roomCount = 1;
+        this.map.rooms = [{ tx: 5, ty: 5, tw: 64, th: 48, type: 'empty', parent: null, cleared: true, spawned: true }];
+        this.map.corridors = [];
+        this.map.calculatePositions();
+        this.map.totalRooms = 1;
+        this.player.x = this.map.playerStart.x;
+        this.player.y = this.map.playerStart.y + 420;
+        this.currentRoom = this.map.rooms[0];
+        const room = this.map.rooms[0], enemies = [];
+        for (const wall of ['top', 'right', 'bottom', 'left']) {
+            for (const t of [1 / 3, 2 / 3]) {
+                const x = wall === 'left' ? room.x + 8 : wall === 'right' ? room.x + room.w - 8 : room.x + room.w * t;
+                const y = wall === 'top' ? room.y + 8 : wall === 'bottom' ? room.y + room.h - 8 : room.y + room.h * t;
+                const enemy = new CochinillaPerforamuros(x, y, room, wall);
+                enemies.push(enemy);
+            }
+        }
+        this.enemies = enemies;
+        this.bullets = []; this.enemyBullets = []; this.xpOrbs = []; this.particles = []; this.summons = [];
+    }
     /** Spawn enemies for a new room. */
     spawnRoomEnemies(room) {
+        if (this.testRoom) return;
         // Keep spawns clear of the doorway the player just walked through.
         const enemies = this.scaleToFloor(
             this.map.getEnemiesForRoom(room, this.player, 280, this.floor));
+        const roomIndex = this.map.rooms.indexOf(room);
+        for (const enemy of enemies) enemy.roomIndex = roomIndex;
         this.enemies.push(...enemies);
 
         // Treasure room bonus
@@ -334,26 +370,63 @@ class Game {
         this.camera.x = Math.max(0, Math.min(this.camera.x, this.map.width - this.viewWidth));
         this.camera.y = Math.max(0, Math.min(this.camera.y, this.map.height - this.viewHeight));
 
-        // Update player (includes its own bounds clamping)
+        // Update player (includes its own bounds clamping).
         const shouldShoot = this.player.update(this.input, this.camera, this.map);
 
-        // Player shooting
+        // Role attack: invocations are world units; other roles fire projectiles.
         if (shouldShoot) {
-            const newBullets = this.player.shoot();
-            this.bullets.push(...newBullets);
-            this.audio.shoot();
+            if (this.player.weaponKind === 'summoner') {
+                const x = this.player.x + this.player.aimX * (this.player.radius + 15);
+                const y = this.player.y + this.player.aimY * (this.player.radius + 15);
+                const ownerSummons = this.summons.filter(summon => summon.ownerId === 'local' && summon.alive);
+                const summonLimit = this.player.summon?.maxActive ?? 6;
+                if (ownerSummons.length >= summonLimit) {
+                    const oldestIndex = this.summons.indexOf(ownerSummons[0]);
+                    if (oldestIndex >= 0) this.summons.splice(oldestIndex, 1);
+                }
+                this.summons.push(new SummonedUnit(`local-${this.frameCount}-${Math.random()}`, 'local', x, y, this.player.summon));
+                this.audio.summonAttack();
+            } else {
+                this.bullets.push(...this.player.shoot());
+                if (this.player.character === 'tirador') this.audio.sniperShot();
+                else if (this.player.character === 'piromano') this.audio.flameShot();
+                else this.audio.shoot();
+            }
         }
 
-        // Update enemies
+        this.updateSummons();
         const newEnemyBullets = [];
+        let burnSound = false;
+        const targets = [this.player, ...this.summons].filter(target => target.health > 0 && target.alive !== false);
         for (const enemy of this.enemies) {
             if (!enemy.alive) continue;
-            const bullets = enemy.update(this.player, this.enemies, this.map);
+            if (enemy.updateBurn()) {
+                burnSound = true;
+                if (!enemy.alive) { this.enemyKilled(enemy); continue; }
+            }
+            let target = this.player, nearest = Infinity;
+            for (const candidate of targets) {
+                const distance = Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y);
+                if (distance < nearest) { target = candidate; nearest = distance; }
+            }
+            const updateResult = enemy.update(target, this.enemies, this.map);
+            const event = typeof updateResult === 'string' ? updateResult : null;
+            const bullets = Array.isArray(updateResult) ? updateResult : null;
+            if (enemy instanceof CochinillaPerforamuros) {
+                if (event === 'warning') this.audio.cochinillaCharge();
+            }
+            if (enemy instanceof CochinillaPerforamuros && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
+                this.player.health = Math.max(0, this.player.health - 1);
+                this.damageFlash = Math.max(this.damageFlash, 2);
+            }
             if (bullets && bullets.length) {
                 newEnemyBullets.push(...bullets);
                 this.audio.enemyShoot();
             }
         }
+        this.audio.setCochinillaBeam(this.enemies.some(enemy =>
+            enemy.alive && enemy instanceof CochinillaPerforamuros && enemy.phase === 'beam'));
+        if (burnSound) this.audio.burnTick();
         this.enemyBullets.push(...newEnemyBullets);
 
         // Update player bullets
@@ -389,6 +462,19 @@ class Game {
         this.ui.updateHUD(this.player, this.floor);
     }
 
+    /** Update summons: each unit retargets, seeks, attacks and can be killed. */
+    updateSummons() {
+        for (const summon of this.summons) {
+            const hit = summon.update(this.enemies, this.map);
+            if (hit) {
+                this.audio.summonAttack();
+                this.spawnParticles(hit.x, hit.y, summon.color, 2);
+                if (!hit.alive) this.enemyKilled(hit);
+            }
+        }
+        this.summons = this.summons.filter(summon => summon.alive && summon.lifetime > 0);
+    }
+
     /** Update player bullets (movement + collision). */
     updatePlayerBullets() {
         const toRemove = new Set();
@@ -396,12 +482,15 @@ class Game {
         for (const bullet of this.bullets) {
             bullet.x += bullet.vx;
             bullet.y += bullet.vy;
+            bullet.travelled = (bullet.travelled || 0) + Math.hypot(bullet.vx, bullet.vy);
+            if (bullet.range && bullet.travelled >= bullet.range) toRemove.add(bullet);
 
             // Check collision with enemies
             for (const enemy of this.enemies) {
                 if (!enemy.alive || toRemove.has(bullet)) continue;
                 if (circleCollision(bullet.x, bullet.y, bullet.radius, enemy.x, enemy.y, enemy.radius)) {
                     enemy.takeDamage(bullet.damage);
+                    if (bullet.burn) enemy.applyBurn(bullet.burn);
                     bullet.hits++;
 
                     // Spawn hit particles
@@ -430,6 +519,7 @@ class Game {
         for (const bullet of this.enemyBullets) {
             bullet.x += bullet.vx;
             bullet.y += bullet.vy;
+            if (bullet.ignoreFrames > 0) bullet.ignoreFrames--;
 
             // Pop against room and corridor walls, so enemies can't shoot the
             // player through geometry they can't themselves cross. Checked
@@ -441,17 +531,31 @@ class Game {
                 continue;
             }
 
-            // Check collision with player
-            if (bulletHitsPlayer(bullet, this.player)) {
+            const summonedHit = this.summons.find(summon => summon.alive && circleCollision(bullet.x, bullet.y, bullet.radius, summon.x, summon.y, summon.radius));
+            if (summonedHit) {
+                summonedHit.takeDamage(bullet.damage);
+                this.spawnParticles(summonedHit.x, summonedHit.y, summonedHit.color, 3);
+                bullet.damage = 0;
+                continue;
+            }
+
+            // Bastion absorbs part of the impact; some shots ricochet toward
+            // another party member and remain hostile enemy fire.
+            const ricochetChance = this.player.enemyProjectileRicochetChance ?? 0;
+            const damageMultiplier = this.player.incomingDamageMultiplier ?? 1;
+            const isProtectedFromThisBullet = bullet.ignorePlayerId === (this.player.id ?? 'local') && bullet.ignoreFrames > 0;
+            if (!isProtectedFromThisBullet && bulletHitsPlayer(bullet, this.player)) {
                 const before = this.player.health;
-                this.player.takeDamage(bullet.damage);
-                // Only react to damage that actually landed — takeDamage() is a
-                // no-op during invincibility frames.
+                this.player.takeDamage(bullet.damage * damageMultiplier);
                 if (this.player.health < before) {
                     this.addImpact(8, 6);
                     this.audio.playerHurt();
                 }
                 this.spawnParticles(this.player.x, this.player.y, PALETTE.danger, 5);
+                if (ricochetChance > 0 && Math.random() < ricochetChance) {
+                    ricochetEnemyBulletTowardParty(bullet, this.player, [this.player]);
+                    continue;
+                }
                 bullet.damage = 0; // Mark as consumed
             }
         }
@@ -528,32 +632,39 @@ class Game {
         this.audio.enemyDeath();
 
         // Drop XP orbs
-        const orbCount = Math.max(1, Math.ceil(enemy.xpValue / 5));
-        for (let i = 0; i < orbCount; i++) {
-            this.xpOrbs.push({
-                x: enemy.x + (Math.random() - 0.5) * 20,
-                y: enemy.y + (Math.random() - 0.5) * 20,
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2,
-                value: Math.ceil(enemy.xpValue / orbCount),
-                radius: 4,
-                color: PALETTE.xp,
-                collected: false
-            });
+        if (enemy.xpValue > 0) {
+            const orbCount = Math.max(1, Math.ceil(enemy.xpValue / 5));
+            for (let i = 0; i < orbCount; i++) {
+                this.xpOrbs.push({
+                    x: enemy.x + (Math.random() - 0.5) * 20,
+                    y: enemy.y + (Math.random() - 0.5) * 20,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    value: Math.ceil(enemy.xpValue / orbCount),
+                    radius: 4,
+                    color: PALETTE.xp,
+                    collected: false
+                });
+            }
         }
     }
 
     /**
-     * The boss is down — open the way out.
+     * The boss is down — release its doors and open the way out.
      *
-     * The exit appears in the room the player is standing in, falling back to
-     * the boss room if they landed the kill from a corridor. It is placed as
-     * far from them as the room allows: dropping it underfoot would trigger
-     * the descent instantly, with no agency.
+     * The boss hall seals like any combat room, so its doors are cleared here
+     * instead of waiting for the generic room-clear sweep (which would also
+     * wait for the minions). The exit opens in the boss hall, away from the
+     * player: dropping it underfoot would trigger the descent instantly, with
+     * no agency.
      */
     onBossDefeated() {
-        const room = this.map.getCurrentRoom(this.player.x, this.player.y) ||
-                     this.map.bossRoom;
+        const room = this.map.bossRoom ||
+                     this.map.getCurrentRoom(this.player.x, this.player.y);
+        if (!room) return;
+        const newlyCleared = !room.cleared;
+        this.map.clearRoom(room);
+        if (newlyCleared) this.roomsCleared++;
         this.map.openExit(room, this.player);
         this.addImpact(10, 0);
         this.ui.drawNotification(this.ctx, 'THE WAY OUT IS OPEN', 180);
@@ -586,10 +697,19 @@ class Game {
             // Only spawn the first time the player enters this room.
             // Use `spawned`, not `cleared`: every room starts out empty, so
             // `cleared` is already true before the player has ever been there.
-            if (!newRoom.spawned && newRoom.type !== 'start') {
-                this.spawnRoomEnemies(newRoom);
+            if (!newRoom.spawned && newRoom.type !== 'entry' && newRoom.type !== 'start') {
+                if (['combat', 'combat-hard', 'boss'].includes(newRoom.type) && !newRoom.cleared) {
+                    // Arm the encounter. updateRoomLocks() closes the doors
+                    // once the player is clear of the threshold and only then
+                    // spawns the enemies, so nobody fights through a doorway.
+                    // The boss hall seals exactly like a combat room; its
+                    // doors reopen when the boss dies (onBossDefeated).
+                    newRoom.lockPending = true;
+                } else {
+                    this.spawnRoomEnemies(newRoom);
+                    newRoom.spawned = true;
+                }
             }
-            newRoom.spawned = true;
             this.currentRoom = newRoom;
         }
 
@@ -648,12 +768,35 @@ class Game {
                 this.roomsCleared++;
             }
         }
+        this.updateRoomLocks();
+    }
+
+    /** Close combat-room doors once the player is safely inside. */
+    updateRoomLocks() {
+        const blockers = this.enemies.filter(enemy => enemy.alive);
+        for (const room of this.map.rooms) {
+            if (!room.lockPending || room.locked || room.cleared) continue;
+            if (!this.map.canLockRoom(room, [this.player], blockers)) continue;
+            this.map.lockRoom(room);
+            // The room is sealed first; the encounter starts behind closed
+            // doors. `spawned` also keeps the empty room from being counted
+            // as cleared during the frames before the lock lands.
+            if (!room.spawned) {
+                this.spawnRoomEnemies(room);
+                room.spawned = true;
+            }
+        }
     }
 
     /** Check if all enemies in a room are dead. */
     isRoomCleared(room) {
+        const roomIndex = this.map.rooms.indexOf(room);
         for (const enemy of this.enemies) {
             if (!enemy.alive) continue;
+            if (enemy.roomIndex !== undefined) {
+                if (enemy.roomIndex === roomIndex) return false;
+                continue;
+            }
             if (enemy.x >= room.x && enemy.x < room.x + room.w &&
                 enemy.y >= room.y && enemy.y < room.y + room.h) {
                 return false;
@@ -726,9 +869,10 @@ class Game {
         }
 
         // Enter world space: 1 unit = 1 world pixel, drawn onto the small
-        // backing store, so everything is divided by PIXEL_SIZE.
+        // backing store at the camera zoom, so everything is multiplied by
+        // CAMERA_ZOOM / PIXEL_SIZE. The integer factor keeps the art crisp.
         ctx.save();
-        ctx.scale(1 / PIXEL_SIZE, 1 / PIXEL_SIZE);
+        ctx.scale(CAMERA_ZOOM / PIXEL_SIZE, CAMERA_ZOOM / PIXEL_SIZE);
         ctx.translate(-Math.round(this.camera.x) + sx, -Math.round(this.camera.y) + sy);
 
         if (this.map) this.map.draw(ctx, this.camera, this.viewWidth, this.viewHeight);
@@ -750,9 +894,21 @@ class Game {
             if (enemy.alive) enemy.draw(ctx);
         }
 
+        // Summons show their own health and remain independent from the Invocador.
+        for (const summon of this.summons || []) {
+            if (!summon.alive) continue;
+            pixelRect(ctx, summon.x, summon.y, 28, 28, '#39164d');
+            pixelRect(ctx, summon.x, summon.y, summon.radius * 1.8, summon.radius * 1.8, summon.color);
+            pixelRect(ctx, summon.x, summon.y, 6, 6, '#f0d8ff');
+            ctx.fillStyle = '#1a0d20';
+            ctx.fillRect(snap(summon.x - 12), snap(summon.y - summon.radius - 8), 24, 3);
+            ctx.fillStyle = summon.color || '#ae64e8';
+            ctx.fillRect(snap(summon.x - 12), snap(summon.y - summon.radius - 8), 24 * Math.max(0, summon.health / summon.maxHealth), 3);
+        }
+
         // Player bullets
         for (const b of this.bullets) {
-            pixelRect(ctx, b.x, b.y, b.radius * 2.4, b.radius * 2.4, PALETTE.playerShot);
+            pixelRect(ctx, b.x, b.y, b.radius * 2.4, b.radius * 2.4, b.color || PALETTE.playerShot);
             pixelRect(ctx, b.x, b.y, b.radius, b.radius, PALETTE.bone);
         }
 

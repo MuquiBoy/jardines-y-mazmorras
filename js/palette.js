@@ -9,14 +9,24 @@
  */
 
 /**
- * Screen pixels per game pixel.
+ * Internal render scale: one world pixel maps to one canvas pixel.
  *
  * The canvas backing store is the window divided by this, then upscaled with
  * smoothing disabled, so everything lands on a visible grid. It also settles
  * the HiDPI question: integer upscaling is what a pixel look wants, where a
  * devicePixelRatio-smoothed canvas would fight it.
  */
-const PIXEL_SIZE = 3;
+const PIXEL_SIZE = 1;
+
+/**
+ * Camera zoom, in screen pixels per authored world pixel.
+ *
+ * 2 gives the requested 200% view: the player sees half as much of the map and
+ * every 1 px detail of the art lands on an exact 2×2 block. The backing store
+ * keeps the window's native resolution, so this is a true camera zoom rather
+ * than a low-resolution upscale that would drop authored pixels.
+ */
+const CAMERA_ZOOM = 2;
 
 const PALETTE = {
     // World

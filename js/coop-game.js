@@ -6,15 +6,17 @@
     let enemiesById = new Map();
     let lastSnapshotAt = 0;
     let renderStarted = false;
+    let templatesReady = false;
+    let pendingSnapshot = null;
     let sendTimer = null;
-    const characterNames = { aji: 'Piromano Ají', invocador: 'Invocador', carguero: 'Carguero', gunslinger: 'Gunslinger' };
+    const characterNames = { pistolero: 'Pistolero', tirador: 'Tirador', perdigonero: 'Perdigonero', invocador: 'Invocador', piromano: 'Piromano', bastion: 'Bastión' };
     const enemyClasses = { basic: BasicEnemy, shooter: ShooterEnemy, spiral: SpiralEnemy, boss: BossEnemy };
 
     function restoreMap(state) {
         const map = new DungeonMap(state.width, state.height);
         map.tileSize = state.tileSize;
         map.corridorWidth = state.corridorWidth;
-        map.rooms = state.rooms.map(room => ({ ...room, parent: null }));
+        map.rooms = state.rooms.map(room => ({ ...room, template: RoomTemplateLibrary.getById(room.templateId), parent: null }));
         state.rooms.forEach((room, i) => { map.rooms[i].parent = room.parent >= 0 ? map.rooms[room.parent] : null; });
         map.corridors = state.corridors.map(c => ({ ...c, a: map.rooms[c.a], b: map.rooms[c.b] }));
         map.corridorRects = state.corridorRects;
@@ -23,6 +25,8 @@
         map.playerStart = state.playerStart;
         map.roomsCleared = state.roomsCleared;
         map.totalRooms = state.totalRooms;
+        // Rebuild the derived door planes from the restored room.locked flags.
+        map.refreshDoorBlockers();
         return map;
     }
 
@@ -30,8 +34,18 @@
         const player = existing || new Player(state.x, state.y);
         if (!player._drawState) player._drawState = { x: state.x, y: state.y, fromX: state.x, fromY: state.y, time: performance.now() };
         else {
-            player._drawState.fromX = player._drawState.x;
-            player._drawState.fromY = player._drawState.y;
+            const distance = Math.hypot(state.x - player._drawState.x, state.y - player._drawState.y);
+            // Re-seating a player (combat teleport, new floor) is a cut, not a
+            // sprint: interpolating would slide them through the level.
+            const reseated = distance > 160 ||
+                (state.teleportTick !== undefined && state.teleportTick !== player.teleportTick);
+            if (reseated) {
+                player._drawState.fromX = state.x;
+                player._drawState.fromY = state.y;
+            } else {
+                player._drawState.fromX = player._drawState.x;
+                player._drawState.fromY = player._drawState.y;
+            }
             player._drawState.x = state.x;
             player._drawState.y = state.y;
             player._drawState.time = performance.now();
@@ -49,9 +63,16 @@
 
     function applySnapshot(state) {
         if (!game || !state) return;
+        if (!templatesReady) { pendingSnapshot = state; return; }
         const localId = window.coopClient.playerId;
         const currentPlayers = new Map();
         for (const record of state.players) {
+            const oldPlayer = playersById.get(record.id);
+            if (record.id === localId && oldPlayer && record.ammo < oldPlayer.ammo) {
+                if (record.character === 'tirador') game.audio.sniperShot();
+                else if (record.character === 'piromano') game.audio.flameShot();
+                else game.audio.shoot();
+            }
             const player = playerObject(record, playersById.get(record.id));
             currentPlayers.set(record.id, player);
         }
@@ -61,10 +82,17 @@
         game.player = local;
         game.remotePlayers = [...playersById.values()].filter(p => p.id !== local.id && p.health > 0);
 
+        let burnSound = false;
         const nextEnemies = new Map();
-        for (const record of state.enemies) nextEnemies.set(record.id, enemyObject(record, enemiesById.get(record.id)));
+        for (const record of state.enemies) {
+            const oldEnemy = enemiesById.get(record.id);
+            if (oldEnemy && (record.burnPulse || 0) > (oldEnemy.burnPulse || 0)) burnSound = true;
+            nextEnemies.set(record.id, enemyObject(record, oldEnemy));
+        }
+        if (burnSound) game.audio.burnTick();
         enemiesById = nextEnemies;
         game.enemies = [...enemiesById.values()];
+        game.summons = state.summons || [];
         game.bullets = state.playerBullets;
         game.enemyBullets = state.enemyBullets;
         game.map = restoreMap(state.map);
@@ -97,7 +125,7 @@
             const aimLength = Math.hypot(aimX, aimY) || 1;
             aimX /= aimLength; aimY /= aimLength;
         }
-        return { type: 'input', moveX, moveY, aimX, aimY, fire: input.mouseDown };
+        return { type: 'input', moveX, moveY, aimX, aimY, fire: input.mouseDown, reload: !!input.keys.KeyR };
     }
 
     function renderFrame() {
@@ -123,17 +151,21 @@
         start(initialSnapshot) {
             game = window.abyssGame;
             if (!game) return;
+            return RoomTemplateLibrary.load().then(() => {
+            templatesReady = true;
             game.coopMode = true;
             game.loopRunning = false;
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('gameover-screen').classList.add('hidden');
-            applySnapshot(initialSnapshot);
+            applySnapshot(pendingSnapshot || initialSnapshot);
+            pendingSnapshot = null;
             if (!renderStarted) { renderStarted = true; requestAnimationFrame(renderFrame); }
             if (sendTimer) clearInterval(sendTimer);
             sendTimer = setInterval(() => {
                 if (game?.state === 'PLAYING') window.coopClient.send(readMovement());
             }, 50);
             document.getElementById('game').focus();
+            });
         },
         applySnapshot
     };

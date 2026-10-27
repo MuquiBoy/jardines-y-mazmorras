@@ -6,12 +6,19 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
+const { loadTemplateCatalog } = require('./template-catalog');
+const TEMPLATE_ROOT = path.join(__dirname, '..', 'assets', 'plantillas-salas');
+
+function refreshTemplateCatalog() {
+    context.RoomTemplateLibrary = loadTemplateCatalog(TEMPLATE_ROOT);
+}
 
 const context = vm.createContext({ console });
+context.RoomTemplateLibrary = loadTemplateCatalog(TEMPLATE_ROOT);
 for (const file of ['palette.js', 'characters/roles.js', 'bullet.js', 'player.js', 'enemy.js', 'map.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ DungeonMap, Player, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, createEnemy, difficultyForFloor, circleCollision })', context);
+const Engine = vm.runInContext('({ DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty })', context);
 const ENEMY_CLASSES = { basic: Engine.BasicEnemy, shooter: Engine.ShooterEnemy, spiral: Engine.SpiralEnemy, boss: Engine.BossEnemy };
 
 function newPlayer(member, x, y) {
@@ -23,14 +30,17 @@ function newPlayer(member, x, y) {
 }
 
 function generateFloor(run) {
-    const map = new Engine.DungeonMap(7000, 7000);
-    map.generate();
+    refreshTemplateCatalog(); // rescans the author folders once per floor
+    const nextFloor = run.floor + 1;
+    const map = new Engine.DungeonMap(14000, 14000);
+    map.generate(nextFloor);
     run.map = map;
     run.enemies = [];
     run.playerBullets = [];
     run.enemyBullets = [];
+    run.summons = [];
     run.visitedRooms = new Set([0]);
-    run.floor++;
+    run.floor = nextFloor;
     const start = map.playerStart;
     const players = [...run.players.values()].filter(p => p.health > 0);
     players.forEach((player, i) => {
@@ -43,16 +53,14 @@ function generateFloor(run) {
 }
 
 function createRun(members) {
-    const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [], visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0 };
+    const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [], summons: [], visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0 };
     for (const member of members) run.players.set(member.id, newPlayer(member, 0, 0));
     generateFloor(run);
     return run;
 }
 
-function spawnRoom(run, room, player) {
+function spawnEnemiesForRoom(run, room, player) {
     const roomIndex = run.map.rooms.indexOf(room);
-    if (roomIndex < 0 || run.visitedRooms.has(roomIndex)) return;
-    run.visitedRooms.add(roomIndex);
     const enemies = run.map.getEnemiesForRoom(room, player, 280, run.floor);
     for (const enemy of enemies) {
         enemy.applyDifficulty(Engine.difficultyForFloor(run.floor), run.floor);
@@ -60,10 +68,90 @@ function spawnRoom(run, room, player) {
         enemy.roomIndex = roomIndex;
         run.enemies.push(enemy);
     }
+    room.spawned = true;
+}
+
+function spawnRoom(run, room, player) {
+    const roomIndex = run.map.rooms.indexOf(room);
+    if (roomIndex < 0 || run.visitedRooms.has(roomIndex)) return;
+    run.visitedRooms.add(roomIndex);
+    if (['combat', 'combat-hard', 'boss'].includes(room.type) && !room.cleared) {
+        // Arm the encounter instead of spawning now. The room closes first
+        // (updateRoomLocks), then the enemies appear behind sealed doors.
+        // The boss hall seals exactly like a combat room; its doors reopen
+        // through onBossDefeated() the moment the boss dies.
+        room.lockPending = true;
+        room.triggerPlayerId = player.id;
+        run.mapVersion++;
+        return;
+    }
+    spawnEnemiesForRoom(run, room, player);
     if (room.type === 'treasure') {
         const reward = run.map.getTreasureForRoom(room);
         for (const member of run.players.values()) member.heal(reward.heal);
     }
+    run.mapVersion++;
+}
+
+/**
+ * Bring the whole living party into a room that just sealed.
+ *
+ * The player who triggered the fight is the anchor: anyone still outside is
+ * placed on the nearest collision-free cell around them. Enemy spawns happen
+ * after this call, so teleported bodies can never land on an enemy.
+ */
+function teleportPartyIntoRoom(run, room, anchor) {
+    const alive = [...run.players.values()].filter(player => player.health > 0);
+    const placed = alive.filter(player => run.map.pointInRoom(player.x, player.y) === room);
+    for (const player of alive) {
+        if (run.map.pointInRoom(player.x, player.y) === room) continue;
+        // Someone already fighting elsewhere keeps their fight: pulling them
+        // out would leave that sealed room with enemies and nobody to clear it.
+        const otherRoom = run.map.pointInRoom(player.x, player.y);
+        const otherIndex = otherRoom ? run.map.rooms.indexOf(otherRoom) : -1;
+        if (otherIndex >= 0 && run.enemies.some(enemy => enemy.alive && enemy.roomIndex === otherIndex)) continue;
+        const radius = player.radius || 14;
+        const spot = run.map.findFreeSpotNear(anchor.x, anchor.y, radius, placed, 900, room) ||
+                     run.map.findFreeSpotNear(anchor.x, anchor.y, radius, [], 900, room);
+        if (!spot) continue;
+        player.x = spot.x;
+        player.y = spot.y;
+        player.teleportTick = run.tick;
+        placed.push(player);
+    }
+}
+
+function updateRoomLocks(run) {
+    const players = [...run.players.values()].filter(player => player.health > 0);
+    const blockers = [
+        ...run.enemies.filter(enemy => enemy.alive),
+        ...run.summons.filter(summon => summon.alive && summon.health > 0)
+    ];
+    for (const room of run.map.rooms) {
+        if (!room.lockPending || room.locked || room.cleared) continue;
+        if (!run.map.canLockRoom(room, players, blockers)) continue;
+        run.map.lockRoom(room);
+        const inside = players.filter(player => run.map.pointInRoom(player.x, player.y) === room);
+        const anchor = inside.find(player => player.id === room.triggerPlayerId) || inside[0];
+        if (anchor) teleportPartyIntoRoom(run, room, anchor);
+        if (!room.spawned) spawnEnemiesForRoom(run, room, anchor || players[0]);
+        run.mapVersion++;
+    }
+}
+
+/**
+ * The boss encounter is over: release its doors and open the way out.
+ *
+ * Every death path (summon, burn, bullet) funnels through this helper so a
+ * sealed boss hall can never stay closed by accident. The room is marked
+ * cleared immediately, even if minions are still alive, because the exit is
+ * unlocked by the boss's death specifically.
+ */
+function onBossDefeated(run, room, origin) {
+    const bossRoom = room || run.map.bossRoom;
+    if (!bossRoom) return;
+    run.map.clearRoom(bossRoom);
+    run.map.openExit(bossRoom, origin || { x: bossRoom.cx, y: bossRoom.cy });
     run.mapVersion++;
 }
 
@@ -73,12 +161,25 @@ function stepRun(run, inputs) {
     const players = [...run.players.values()];
     for (const player of players) {
         if (player.health <= 0) continue;
-        const input = inputs.get(player.id) || { moveX: 0, moveY: 0, aimX: player.aimX, aimY: player.aimY, fire: false };
-        const gameInput = { keys: {}, moveX: input.moveX, moveY: input.moveY, aimX: input.aimX, aimY: input.aimY, aimActive: true, mouseDown: input.fire };
+        const input = inputs.get(player.id) || { moveX: 0, moveY: 0, aimX: player.aimX, aimY: player.aimY, fire: false, reload: false };
+        const gameInput = { keys: { KeyR: input.reload }, moveX: input.moveX, moveY: input.moveY,
+            aimX: input.aimX, aimY: input.aimY, aimActive: true, mouseDown: input.fire, reload: input.reload };
         if (player.update(gameInput, null, run.map)) {
-            for (const bullet of player.shoot()) {
-                bullet.ownerId = player.id;
-                run.playerBullets.push(bullet);
+            if (player.weaponKind === 'summoner') {
+                const x = player.x + player.aimX * (player.radius + 15);
+                const y = player.y + player.aimY * (player.radius + 15);
+                const ownerSummons = run.summons.filter(summon => summon.ownerId === player.id && summon.alive && summon.lifetime > 0);
+                const summonLimit = player.summon?.maxActive ?? 6;
+                if (ownerSummons.length >= summonLimit) {
+                    const oldestIndex = run.summons.indexOf(ownerSummons[0]);
+                    if (oldestIndex >= 0) run.summons.splice(oldestIndex, 1);
+                }
+                run.summons.push(new Engine.SummonedUnit(crypto.randomUUID(), player.id, x, y, player.summon));
+            } else {
+                for (const bullet of player.shoot()) {
+                    bullet.ownerId = player.id;
+                    run.playerBullets.push(bullet);
+                }
             }
         }
         const room = run.map.getCurrentRoom(player.x, player.y);
@@ -89,13 +190,31 @@ function stepRun(run, inputs) {
         }
     }
 
-    const targets = players.filter(p => p.health > 0);
+    updateRoomLocks(run);
+
+    for (const summon of run.summons) {
+        const hit = summon.update(run.enemies, run.map);
+        if (hit && !hit.alive && hit.type === 'boss') {
+            onBossDefeated(run, run.map.rooms[hit.roomIndex], { x: hit.x, y: hit.y });
+        }
+    }
+    run.summons = run.summons.filter(summon => summon.alive && summon.lifetime > 0);
+
+    for (const enemy of run.enemies) {
+        if (!enemy.alive || !enemy.updateBurn()) continue;
+        if (!enemy.alive && enemy.type === 'boss') {
+            onBossDefeated(run, run.map.rooms[enemy.roomIndex], { x: enemy.x, y: enemy.y });
+        }
+    }
+
+    const livingPlayers = players.filter(p => p.health > 0);
+    const targets = [...livingPlayers, ...run.summons.filter(s => s.alive)];
     if (targets.length) for (const enemy of run.enemies) {
         if (!enemy.alive) continue;
         let target = targets[0], best = Infinity;
-        for (const player of targets) {
-            const distance = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-            if (distance < best) { target = player; best = distance; }
+        for (const candidate of targets) {
+            const distance = Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y);
+            if (distance < best) { target = candidate; best = distance; }
         }
         const bullets = enemy.update(target, run.enemies, run.map);
         if (bullets) run.enemyBullets.push(...bullets);
@@ -104,48 +223,64 @@ function stepRun(run, inputs) {
     const keptPlayerBullets = [];
     for (const bullet of run.playerBullets) {
         bullet.x += bullet.vx; bullet.y += bullet.vy;
+        bullet.travelled = (bullet.travelled || 0) + Math.hypot(bullet.vx, bullet.vy);
         let hit = false;
         for (const enemy of run.enemies) {
             if (!enemy.alive || !Engine.circleCollision(bullet.x, bullet.y, bullet.radius, enemy.x, enemy.y, enemy.radius)) continue;
-            enemy.takeDamage(bullet.damage); hit = true;
+            enemy.takeDamage(bullet.damage);
+            if (bullet.burn) enemy.applyBurn(bullet.burn);
+            hit = true;
             if (!enemy.alive && enemy.type === 'boss') {
-                run.map.openExit(run.map.rooms[enemy.roomIndex], { x: enemy.x, y: enemy.y });
-                run.mapVersion++;
+                onBossDefeated(run, run.map.rooms[enemy.roomIndex], { x: enemy.x, y: enemy.y });
             }
             break;
         }
-        if (!hit && bullet.x > -50 && bullet.x < run.map.width + 50 && bullet.y > -50 && bullet.y < run.map.height + 50) keptPlayerBullets.push(bullet);
+        const withinRange = !bullet.range || bullet.travelled < bullet.range;
+        if ((!hit || bullet.pierce > 0) && withinRange && bullet.x > -50 && bullet.x < run.map.width + 50 && bullet.y > -50 && bullet.y < run.map.height + 50) keptPlayerBullets.push(bullet);
     }
     run.playerBullets = keptPlayerBullets;
 
     const keptEnemyBullets = [];
     for (const bullet of run.enemyBullets) {
         bullet.x += bullet.vx; bullet.y += bullet.vy;
+        if (bullet.ignoreFrames > 0) bullet.ignoreFrames--;
         if (!run.map.isWalkable(bullet.x, bullet.y)) continue;
-        const target = targets.find(p => Engine.circleCollision(bullet.x, bullet.y, bullet.radius, p.x, p.y, p.radius));
-        if (target) target.takeDamage(bullet.damage);
-        else if (bullet.x > -50 && bullet.x < run.map.width + 50 && bullet.y > -50 && bullet.y < run.map.height + 50) keptEnemyBullets.push(bullet);
+        const target = targets.find(p => p.alive !== false && p.health > 0 &&
+            !(p.id === bullet.ignorePlayerId && bullet.ignoreFrames > 0) &&
+            Engine.circleCollision(bullet.x, bullet.y, bullet.radius, p.x, p.y, p.radius));
+        if (target) {
+            const ricochetChance = target.enemyProjectileRicochetChance ?? 0;
+            const damageMultiplier = target.incomingDamageMultiplier ?? 1;
+            target.takeDamage(bullet.damage * damageMultiplier);
+            if (ricochetChance > 0 && Math.random() < ricochetChance) {
+                Engine.ricochetEnemyBulletTowardParty(bullet, target, players);
+                keptEnemyBullets.push(bullet);
+            }
+        } else if (bullet.x > -50 && bullet.x < run.map.width + 50 && bullet.y > -50 && bullet.y < run.map.height + 50) keptEnemyBullets.push(bullet);
     }
     run.enemyBullets = keptEnemyBullets;
 
     run.enemies = run.enemies.filter(enemy => enemy.alive);
     for (const room of run.map.rooms) {
         const roomIndex = run.map.rooms.indexOf(room);
-        if (!room.cleared && run.visitedRooms.has(roomIndex) && ['combat', 'combat-hard', 'boss'].includes(room.type) &&
+        if (!room.cleared && room.spawned && run.visitedRooms.has(roomIndex) && ['combat', 'combat-hard', 'boss'].includes(room.type) &&
             !run.enemies.some(enemy => enemy.roomIndex === roomIndex)) {
             run.map.clearRoom(room);
             run.mapVersion++;
         }
     }
-    if (!targets.length) run.phase = 'ended';
+    if (!livingPlayers.length) run.phase = 'ended';
 }
 
 function mapState(map) {
     const roomIndex = room => room ? map.rooms.indexOf(room) : -1;
     return {
         width: map.width, height: map.height, tileSize: map.tileSize, corridorWidth: map.corridorWidth,
-        rooms: map.rooms.map(room => ({ ...room, parent: roomIndex(room.parent) })),
-        corridors: map.corridors.map(c => ({ a: roomIndex(c.a), b: roomIndex(c.b), x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2 })),
+        rooms: map.rooms.map(room => {
+            const { parent, template, _usedTemplateDoors, ...plain } = room;
+            return { ...plain, templateId: template?.id || room.templateId || null, parent: roomIndex(parent) };
+        }),
+        corridors: map.corridors.map(c => ({ a: roomIndex(c.a), b: roomIndex(c.b), x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2, doorA: c.doorA, doorB: c.doorB, templateConnection: !!c.templateConnection })),
         corridorRects: map.corridorRects,
         bossRoom: roomIndex(map.bossRoom), exit: map.exit ? { x: map.exit.x, y: map.exit.y, room: roomIndex(map.exit.room) } : null,
         playerStart: map.playerStart, roomsCleared: map.roomsCleared, totalRooms: map.totalRooms
@@ -153,18 +288,19 @@ function mapState(map) {
 }
 
 function playerState(player) {
-    return Object.fromEntries(['id','name','character','x','y','radius','maxHealth','health','speed','damage','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','fireTimer','invincibleTimer','aimX','aimY'].map(key => [key, player[key]]));
+    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','fireTimer','invincibleTimer','aimX','aimY','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
 }
 function enemyState(enemy) {
-    return Object.fromEntries(['id','type','roomIndex','x','y','health','maxHealth','speed','damage','radius','color','xpValue','shootCooldown','shootTimer','bulletSpeedScale','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle'].filter(key => enemy[key] !== undefined).map(key => [key, enemy[key]]));
+    return Object.fromEntries(['id','type','roomIndex','x','y','health','maxHealth','speed','damage','radius','color','xpValue','shootCooldown','shootTimer','bulletSpeedScale','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse'].filter(key => enemy[key] !== undefined).map(key => [key, enemy[key]]));
 }
 function bulletState(bullet) {
-    return Object.fromEntries(['x','y','vx','vy','damage','pierce','hits','radius','color','ownerId'].filter(key => bullet[key] !== undefined).map(key => [key, bullet[key]]));
+    return Object.fromEntries(['x','y','vx','vy','damage','pierce','hits','radius','color','ownerId','range','travelled','burn','ignorePlayerId','ignoreFrames'].filter(key => bullet[key] !== undefined).map(key => [key, bullet[key]]));
 }
+function summonState(summon) { return Object.fromEntries(['id','ownerId','x','y','health','maxHealth','speed','damage','attackRate','attackTimer','lifetime','radius','color','alive'].map(key => [key, summon[key]])); }
 function snapshot(run) {
     return { phase: run.phase, floor: run.floor, tick: run.tick, mapVersion: run.mapVersion, map: mapState(run.map),
         players: [...run.players.values()].map(playerState), enemies: run.enemies.map(enemyState),
-        playerBullets: run.playerBullets.map(bulletState), enemyBullets: run.enemyBullets.map(bulletState) };
+        playerBullets: run.playerBullets.map(bulletState), enemyBullets: run.enemyBullets.map(bulletState), summons: run.summons.map(summonState) };
 }
 
 module.exports = { createRun, stepRun, snapshot };
