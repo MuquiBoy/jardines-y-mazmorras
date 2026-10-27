@@ -15,10 +15,10 @@ function refreshTemplateCatalog() {
 
 const context = vm.createContext({ console });
 context.RoomTemplateLibrary = loadTemplateCatalog(TEMPLATE_ROOT);
-for (const file of ['palette.js', 'characters/roles.js', 'bullet.js', 'player.js', 'enemy.js', 'map.js']) {
+for (const file of ['palette.js', 'upgrades.js', 'characters/roles.js', 'bullet.js', 'player.js', 'enemy.js', 'map.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty })', context);
+const Engine = vm.runInContext('({ DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = { basic: Engine.BasicEnemy, shooter: Engine.ShooterEnemy, spiral: Engine.SpiralEnemy, boss: Engine.BossEnemy };
 
 function newPlayer(member, x, y) {
@@ -26,7 +26,21 @@ function newPlayer(member, x, y) {
     player.id = member.id;
     player.name = member.name;
     player.setCharacter(member.character);
+    player.pendingLevelUps = 0;
     return player;
+}
+
+/**
+ * Award a kill to the player who dealt it. The guard makes the bounty
+ * idempotent when a death is observed by more than one system (burn tick,
+ * bullet pass, summon contact).
+ */
+function awardKill(run, enemy, ownerId) {
+    if (!enemy || enemy.xpAwarded || !ownerId || !(enemy.xpValue > 0)) return;
+    const player = run.players.get(ownerId);
+    if (!player || player.health <= 0) return;
+    enemy.xpAwarded = true;
+    player.pendingLevelUps = (player.pendingLevelUps || 0) + player.gainXP(enemy.xpValue);
 }
 
 function generateFloor(run) {
@@ -39,6 +53,7 @@ function generateFloor(run) {
     run.playerBullets = [];
     run.enemyBullets = [];
     run.summons = [];
+    run.notices = [];
     run.visitedRooms = new Set([0]);
     run.floor = nextFloor;
     const start = map.playerStart;
@@ -53,7 +68,7 @@ function generateFloor(run) {
 }
 
 function createRun(members) {
-    const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [], summons: [], visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0 };
+    const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [], summons: [], notices: [], visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0 };
     for (const member of members) run.players.set(member.id, newPlayer(member, 0, 0));
     generateFloor(run);
     return run;
@@ -88,7 +103,16 @@ function spawnRoom(run, room, player) {
     spawnEnemiesForRoom(run, room, player);
     if (room.type === 'treasure') {
         const reward = run.map.getTreasureForRoom(room);
-        for (const member of run.players.values()) member.heal(reward.heal);
+        for (const member of run.players.values()) {
+            if (member.health <= 0) continue;
+            member.heal(reward.heal);
+            member.pendingLevelUps = (member.pendingLevelUps || 0) + member.gainXP(reward.xp);
+        }
+        run.notices.push({
+            id: crypto.randomUUID(),
+            text: `¡Sala del tesoro! +${reward.heal} HP, +${reward.xp} XP`,
+            tick: run.tick
+        });
     }
     run.mapVersion++;
 }
@@ -158,6 +182,9 @@ function onBossDefeated(run, room, origin) {
 function stepRun(run, inputs) {
     if (!run || run.phase !== 'playing') return;
     run.tick++;
+    // Notices only exist to be shown once by each client. Keep the snapshot
+    // small without assuming the clients have already consumed them.
+    if (run.notices?.length) run.notices = run.notices.filter(notice => run.tick - notice.tick < 300);
     const players = [...run.players.values()];
     for (const player of players) {
         if (player.health <= 0) continue;
@@ -194,16 +221,20 @@ function stepRun(run, inputs) {
 
     for (const summon of run.summons) {
         const hit = summon.update(run.enemies, run.map);
-        if (hit && !hit.alive && hit.type === 'boss') {
-            onBossDefeated(run, run.map.rooms[hit.roomIndex], { x: hit.x, y: hit.y });
+        if (hit && !hit.alive) {
+            awardKill(run, hit, summon.ownerId);
+            if (hit.type === 'boss') onBossDefeated(run, run.map.rooms[hit.roomIndex], { x: hit.x, y: hit.y });
         }
     }
     run.summons = run.summons.filter(summon => summon.alive && summon.lifetime > 0);
 
     for (const enemy of run.enemies) {
         if (!enemy.alive || !enemy.updateBurn()) continue;
-        if (!enemy.alive && enemy.type === 'boss') {
-            onBossDefeated(run, run.map.rooms[enemy.roomIndex], { x: enemy.x, y: enemy.y });
+        if (!enemy.alive) {
+            awardKill(run, enemy, enemy.burnOwnerId);
+            if (enemy.type === 'boss') {
+                onBossDefeated(run, run.map.rooms[enemy.roomIndex], { x: enemy.x, y: enemy.y });
+            }
         }
     }
 
@@ -224,14 +255,19 @@ function stepRun(run, inputs) {
     for (const bullet of run.playerBullets) {
         bullet.x += bullet.vx; bullet.y += bullet.vy;
         bullet.travelled = (bullet.travelled || 0) + Math.hypot(bullet.vx, bullet.vy);
+        // Walls and blue obstacles stop player shots exactly like enemy shots.
+        if (Engine.bulletBlockedByMap(run.map, bullet)) continue;
         let hit = false;
         for (const enemy of run.enemies) {
             if (!enemy.alive || !Engine.circleCollision(bullet.x, bullet.y, bullet.radius, enemy.x, enemy.y, enemy.radius)) continue;
             enemy.takeDamage(bullet.damage);
-            if (bullet.burn) enemy.applyBurn(bullet.burn);
+            if (bullet.burn) enemy.applyBurn({ ...bullet.burn, ownerId: bullet.ownerId });
             hit = true;
-            if (!enemy.alive && enemy.type === 'boss') {
-                onBossDefeated(run, run.map.rooms[enemy.roomIndex], { x: enemy.x, y: enemy.y });
+            if (!enemy.alive) {
+                awardKill(run, enemy, bullet.ownerId);
+                if (enemy.type === 'boss') {
+                    onBossDefeated(run, run.map.rooms[enemy.roomIndex], { x: enemy.x, y: enemy.y });
+                }
             }
             break;
         }
@@ -288,7 +324,7 @@ function mapState(map) {
 }
 
 function playerState(player) {
-    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','fireTimer','invincibleTimer','aimX','aimY','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
+    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
 }
 function enemyState(enemy) {
     return Object.fromEntries(['id','type','roomIndex','x','y','health','maxHealth','speed','damage','radius','color','xpValue','shootCooldown','shootTimer','bulletSpeedScale','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse'].filter(key => enemy[key] !== undefined).map(key => [key, enemy[key]]));
@@ -300,7 +336,26 @@ function summonState(summon) { return Object.fromEntries(['id','ownerId','x','y'
 function snapshot(run) {
     return { phase: run.phase, floor: run.floor, tick: run.tick, mapVersion: run.mapVersion, map: mapState(run.map),
         players: [...run.players.values()].map(playerState), enemies: run.enemies.map(enemyState),
-        playerBullets: run.playerBullets.map(bulletState), enemyBullets: run.enemyBullets.map(bulletState), summons: run.summons.map(summonState) };
+        playerBullets: run.playerBullets.map(bulletState), enemyBullets: run.enemyBullets.map(bulletState),
+        summons: run.summons.map(summonState), notices: run.notices || [] };
 }
 
-module.exports = { createRun, stepRun, snapshot };
+/**
+ * Spend one queued level-up on the upgrade the client picked.
+ *
+ * The client only sends an id from the shared UPGRADE_DEFS list; the server
+ * stays authoritative on the stats and on how many choices are still owed.
+ * Returns true when the choice was applied.
+ */
+function applyUpgrade(run, playerId, upgradeId) {
+    const player = run?.players.get(playerId);
+    if (!player || player.health <= 0) return false;
+    if (!(player.pendingLevelUps > 0)) return false;
+    const upgrade = Engine.UPGRADE_DEFS.find(def => def.id === upgradeId);
+    if (!upgrade) return false;
+    upgrade.apply(player);
+    player.pendingLevelUps--;
+    return true;
+}
+
+module.exports = { createRun, stepRun, snapshot, applyUpgrade };

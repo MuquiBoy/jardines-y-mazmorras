@@ -44,12 +44,19 @@
         'audio/hydraulic-siege'      // floor 4 and onward
     ]);
 
+    // Autoplay policies only allow audio after a gesture. Catch the first one
+    // anywhere on the page so the lobby, the offline button and the online
+    // game_start message all end up with music.
+    const unlockAudio = () => { audio.unlock(); audio.ensureMusic(0); };
+    window.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
+    window.addEventListener('keydown', unlockAudio, { once: true, capture: true });
+
     function startGame(characterId = 'pistolero', testRoom = false) {
         // Browsers start an AudioContext suspended; only a user gesture may
         // resume it, so this has to happen here rather than at load.
         audio.unlock();
         RoomTemplateLibrary.load().then(() => {
-            audio.playMusic(0);
+            audio.ensureMusic(0);
             requestFullscreenIfTouch();
             if (touch) touch.releaseAll();
             game.start(characterId, testRoom);

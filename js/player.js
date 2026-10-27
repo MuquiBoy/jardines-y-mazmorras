@@ -33,14 +33,15 @@ class Player {
     constructor(x, y) {
         Player.loadSprites();
         this.x = x; this.y = y; this.radius = 12; this.visualScale = 1;
-        this.maxHealth = 100; this.health = 100; this.speed = 4.5; this.damage = 10;
-        this.fireRate = 12; this.bulletSpeed = 7; this.bulletCount = 1;
+        this.maxHealth = 100; this.health = 100; this.speed = 2.25; this.damage = 10;
+        this.fireRate = 12; this.bulletSpeed = 3.5; this.bulletCount = 1;
         this.bulletPierce = 0; this.magnetRange = 100;
         this.ammoCapacity = 15; this.ammo = 15; this.reloadFrames = 54; this.reloadTimer = 0;
         this.pelletCount = 1; this.spread = 0.03; this.range = 500;
         this.weaponKind = 'gun'; this.color = '#55d64b'; this.burn = null; this.summon = null;
         this.incomingDamageMultiplier = 1; this.enemyProjectileRicochetChance = 0; this.turretActive = false;
         this.level = 1; this.xp = 0;
+        this.pendingLevelUps = 0;
         this.xpTable = [50, 120, 220, 350, 520, 750, 1050, 1400, 1850, 2400];
         this.fireTimer = 0; this.invincibleTimer = 0;
         this.aimX = 0; this.aimY = -1; this.angle = 0; this.character = 'pistolero';
@@ -60,9 +61,18 @@ class Player {
 
     gainXP(amount) {
         this.xp += amount;
-        const needed = this.xpToNext();
-        if (needed > 0 && this.xp >= needed) { this.xp -= needed; this.level++; return true; }
-        return false;
+        // A single orb can cross more than one threshold on deep floors.
+        // Return the number of levels gained so both solo and co-op can queue
+        // one upgrade choice per level instead of silently dropping the rest.
+        let gained = 0;
+        let needed = this.xpToNext();
+        while (needed > 0 && this.xp >= needed) {
+            this.xp -= needed;
+            this.level++;
+            gained++;
+            needed = this.xpToNext();
+        }
+        return gained;
     }
 
     takeDamage(amount) {

@@ -102,19 +102,8 @@ class Game {
         // Bind input handlers
         this.bindInput();
 
-        // Upgrade definitions
-        this.upgrades = [
-            { name: 'Vitality', description: '+20 Max Health, heal to full', apply: (p) => { p.maxHealth += 20; p.health = p.maxHealth; } },
-            { name: 'Power', description: '+5 Damage', apply: (p) => { p.damage += 5; } },
-            { name: 'Swiftness', description: '+0.5 Speed', apply: (p) => { p.speed += 0.5; } },
-            { name: 'Multi-Shot', description: '+1 Bullet Count (max 7)', apply: (p) => { if (p.bulletCount < 7) p.bulletCount++; } },
-            { name: 'Pierce', description: '+1 Bullet Pierce', apply: (p) => { p.bulletPierce++; } },
-            { name: 'Rapid Fire', description: '+10% Fire Rate', apply: (p) => { p.fireRate = Math.max(4, Math.floor(p.fireRate * 0.9)); } },
-            { name: 'Bullet Speed', description: '+1 Bullet Speed', apply: (p) => { p.bulletSpeed += 1; } },
-            { name: 'Magnet', description: '+15 Magnet Range', apply: (p) => { p.magnetRange += 15; } },
-            { name: 'Full Heal', description: 'Restore all health', apply: (p) => { p.health = p.maxHealth; } },
-            { name: 'Power Surge', description: '+30% Damage (Rare)', apply: (p) => { p.damage = Math.floor(p.damage * 1.3); }, rarity: 'rare' }
-        ];
+        // Upgrade definitions are shared with the authoritative server.
+        this.upgrades = UPGRADE_DEFS;
     }
 
     /**
@@ -298,7 +287,7 @@ class Game {
         const treasure = this.map.getTreasureForRoom(room);
         if (treasure) {
             this.player.heal(treasure.heal);
-            if (this.player.gainXP(treasure.xp)) this.pendingLevelUps++;
+            this.awardXP(treasure.xp);
             this.ui.drawNotification(this.ctx, `Treasure Room! +${treasure.heal} HP, +${treasure.xp} XP`);
         }
     }
@@ -485,6 +474,14 @@ class Game {
             bullet.travelled = (bullet.travelled || 0) + Math.hypot(bullet.vx, bullet.vy);
             if (bullet.range && bullet.travelled >= bullet.range) toRemove.add(bullet);
 
+            // Stop at the same authored mask the player and enemies walk on:
+            // red walls (0) and blue obstacles (3) are solid for shots too.
+            if (bulletBlockedByMap(this.map, bullet)) {
+                this.spawnParticles(bullet.x, bullet.y, bullet.color, 3);
+                toRemove.add(bullet);
+                continue;
+            }
+
             // Check collision with enemies
             for (const enemy of this.enemies) {
                 if (!enemy.alive || toRemove.has(bullet)) continue;
@@ -587,7 +584,7 @@ class Game {
 
             // Collection
             if (dist < this.player.radius + orb.radius) {
-                if (this.player.gainXP(orb.value)) this.pendingLevelUps++;
+                this.pendingLevelUps += this.player.gainXP(orb.value);
                 this.spawnParticles(orb.x, orb.y, PALETTE.xp, 2);
                 this.audio.pickup();
                 orb.collected = true;
@@ -805,6 +802,14 @@ class Game {
         return true;
     }
 
+    /** Add XP and queue every level crossed, not only the first. */
+    awardXP(amount) {
+        if (!(amount > 0)) return 0;
+        const levels = this.player.gainXP(amount);
+        this.pendingLevelUps += levels;
+        return levels;
+    }
+
     /** Handle level up — show upgrade selection. */
     handleLevelUp() {
         this.state = 'LEVEL_UP';
@@ -826,6 +831,18 @@ class Game {
         if (!this.selectedUpgrade) {
             // Show a brief notification that no upgrade was selected
             this.ui.drawNotification(this.ctx, 'No upgrade selected!');
+            return;
+        }
+
+        if (this.coopMode) {
+            // The server owns the player's stats in co-op. Send the chosen id
+            // and let the authoritative run apply it; the next snapshot shows
+            // the new numbers and clears the next queued level.
+            window.coopGame?.noteUpgradeSent();
+            window.coopClient?.send({ type: 'upgrade', upgradeId: this.selectedUpgrade.id });
+            this.selectedUpgrade = null;
+            this.ui.hideLevelUp();
+            this.state = 'PLAYING';
             return;
         }
 

@@ -32,7 +32,7 @@ class AudioSystem {
             shoot: noop, sniperShot: noop, flameShot: noop, burnTick: noop, summonAttack: noop, enemyShoot: noop, enemyHit: noop, enemyDeath: noop,
             cochinillaCharge: noop, setCochinillaBeam: noop,
             playerHurt: noop, pickup: noop, levelUp: noop, descend: noop,
-            gameOver: noop, setTracks: noop, playMusic: noop, nextTrack: noop,
+            gameOver: noop, setTracks: noop, playMusic: noop, ensureMusic: noop, nextTrack: noop,
             stopMusic: noop
         };
     }
@@ -48,6 +48,7 @@ class AudioSystem {
         this.musicEl = null;   // fallback path only
         this.musicSrc = null;  // Web Audio path
         this.musicToken = 0;   // discards loads superseded by a newer one
+        this.musicLoading = false;
         this.musicInfo = null;
         this.tracks = [];
         this.trackIndex = 0;
@@ -72,6 +73,9 @@ class AudioSystem {
         if (this.unlocked) {
             // A context can be suspended again when a tab is backgrounded.
             if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+            // The offline and online flows both call unlock() from their start
+            // handlers, so any gesture that gets here may also start the music.
+            this.ensureMusic(this.trackIndex || 0);
             return;
         }
         const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -92,6 +96,20 @@ class AudioSystem {
 
         if (this.ctx.state === 'suspended') this.ctx.resume();
         this.unlocked = true;
+        this.ensureMusic(this.trackIndex || 0);
+    }
+
+    /**
+     * Start the current track if nothing is playing yet.
+     *
+     * Browsers only allow audio after a gesture, and the online flow enters
+     * through a WebSocket message rather than startGame(), so both paths call
+     * this rather than relying on playMusic() alone.
+     */
+    ensureMusic(index = 0) {
+        if (!this.tracks.length || !this.unlocked || !this.ctx) return;
+        if (this.musicLoading || this.musicSrc || this.musicEl) return;
+        this.playMusic(index);
     }
 
     setMuted(muted) {
@@ -389,6 +407,7 @@ class AudioSystem {
 
         this.stopMusic();
         const token = ++this.musicToken; // guards against a slow load landing late
+        this.musicLoading = true;
 
         try {
             const res = await fetch(source);
@@ -396,6 +415,7 @@ class AudioSystem {
             const bytes = await res.arrayBuffer();
             const buffer = await this.ctx.decodeAudioData(bytes);
             if (token !== this.musicToken) return; // superseded while loading
+            this.musicLoading = false;
 
             const { start, end } = AudioSystem.findLoopPoints(buffer);
             const src = this.ctx.createBufferSource();
@@ -408,6 +428,8 @@ class AudioSystem {
             this.musicSrc = src;
             this.musicInfo = { base, source, start: +start.toFixed(2), end: +end.toFixed(2) };
         } catch (_) {
+            if (token !== this.musicToken) return;
+            this.musicLoading = false;
             // No fetch/decode available (file://) or the file is missing.
             // Fall back to a plain element; the fade gap returns, but the game
             // still has music rather than none.
@@ -437,6 +459,7 @@ class AudioSystem {
 
     stopMusic() {
         this.musicToken = (this.musicToken || 0) + 1;
+        this.musicLoading = false;
         if (this.musicSrc) {
             try { this.musicSrc.stop(); } catch (_) { /* already stopped */ }
             this.musicSrc.disconnect();

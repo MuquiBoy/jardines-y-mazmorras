@@ -9,6 +9,11 @@
     let templatesReady = false;
     let pendingSnapshot = null;
     let sendTimer = null;
+    const seenNoticeIds = new Set();
+    // Level-up flow: the server owns pendingLevelUps. offeredOwed is the count
+    // currently on screen; awaitingOwed is what we expect after a sent choice.
+    let offeredOwed = 0;
+    let awaitingOwed = -1;
     const characterNames = { pistolero: 'Pistolero', tirador: 'Tirador', perdigonero: 'Perdigonero', invocador: 'Invocador', piromano: 'Piromano', bastion: 'Bastión' };
     const enemyClasses = { basic: BasicEnemy, shooter: ShooterEnemy, spiral: SpiralEnemy, boss: BossEnemy };
 
@@ -96,12 +101,63 @@
         game.bullets = state.playerBullets;
         game.enemyBullets = state.enemyBullets;
         game.map = restoreMap(state.map);
+        // One-shot server notices (treasure rooms, etc.) are shown exactly once
+        // even though every snapshot repeats the recent list. The id set is
+        // only cleared on a new floor: clearing it on every room change could
+        // show a still-recent notice twice.
+        if (state.floor !== game.floor) {
+            seenNoticeIds.clear();
+            game.audio.nextTrack();
+        }
+        for (const notice of state.notices || []) {
+            if (!notice || seenNoticeIds.has(notice.id)) continue;
+            seenNoticeIds.add(notice.id);
+            game.ui.drawNotification(game.ctx, notice.text);
+        }
         game.floor = state.floor;
-        game.state = state.phase === 'ended' ? 'GAME_OVER' : 'PLAYING';
+        if (state.phase === 'ended') {
+            game.state = 'GAME_OVER';
+            game.ui.hideLevelUp();
+            game.ui.showGameOver(game.player.level, game.map.roomsCleared, 0, game.floor);
+        } else {
+            applyLevelUpState(local);
+        }
         game.ui.updateHUD(game.player, game.floor);
         game.ui.showHUD(true);
-        if (state.phase === 'ended') game.ui.showGameOver(game.player.level, game.map.roomsCleared, 0, game.floor);
         lastSnapshotAt = performance.now();
+    }
+
+    /**
+     * Keep the upgrade screen in sync with the authoritative level queue.
+     *
+     * snapshots arrive every 50 ms, so the cards must not be rebuilt on each
+     * one. A sent choice is in flight until the server's count drops; until
+     * then the same snapshot value must not reopen the screen.
+     */
+    function applyLevelUpState(local) {
+        const owed = local.pendingLevelUps || 0;
+        if (owed <= 0) {
+            offeredOwed = 0;
+            awaitingOwed = -1;
+            if (game.state === 'LEVEL_UP') game.ui.hideLevelUp();
+            game.state = 'PLAYING';
+            return;
+        }
+        if (awaitingOwed >= 0 && owed > awaitingOwed) {
+            // The server has not consumed the choice yet.
+            game.state = 'PLAYING';
+            return;
+        }
+        if (game.state !== 'LEVEL_UP' || owed !== offeredOwed) {
+            offeredOwed = owed;
+            awaitingOwed = -1;
+            game.handleLevelUp();
+        }
+    }
+
+    /** Called by Game.applyUpgrade() after sending the chosen card id. */
+    function noteUpgradeSent() {
+        awaitingOwed = Math.max(0, offeredOwed - 1);
     }
 
     function readMovement() {
@@ -151,10 +207,16 @@
         start(initialSnapshot) {
             game = window.abyssGame;
             if (!game) return;
+            // The online flow starts from a WebSocket message, not from a
+            // button, so it never went through startGame(). Unlock here too;
+            // the page-wide gesture listener is what actually resumes the
+            // context when the browser requires a user gesture.
+            game.audio.unlock();
             return RoomTemplateLibrary.load().then(() => {
             templatesReady = true;
             game.coopMode = true;
             game.loopRunning = false;
+            game.audio.ensureMusic(0);
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('gameover-screen').classList.add('hidden');
             applySnapshot(pendingSnapshot || initialSnapshot);
@@ -167,6 +229,7 @@
             document.getElementById('game').focus();
             });
         },
-        applySnapshot
+        applySnapshot,
+        noteUpgradeSent
     };
 }());

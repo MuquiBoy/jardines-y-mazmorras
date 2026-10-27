@@ -164,6 +164,11 @@ function handle(socket, message) {
         if (player.id !== room.hostId) { send(socket, { type: 'error', message: 'Solo el anfitrión puede iniciar.' }); return; }
         if (room.players.size < 2 && !room.solo) { send(socket, { type: 'error', message: 'Invita al menos a otra persona o elige jugar en solitario.' }); return; }
         startSharedRun(room);
+    } else if (message.type === 'upgrade' && room.phase === 'playing' && room.run) {
+        // The client picked one of the shared cards. Apply it here so stats
+        // stay authoritative; the next snapshot carries the new numbers and
+        // the remaining queued levels.
+        Simulation.applyUpgrade(room.run, player.id, message.upgradeId);
     } else if (message.type === 'restart' && room.phase === 'ended' && player.id === room.hostId) {
         startSharedRun(room);
     }

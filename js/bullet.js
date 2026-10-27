@@ -29,6 +29,22 @@ function bulletHitsPlayer(bullet, player) {
 }
 
 /**
+ * True when a projectile has entered a solid cell of the authored room mask.
+ *
+ * Red walls (mask 0) and blue obstacles (mask 3) are both non-walkable, so the
+ * same authoritative check stops player and enemy shots in solo and co-op.
+ * Projectiles move at half speed since the 200% camera patch, well below one
+ * 40 px tile per step, so sampling the centre cannot tunnel through a wall.
+ *
+ * @param {Object|null} map - DungeonMap (or a compatible test double)
+ * @param {Object} bullet - projectile with x and y
+ * @returns {boolean}
+ */
+function bulletBlockedByMap(map, bullet) {
+    return !!map && typeof map.isWalkable === 'function' && !map.isWalkable(bullet.x, bullet.y);
+}
+
+/**
  * Remove bullets that are out of bounds.
  * @param {Array} bullets
  * @param {number} margin - extra margin beyond bounds

@@ -61,7 +61,9 @@ class UI {
         }
 
         for (const room of map.rooms) {
-            ctx.fillStyle = room.cleared ? '#3a2e28' : '#5c4638';
+            ctx.fillStyle = room.type === 'treasure'
+                ? (room.cleared ? '#8a6a1a' : '#ffb000')
+                : (room.cleared ? '#3a2e28' : '#5c4638');
             ctx.fillRect(Math.floor(room.x * scale), Math.floor(room.y * scale),
                          Math.max(1, Math.floor(room.w * scale)),
                          Math.max(1, Math.floor(room.h * scale)));

@@ -112,3 +112,14 @@
 - Verificación: prueba nueva de colores por rol (incluida la invocación morada y la ruta cooperativa) y prueba de sprites ya existente; siguen pasando tamaños de rol 40×32, física y puertas del jefe, y texturas/rotaciones.
 - `index.html` actualizó `roles.js` a `roles-player-sprites-colors-v2`, `player.js` a `player-role-sprites-v1` y `game.js` a `role-shot-colors-v8`.
 - Cambios locales en `http://localhost:8123`; sin commit, push ni despliegue en GitHub/Render.
+
+## 2026-10-26 — Velocidad a la mitad, balas contra muros, XP y salas treasure
+
+- Se aplicó la Opción A aprobada: las velocidades de los seis roles, la invocación del Invocador (3.8 → 1.9), los enemigos y todos los proyectiles bajaron al 50%. La cadencia de disparo, las recargas y las animaciones no se tocaron. La mejora Swiftness pasó de +0.5 a +0.25.
+- Las balas del jugador ahora consultan `bulletBlockedByMap()` y se detienen en la máscara autoritativa del mapa: muros rojos (0) y obstáculos azules (3) bloquean igual en solitario y en el servidor cooperativo.
+- La XP vuelve a funcionar: `Player.gainXP()` devuelve cuántos niveles cruzó, `Game.awardXP()` los acumula y cada umbral abre su propia pantalla de mejora. En cooperativo el servidor asigna la XP al autor de la muerte (bala, invocación o quemadura), encola `pendingLevelUps` y aplica la mejora elegida por el cliente desde la lista compartida `js/upgrades.js`.
+- Las salas `treasure` curan 30 HP, dan 30 XP y emiten un aviso. Ahora además muestran un cofre dorado en el mundo y un marcador dorado en el minimapa. El servidor también las resuelve y envía el aviso en el snapshot.
+- La música arranca con el primer gesto del usuario (`ensureMusic()` dentro de `unlock()`), se recupera si el contexto se suspende y también se inicia en el flujo online, que antes nunca llamaba a `audio.unlock()`. El cambio de piso avanza la pista también en cooperativo.
+- Verificación automatizada: velocidades exactas, balas detenidas en 360 celdas sólidas y 367 abiertas, XP multinivel, mejora aplicada en solitario y online, sala treasure con curación/XP/aviso, arranque de música sin duplicar la descarga. Siguen pasando las pruebas de jefe, colores, tamaños, sprites y texturas.
+- `index.html` actualizó las versiones de `audio.js`, `roles.js`, `player.js`, `bullet.js`, `enemy.js`, `map.js`, `ui.js`, `game.js`, `coop-game.js` y `main.js`, y añadió `js/upgrades.js`.
+- Cambios locales verificados en `http://localhost:8123` y `http://localhost:8124`; se publican en `main` para que Render actualice la demo.

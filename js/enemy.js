@@ -65,7 +65,7 @@ class Enemy {
         this.type = type;
         this.health = 30;
         this.maxHealth = 30;
-        this.speed = 1.5;
+        this.speed = 0.75;
         this.damage = 10;
         this.radius = 14;
         this.color = '#ff4444';
@@ -254,7 +254,7 @@ class Enemy {
         return false;
     }
 
-    shootTowardPlayer(angle, speed = 3) {
+    shootTowardPlayer(angle, speed = 1.5) {
         const v = speed * this.bulletSpeedScale;
         return {
             x: this.x,
@@ -313,6 +313,7 @@ class Enemy {
         this.burnDamage = Math.max(this.burnDamage || 0, burn.damage);
         this.burnInterval = burn.interval;
         this.burnTimer = Math.max(this.burnTimer || 0, burn.duration);
+        this.burnOwnerId = burn.ownerId || this.burnOwnerId;
         if (!this.burnTickTimer || this.burnTickTimer > this.burnInterval) this.burnTickTimer = this.burnInterval;
     }
 
@@ -382,7 +383,7 @@ class CochinillaPerforamuros extends Enemy {
     constructor(x, y, room, wall = 'left') {
         super(x, y, 'cochinilla-perforamuros');
         this.name = 'Cochinilla Perforamuros'; this.health = this.maxHealth = 36;
-        this.radius = 7; this.speed = 1.1; this.color = '#d9c6a1'; this.xpValue = 0;
+        this.radius = 7; this.speed = 0.55; this.color = '#d9c6a1'; this.xpValue = 0;
         this.room = room; this.wall = wall; this.phase = 'move';
         this.phaseTimer = 180 + Math.floor(Math.random() * 241);
         this.moveSign = Math.random() < 0.5 ? -1 : 1; this.lockedX = x; this.lockedY = y;
@@ -553,7 +554,7 @@ class BasicEnemy extends Enemy {
         super(x, y, 'basic');
         this.health = 30;
         this.maxHealth = 30;
-        this.speed = 2.2;
+        this.speed = 1.1;
         this.damage = 10;
         this.radius = 14;
         this.color = '#ff4444';
@@ -579,7 +580,7 @@ class BasicEnemy extends Enemy {
         if (this.shootTimer <= 0) {
             this.shootTimer = this.shootCooldown;
             const angle = Math.atan2(dy, dx);
-            return [this.shootTowardPlayer(angle, 3)];
+            return [this.shootTowardPlayer(angle, 1.5)];
         }
         return [];
     }
@@ -591,7 +592,7 @@ class ShooterEnemy extends Enemy {
         super(x, y, 'shooter');
         this.health = 20;
         this.maxHealth = 20;
-        this.speed = 1.5;
+        this.speed = 0.75;
         this.damage = 15;
         this.radius = 12;
         this.color = '#aa44ff';
@@ -625,7 +626,7 @@ class ShooterEnemy extends Enemy {
         this.shootTimer--;
         if (this.shootTimer <= 0) {
             this.shootTimer = this.shootCooldown;
-            return [this.shootTowardPlayer(Math.atan2(dy, dx), 5)];
+            return [this.shootTowardPlayer(Math.atan2(dy, dx), 2.5)];
         }
         return [];
     }
@@ -637,7 +638,7 @@ class SpiralEnemy extends Enemy {
         super(x, y, 'spiral');
         this.health = 50;
         this.maxHealth = 50;
-        this.speed = 1.2;
+        this.speed = 0.6;
         this.damage = 8;
         this.radius = 16;
         this.color = '#ff8800';
@@ -675,7 +676,7 @@ class SpiralEnemy extends Enemy {
             const count = 5;
             for (let i = 0; i < count; i++) {
                 const angle = this.spiralAngle + (Math.PI * 2 / count) * i;
-                bullets.push(this.shootTowardPlayer(angle, 2.5));
+                bullets.push(this.shootTowardPlayer(angle, 1.25));
             }
             this.spiralAngle += 0.4; // rotate pattern each shot
             return bullets;
@@ -690,7 +691,7 @@ class BossEnemy extends Enemy {
         super(x, y, 'boss');
         this.health = 500;
         this.maxHealth = 500;
-        this.speed = 0.8;
+        this.speed = 0.4;
         this.damage = 20;
         this.radius = 40;
         this.color = '#8b0000';
@@ -773,20 +774,20 @@ class BossEnemy extends Enemy {
                     for (let i = 0; i < 8; i++) {
                         bullets.push(this.shootTowardPlayer(
                             (Math.PI * 2 / 8) * i + this.phaseTimer * 0.05,
-                            2.5
+                            1.25
                         ));
                     }
                     break;
                 case 1: // Aimed burst — 3 fast bullets
                     for (let i = -1; i <= 1; i++) {
-                        bullets.push(this.shootTowardPlayer(angleToPlayer + i * 0.2, 5));
+                        bullets.push(this.shootTowardPlayer(angleToPlayer + i * 0.2, 2.5));
                     }
                     break;
                 case 2: // Circle burst — 12 slow bullets
                     for (let i = 0; i < 12; i++) {
                         bullets.push(this.shootTowardPlayer(
                             (Math.PI * 2 / 12) * i,
-                            2
+                            1
                         ));
                     }
                     break;

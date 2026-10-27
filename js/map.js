@@ -714,6 +714,12 @@ class DungeonMap {
         }
         if (!this.playerStart && startRoom) this.playerStart = this.findPointInRoom(startRoom, null, 0, 14, marker ? [marker] : []) || { x: startRoom.cx, y: startRoom.cy };
         if (this.bossRoom) this.bossRoom.markerPoint = this.findPointInRoom(this.bossRoom, null, 0, 5) || { x: this.bossRoom.cx, y: this.bossRoom.cy };
+        // Treasure rooms get a visible chest marker instead of looking like an
+        // ordinary empty room.
+        for (const room of this.rooms) {
+            if (room.type !== 'treasure') continue;
+            room.treasurePoint = this.findPointInRoom(room, null, 0, 18) || { x: room.cx, y: room.cy };
+        }
         this.exit = null;
     }
 
@@ -1325,6 +1331,17 @@ class DungeonMap {
             const point = room.markerPoint || { x: room.cx, y: room.cy };
             pixelFrame(ctx, point.x - 26, point.y - 26, 52, 52, 3, PALETTE.blood);
             pixelRect(ctx, point.x, point.y, 16, 16, PALETTE.danger);
+        }
+
+        // Treasure chests: a warm gold landmark in an otherwise dark floor.
+        for (const room of this.rooms) {
+            if (room.type !== 'treasure' || !room.treasurePoint) continue;
+            const point = room.treasurePoint;
+            if (!visible(point.x - 24, point.y - 20, 48, 40)) continue;
+            pixelFrame(ctx, point.x - 19, point.y - 14, 38, 28, 4, PALETTE.hudDim);
+            pixelRect(ctx, point.x, point.y + 2, 28, 18, '#8a5a1a');
+            pixelRect(ctx, point.x, point.y - 5, 30, 9, PALETTE.hud);
+            pixelRect(ctx, point.x, point.y + 3, 6, 6, PALETTE.hudDim);
         }
 
         if (this.playerStart) pixelFrame(ctx, this.playerStart.x - 18, this.playerStart.y - 18, 36, 36, 2, PALETTE.hudDim);
