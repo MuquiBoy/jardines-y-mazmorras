@@ -453,245 +453,288 @@ class CochinillaPerforamuros extends Enemy {
             for (let f = 0; f < frameCount; f++) {
                 const frameBytes = data.getUint32(frameOffset, true), chunkCount = data.getUint16(frameOffset + 6, true);
                 durations.push(data.getUint16(frameOffset + 8, true) || 100);
-                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true)=yë]­¢G§²ÚîÆ­yÜÊ
-HÛÜÙ\ÈHÛÜœÃBˆËÈÛ˜ÙHH^Y\ˆ\ÈÛX\ˆÙˆH™\ÚÛ[™Û›H[ƒBˆËÈÜ]ÛœÈH[™[ZY\ËÛÈ›Ø›ÙHšYÚÈ›İYÚHÛÜØ^KƒBˆËÈH›ÜÜÈ[ÙX[È^XİHZÙHHÛÛX˜]›ÛÛNÈ]ÃBˆËÈÛÜœÈ™[Ü[ˆÚ[ˆH›ÜÜÈY\È
-Û›ÜÜÑY™X]Y
-KƒBˆ™]Ô›ÛÛK›ØÚÔ[™[™ÈHYNÃBˆH[ÙHÃBˆ\ËœÜ]Û”›ÛÛQ[™[ZY\Ê™]Ô›ÛÛJNÃBˆ™]Ô›ÛÛKœÜ]Û™YHYNÃBˆCBˆCBˆ\Ë˜İ\œ™[›ÛÛHH™]Ô›ÛÛNÃBˆCBƒBˆËÈÚXÚÈYˆ^Y\ˆ\È]^]BˆYˆ
-\Ë›X\™^]
-HÃBˆÛÛœİ^]H\Ë›X\™^]ÃBˆÛÛœİH\Ëœ^Y\‹H^]ÃBˆÛÛœİHH\Ëœ^Y\‹HH^]NÃBˆÛÛœİ\İHX]œÜ\
-
-ˆ
-ÈH
-ˆJNÃBƒBˆYˆ
-\İL
-HÃBˆËÈH^]Û›H^\İÈÛ˜ÙHH›ÜÜÈ\ÈXYÛÈ™XXÚ[™È]\ÃBˆËÈ›ÛÙˆ[›İYÚ8 %›È›ÛÛK]\HÚXÚÈ™YYY
-[™H›ÛÛH]BˆËÈÜ[œÈ[ˆ\ÈÚ]]™\ˆ›ÛÛHH^Y\ˆØ\Èİ[™[™È[ŠKƒBˆÃBˆËÈİX\™ˆÚÚ\™]È˜[œÚ][ÛœÈÚ[HÛ™H\È[™XYH[ˆ›ÙÜ™\ÜÃBˆYˆ
-\Ë˜[œÚ][Ûš[™ÊH™]\›ÃBƒBˆ\Ë˜[œÚ][Ûš[™ÈHYNÃBˆ\Ë˜[œÚ][Û[HHÃBˆ\Ëœİ]HH	ÕS”ÒUSÓ’S‘ÉÎÃBƒBˆËÈ[š[X]H˜YCBˆÛÛœİ˜YR[\˜[HÙ][\˜[
+                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true);
+                const ctx = canvas.getContext('2d'); let chunkOffset = frameOffset + 16;
+                for (let c = 0; c < chunkCount; c++) {
+                    const size = data.getUint32(chunkOffset, true), type = data.getUint16(chunkOffset + 4, true), q = chunkOffset + 6;
+                    if (type === 0x2005 && data.getUint16(q + 7, true) === 2) {
+                        const x = data.getInt16(q + 2, true), y = data.getInt16(q + 4, true);
+                        const w = data.getUint16(q + 16, true), h = data.getUint16(q + 18, true);
+                        const start = q + 20, end = chunkOffset + size;
+                        const stream = new Blob([new Uint8Array(data.buffer, start, end - start)]).stream().pipeThrough(new DecompressionStream('deflate'));
+                        const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
+                        ctx.putImageData(new ImageData(rgba, w, h), x, y);
+                    }
+                    chunkOffset += size;
+                }
+                frames.push(canvas); frameOffset += frameBytes;
+            }
+            return { frames, durations };
+        })();
+        try {
+            const animation = await CochinillaPerforamuros.walkPromise;
+            this.walkFrames = CochinillaPerforamuros.walkFrames = animation.frames;
+            CochinillaPerforamuros.walkFrameDurations = animation.durations;
+        }
+        catch (error) { CochinillaPerforamuros.walkPromise = null; console.warn('No se pudo cargar la caminata Aseprite de la Cochinilla.', error); }
+    }
+    async loadChargeFrames() {
+        if (CochinillaPerforamuros.chargeFrames) { this.chargeFrames = CochinillaPerforamuros.chargeFrames; return; }
+        if (typeof DecompressionStream === 'undefined') return;
+        if (!CochinillaPerforamuros.chargePromise) CochinillaPerforamuros.chargePromise = (async () => {
+            const response = await fetch('00-sprites/enemigos/cochinilla_perforamuros/charging_cochinilla_perforamuros.aseprite');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = new DataView(await response.arrayBuffer());
+            const frameCount = data.getUint16(6, true), frames = [];
+            let frameOffset = 128;
+            for (let f = 0; f < frameCount; f++) {
+                const frameBytes = data.getUint32(frameOffset, true), chunkCount = data.getUint16(frameOffset + 6, true);
+                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true);
+                const ctx = canvas.getContext('2d'); let chunkOffset = frameOffset + 16;
+                for (let c = 0; c < chunkCount; c++) {
+                    const size = data.getUint32(chunkOffset, true), type = data.getUint16(chunkOffset + 4, true), q = chunkOffset + 6;
+                    if (type === 0x2005 && data.getUint16(q + 7, true) === 2) {
+                        const x = data.getInt16(q + 2, true), y = data.getInt16(q + 4, true);
+                        const w = data.getUint16(q + 16, true), h = data.getUint16(q + 18, true);
+                        const stream = new Blob([new Uint8Array(data.buffer, q + 20, chunkOffset + size - q - 20)]).stream().pipeThrough(new DecompressionStream('deflate'));
+                        const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
+                        ctx.putImageData(new ImageData(rgba, w, h), x, y);
+                    }
+                    chunkOffset += size;
+                }
+                frames.push(canvas); frameOffset += frameBytes;
+            }
+            return frames;
+        })();
+        try { this.chargeFrames = CochinillaPerforamuros.chargeFrames = await CochinillaPerforamuros.chargePromise; }
+        catch (error) { CochinillaPerforamuros.chargePromise = null; console.warn('No se pudo cargar la animaciÃ³n de carga de la Cochinilla.', error); }
+    }
+    update() {
+        const r = this.room, inset = 13;
+        const previousPhase = this.phase;
+        if (this.phase === 'move') {
+            this.animationTick++;
+            if (this.wall === 'left' || this.wall === 'right') {
+                this.y += this.speed * this.moveSign;
+                if (this.y < r.y + inset || this.y > r.y + r.h - inset) { this.y = Math.max(r.y + inset, Math.min(r.y + r.h - inset, this.y)); this.moveSign *= -1; }
+            } else {
+                this.x += this.speed * this.moveSign;
+                if (this.x < r.x + inset || this.x > r.x + r.w - inset) { this.x = Math.max(r.x + inset, Math.min(r.x + r.w - inset, this.x)); this.moveSign *= -1; }
+            }
+            if (--this.phaseTimer <= 0) { this.phase = 'warning'; this.phaseTimer = this.warnFrames; this.lockedX = this.x; this.lockedY = this.y; }
+        } else {
+            this.x = this.lockedX; this.y = this.lockedY;
+            if (--this.phaseTimer <= 0) {
+                if (this.phase === 'warning') { this.phase = 'beam'; this.phaseTimer = this.beamFrames; }
+                else if (this.phase === 'beam') { this.phase = 'recover'; this.phaseTimer = this.recoverFrames; }
+                else { this.phase = 'move'; this.phaseTimer = 180 + Math.floor(Math.random() * 241); }
+            }
+        }
+        return this.phase !== previousPhase ? this.phase : null;
+    }
+    takeDamage(amount) {
+        // The shell is vulnerable only while the laser is actively exposed.
+        if (!this.alive || this.phase !== 'beam') return false;
+        super.takeDamage(amount);
+        return true;
+    }
+    touchesBeam(p) {
+        if (this.phase !== 'beam') return false;
+        const horizontal = this.wall === 'left' || this.wall === 'right';
+        return horizontal ? Math.abs(p.y - this.y) <= this.beamWidth / 2 + p.radius && p.x + p.radius >= this.room.x && p.x - p.radius <= this.room.x + this.room.w
+            : Math.abs(p.x - this.x) <= this.beamWidth / 2 + p.radius && p.y + p.radius >= this.room.y && p.y - p.radius <= this.room.y + this.room.h;
+    }
+    draw(ctx) {
+        const horizontal = this.wall === 'left' || this.wall === 'right';
+        const sx = this.wall === 'left' ? this.room.x : this.wall === 'right' ? this.room.x + this.room.w : this.x;
+        const sy = this.wall === 'top' ? this.room.y : this.wall === 'bottom' ? this.room.y + this.room.h : this.y;
+        if (this.phase === 'warning' || this.phase === 'beam') {
+            ctx.save(); ctx.globalAlpha = this.phase === 'warning' ? 0.55 : 0.9;
+            ctx.strokeStyle = this.phase === 'warning' ? '#fff5d6' : '#ff402c'; ctx.lineWidth = this.beamWidth;
+            ctx.beginPath(); ctx.moveTo(horizontal ? sx : this.x, horizontal ? this.y : sy);
+            ctx.lineTo(horizontal ? (this.wall === 'left' ? this.room.x + this.room.w : this.room.x) : this.x,
+                horizontal ? this.y : (this.wall === 'top' ? this.room.y + this.room.h : this.room.y)); ctx.stroke(); ctx.restore();
+        }
+        const sprite = CochinillaPerforamuros.sprites;
+        let walkImage = null;
+        if (this.walkFrames?.length) {
+            const durations = CochinillaPerforamuros.walkFrameDurations || this.walkFrames.map(() => 100);
+            const cycleMs = durations.reduce((sum, duration) => sum + duration, 0);
+            // Match the Aseprite preview playback speed shown for this revision.
+            let frameMs = (this.animationTick * 1000 / 60 * 0.25) % cycleMs;
+            let frameIndex = 0;
+            while (frameIndex < durations.length - 1 && frameMs >= durations[frameIndex]) frameMs -= durations[frameIndex++];
+            walkImage = this.walkFrames[frameIndex];
+        }
+        // Keep a solid shell sprite under the short charge overlay. The
+        // charging art is mostly transparent and looked like the enemy blinked out.
+        // During the attack, show the attack PNG alone for the full beam phase.
+        const baseImage = this.phase === 'beam' ? sprite?.attack : (walkImage || sprite?.attack);
+        const chargeFrame = this.chargeFrames?.length
+            ? this.chargeFrames[Math.min(this.chargeFrames.length - 1, Math.floor((this.warnFrames - this.phaseTimer) * this.chargeFrames.length / this.warnFrames))]
+            : sprite?.charging;
+        const actionImage = this.phase === 'warning' ? chargeFrame : null;
+        const wallRotation = { top: 0, right: Math.PI / 2, bottom: Math.PI, left: -Math.PI / 2 }[this.wall] || 0;
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(wallRotation);
+        let drewSprite = false;
+        if (baseImage?.complete !== false && baseImage && (baseImage.naturalWidth || baseImage.width)) {
+            ctx.drawImage(baseImage, -12, -8, 24, 16); drewSprite = true;
+        }
+        if (actionImage?.complete !== false && actionImage && (actionImage.naturalWidth || actionImage.width)) {
+            ctx.drawImage(actionImage, -12, -8, 24, 16); drewSprite = true;
+        }
+        if (!drewSprite) this.drawBody(ctx, '#705843', '#e1c49b', 24);
+        ctx.restore();
+        this.drawHealth(ctx, 24);
+    }
+}
 
 
-HOˆÃBˆ\Ë˜[œÚ][Û[H
-ÏHŒNÃBˆYˆ
-\Ë˜[œÚ][Û[HHJHÃBˆÛX\’[\˜[
-˜YR[\˜[
-NÃBˆ\Ë™›ÛÜŠÊÎÃBˆ\Ë˜]Y[Ë™\ØÙ[™
+// ===== BossEnemy â€” Boss =====
+class BossEnemy extends Enemy {
+    constructor(x, y) {
+        super(x, y, 'boss');
+        this.health = 500;
+        this.maxHealth = 500;
+        this.speed = 0.4;
+        this.damage = 20;
+        this.radius = 40;
+        this.color = '#8b0000';
+        this.xpValue = 200;
+        this.shootCooldown = 30;
+        this.phase = 0;
+        this.phaseTimer = 0;
+        this.phaseDuration = 100; // frames per phase
+        this.centerX = x;
+        this.centerY = y;
+        this.driftAngle = 0;
+        this.orbitRadiusX = 80;
+        this.orbitRadiusY = 60;
+        this.room = null;
+        this._driftStall = 0;
+    }
 
-NÃBˆ\Ë˜]Y[Ë›™^˜XÚÊ
-NÃBˆ\Ë™Ù[™\˜]SX\
+    /**
+     * Drift target that still fits the boss body. The orbit circle is shrunk
+     * until the 40px footprint is on walkable floor, and (when the room is
+     * known) inside the boss hall. This keeps the desired path away from red
+     * wall lines and blue obstacles instead of only stopping after impact.
+     */
+    _orbitTarget(map) {
+        if (!map) return {
+            x: this.centerX + Math.cos(this.driftAngle) * this.orbitRadiusX,
+            y: this.centerY + Math.sin(this.driftAngle) * this.orbitRadiusY
+        };
+        const room = this.room || map.bossRoom || null;
+        const cos = Math.cos(this.driftAngle), sin = Math.sin(this.driftAngle);
+        for (let scale = 1; scale >= 0.2; scale -= 0.1) {
+            const x = this.centerX + cos * this.orbitRadiusX * scale;
+            const y = this.centerY + sin * this.orbitRadiusY * scale;
+            if (!map.canOccupy(x, y, this.radius)) continue;
+            if (room && map.pointInRoom(x, y) !== room) continue;
+            return { x, y };
+        }
+        return { x: this.x, y: this.y };
+    }
 
-NÃBˆ\ËZK™˜]Ó›İYšXØ][ÛŠ\Ë˜İ“ÓÔˆ	İ\Ë™›ÛÜŸX
-NÃBˆ\Ë˜[œÚ][Û[HHNÃBƒBˆÛÛœİ˜YP˜XÚÈHÙ][\˜[
+    /** Map-aware orbit movement; never assigns a position without collision. */
+    _drift(map) {
+        const target = this._orbitTarget(map);
+        if (!map) { this.x = target.x; this.y = target.y; return; }
+        if (this.steerTo(target.x, target.y, map, this.speed)) {
+            this._driftStall = 0;
+            return;
+        }
+        // Blocked by a wall or obstacle: turn the orbit and try again instead
+        // of pressing into the same corner forever.
+        if (++this._driftStall > 12) {
+            this._driftStall = 0;
+            this.driftAngle += Math.PI / 2;
+        }
+    }
 
+    update(player, enemies, map, allTargets = null, projectilePool = null) {
+        // Drift in a slow circle around center, but move through the same
+        // collision grid as every other enemy: the boss is far too large to
+        // be teleported across authored red walls or blue obstacles.
+        this.driftAngle += 0.01;
+        this._drift(map);
 
-HOˆÃBˆ\Ë˜[œÚ][Û[HOHŒNÃBˆYˆ
-\Ë˜[œÚ][Û[HH
-HÃBˆ\Ë˜[œÚ][Ûš[™ÈH˜[ÙNÃBˆ\Ë˜[œÚ][Û[HHÃBˆ\Ëœİ]HH	ÔVRS‘ÉÎÃBˆÛX\’[\˜[
-˜YP˜XÚÊNÃBˆËÈ™\İ\HØ[YHÛÜÛÈ^Y\ˆØ[ˆÛÛ[YH^Z[™ÃBˆ\Ëœİ\ÛÜ
+        // Phase changes
+        this.phaseTimer++;
+        if (this.phaseTimer >= this.phaseDuration) {
+            this.phaseTimer = 0;
+            this.phase = (this.phase + 1) % 3;
+        }
 
-NÃBˆCBˆKMŠNÃBˆCBˆKMŠNÃBˆCBˆCBˆCBˆËÈ˜XÚÈÛX\™Y›ÛÛ\ÃBˆ›Üˆ
-ÛÛœİ›ÛÛHÙˆ\Ë›X\œ›ÛÛ\ÊHÃBˆËÈH›ÛÛHH^Y\ˆ\È™]™\ˆ[\™Y\Û‰İ˜ÛX\™Yˆ8 %]	ÜÈ[š\Ú]YƒBˆYˆ
-›ÛÛKœÜ]Û™Y	‰ˆ\›ÛÛK˜ÛX\™Y	‰ˆ\Ëš\Ô›ÛÛPÛX\™Y
-›ÛÛJJHÃBˆ\Ë›X\˜ÛX\”›ÛÛJ›ÛÛJNÃBˆ\Ëœ›ÛÛ\ĞÛX\™Y
-ÊÎÃBˆCBˆCBˆ\Ë\]T›ÛÛSØÚÜÊ
-NÃBˆCBƒBˆÊŠˆÛÜÙHÛÛX˜]\›ÛÛHÛÜœÈÛ˜ÙHH^Y\ˆ\ÈØY™[H[œÚYKˆ
-‹ÃBˆ\]T›ÛÛSØÚÜÊ
-HÃBˆÛÛœİ›ØÚÙ\œÈH\Ë™[™[ZY\Ë™š[\Š[™[^HOˆ[™[^K˜[]™JNÃBˆ›Üˆ
-ÛÛœİ›ÛÛHÙˆ\Ë›X\œ›ÛÛ\ÊHÃBˆYˆ
-\›ÛÛK›ØÚÔ[™[™È›ÛÛK›ØÚÙY›ÛÛK˜ÛX\™Y
-HÛÛ[YNÃBˆYˆ
-]\Ë›X\˜Ø[“ØÚÔ›ÛÛJ›ÛÛKİ\Ëœ^Y\—K›ØÚÙ\œÊJHÛÛ[YNÃBˆ\Ë›X\›ØÚÔ›ÛÛJ›ÛÛJNÃBˆËÈH›ÛÛH\ÈÙX[Yš\œİÈH[˜Ûİ[\ˆİ\È™Z[™ÛÜÙYBˆËÈÛÜœËˆÜ]Û™Y[ÛÈÙY\ÈH[\H›ÛÛHœ›ÛH™Z[™ÈÛİ[YBˆËÈ\ÈÛX\™Y\š[™ÈHœ˜[Y\È™Y›Ü™HHØÚÈ[™ËƒBˆYˆ
-\›ÛÛKœÜ]Û™Y
-HÃBˆ\ËœÜ]Û”›ÛÛQ[™[ZY\Ê›ÛÛJNÃBˆ›ÛÛKœÜ]Û™YHYNÃBˆCBˆCBˆCBƒBˆÊŠˆÚXÚÈYˆ[[™[ZY\È[ˆH›ÛÛH\™HXYˆ
-‹ÃBˆ\Ô›ÛÛPÛX\™Y
-›ÛÛJHÃBˆÛÛœİ›ÛÛR[™^H\Ë›X\œ›ÛÛ\Ëš[™^ÙŠ›ÛÛJNÃBˆ›Üˆ
-ÛÛœİ[™[^HÙˆ\Ë™[™[ZY\ÊHÃBˆYˆ
-Y[™[^K˜[]™JHÛÛ[YNÃBˆYˆ
-[™[^Kœ›ÛÛR[™^OOH[™Yš[™Y
-HÃBˆYˆ
-[™[^Kœ›ÛÛR[™^OOH›ÛÛR[™^
-H™]\›ˆ˜[ÙNÃBˆÛÛ[YNÃBˆCBˆYˆ
-[™[^KH›ÛÛK	‰ˆ[™[^K›ÛÛK
-È›ÛÛKÈ	‰ƒBˆ[™[^KHH›ÛÛKH	‰ˆ[™[^KH›ÛÛKH
-È›ÛÛKš
-HÃBˆ™]\›ˆ˜[ÙNÃBˆCBˆCBˆ™]\›ˆYNÃBˆCBƒBˆÊŠˆY[™]Y]YH]™\H]™[Ü›ÜÜÙY›İÛ›HHš\œİˆ
-‹ÃBˆ]Ø\™
-[[İ[
-HÃBˆYˆ
-J[[İ[ˆ
-JH™]\›ˆÃBˆÛÛœİ]™[ÈH\Ëœ^Y\‹™ØZ[–
-[[İ[
-NÃBˆ\Ëœ[™[™Ó]™[\È
-ÏH]™[ÎÃBˆ™]\›ˆ]™[ÎÃBˆCBƒBˆÊŠˆ[™H]™[\8 %ÚİÈ\Ü˜YHÙ[Xİ[Û‹ˆ
-‹ÃBˆ[™S]™[\
+        // Attack based on phase
+        this.shootTimer--;
+        if (this.shootTimer <= 0) {
+            this.shootTimer = this.shootCooldown;
+            const bullets = [];
+            const angleToPlayer = Math.atan2(player.y - this.y, player.x - this.x);
 
-HÃBˆ\Ëœİ]HH	ÓU‘SÕT	ÎÃBˆ\Ë˜]Y[Ë›]™[\
+            switch (this.phase) {
+                case 0: // Spiral â€” 8 bullets
+                    for (let i = 0; i < 8; i++) {
+                        bullets.push(this.shootTowardPlayer(
+                            (Math.PI * 2 / 8) * i + this.phaseTimer * 0.05,
+                            1.25,
+                            projectilePool
+                        ));
+                    }
+                    break;
+                case 1: // Aimed burst â€” 3 fast bullets
+                    for (let i = -1; i <= 1; i++) {
+                        bullets.push(this.shootTowardPlayer(angleToPlayer + i * 0.2, 2.5, projectilePool));
+                    }
+                    break;
+                case 2: // Circle burst â€” 12 slow bullets
+                    for (let i = 0; i < 12; i++) {
+                        bullets.push(this.shootTowardPlayer(
+                            (Math.PI * 2 / 12) * i,
+                            1,
+                            projectilePool
+                        ));
+                    }
+                    break;
+            }
+            return bullets;
+        }
+        return [];
+    }
 
-NÃBƒBˆËÈXÚÈÈ˜[™ÛH\Ü˜Y\ÃBˆÛÛœİÚY™›YHË‹‹\Ë\Ü˜Y\×KœÛÜ
+    draw(ctx) {
+        const r = this.radius;
 
+        // Slab body with a pulsing core keyed to the current phase
+        pixelRect(ctx, this.x, this.y, r * 2 + 8, r * 2 + 8, PALETTE.void);
+        pixelRect(ctx, this.x, this.y, r * 2, r * 2, PALETTE.boss);
+        pixelRect(ctx, this.x, this.y, r, r, PALETTE.bossLit);
 
-HOˆX]œ˜[™ÛJ
-HHJNÃBˆÛÛœİÚÚXÙ\ÈHÚY™›YœÛXÙJÊNÃBƒBˆ\ËœÙ[XİY\Ü˜YHH[ÃBƒBˆ\ËZKœÚİÓ]™[\
-ÚÚXÙ\Ë
-\Ü˜YJHOˆÃBˆ\ËœÙ[XİY\Ü˜YHH\Ü˜YNÃBˆJNÃBˆCBƒBˆÊŠˆ\HHÙ[XİY\Ü˜YKˆ
-‹ÃBˆ\U\Ü˜YJ
-HÃBˆYˆ
-]\ËœÙ[XİY\Ü˜YJHÃBˆËÈÚİÈHœšYYˆ›İYšXØ][Ûˆ]›È\Ü˜YHØ\ÈÙ[XİYBˆ\ËZK™˜]Ó›İYšXØ][ÛŠ\Ë˜İ	Ó›È\Ü˜YHÙ[XİYIÊNÃBˆ™]\›ÃBˆCBƒBˆYˆ
-\Ë˜ÛÛÜ[ÙJHÃBˆËÈHÙ\™\ˆİÛœÈH^Y\‰ÜÈİ]È[ˆÛË[ÜˆÙ[™HÚÜÙ[ˆYBˆËÈ[™]H]]Üš]]]™H[ˆ\H]ÈH™^Û˜\ÚİÚİÜÃBˆËÈH™]È[X™\œÈ[™ÛX\œÈH™^]Y]YY]™[ƒBˆÚ[™İË˜ÛÛÜØ[YOË››İU\Ü˜YTÙ[
+        const pulse = 6 + Math.sin(this.driftAngle * 6) * 3;
+        pixelRect(ctx, this.x, this.y, pulse, pulse, PALETTE.hud);
 
-NÃBˆÚ[™İË˜ÛÛÜÛY[ËœÙ[™
-È\Nˆ	İ\Ü˜YIË\Ü˜YRYˆ\ËœÙ[XİY\Ü˜YKšYJNÃBˆ\ËœÙ[XİY\Ü˜YHH[ÃBˆ\ËZKšYS]™[\
+        // Corner studs
+        for (const [sx, sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+            pixelRect(ctx, this.x + sx * r, this.y + sy * r, 8, 8, PALETTE.bossLit);
+        }
 
-NÃBˆ\Ëœİ]HH	ÔVRS‘ÉÎÃBˆ™]\›ÃBˆCBƒBˆ\ËœÙ[XİY\Ü˜YK˜\J\Ëœ^Y\ŠNÃBˆ\ËZKšYS]™[\
+        // Phase pips
+        for (let i = 0; i < 3; i++) {
+            pixelRect(ctx, this.x - 14 + i * 14, this.y - r - 20, 8, 8,
+                      i <= this.phase ? PALETTE.hud : PALETTE.blood);
+        }
 
-NÃBˆËÈØ[YH\È[œ]\ÙNˆHU‘SÕTœ˜[˜ÚÙˆÛÜ
-
-H™]™\ˆİÜYHQƒBˆËÈÚZ[‹ÛÈÛÜ[›š[™È]\İİ^HYKƒBˆ\Ëœİ]HH	ÔVRS‘ÉÎÃBˆCBƒBˆÊŠˆ[™HØ[YHİ™\‹ˆ
-‹ÃBˆØ[YSİ™\Š
-HÃBˆ\Ëœİ]HH	ÑĞSQWÓÕ‘T‰ÎÃBˆ\Ë˜]Y[Ë™Ø[YSİ™\Š
-NÃBˆ\ËZKšYS]™[\
-
-NÃBˆ\ËZKœÚİÒQ
-˜[ÙJNÃBˆ\ËZKœÚİÑØ[YSİ™\Š\Ëœ^Y\‹›]™[\Ëœ›ÛÛ\ĞÛX\™Y\Ë™[™[ZY\ÒÚ[Y\Ë™›ÛÜŠNÃBˆ\Ë›ÛÜ[›š[™ÈH˜[ÙNÃBˆCBƒBˆÊŠˆ™[™\ˆHØ[YKˆ
-‹ÃBˆ™[™\Š
-HÃBˆÛÛœİİH\Ë˜İÃBˆÛÛœİÕÈH\Ë˜Ø[˜\ËÚYÈËÈØ[˜\È
-Ø[YK\^[
-HÜXÙCBˆÛÛœİÒH\Ë˜Ø[˜\ËšZYÚÃBƒBˆİœÙ]˜[œÙ›Ü›JKK
-NÃBˆİš[XYÙTÛ[Ûİ[™Ñ[˜X›YH˜[ÙNÃBƒBˆËÈÛX\ˆÈH›ÚYÛÛİ\ƒBˆİ™š[İ[HHSUK›ÚYÃBˆİ™š[™Xİ
-ÕËÒ
-NÃBƒBˆËÈØÜ™Y[ˆÚZÙK[ˆÛÜ›[š]Ë]X[\ÙYÈHÜšYÛÈHÚÛCBˆËÈ[XYÙH[\ÈHÚÛH^[È˜]\ˆ[ˆÛYX\š[™ËƒBˆ]ŞHŞHHÃBˆYˆ
-\ËœÚZÙHˆ
-HÃBˆÛÛœİXYÈH\ËœÚZÙNÃBˆŞHX]œ›İ[™
-
-X]œ˜[™ÛJ
-HHJH
-ˆXYÈ
-ˆŠNÃBˆŞHHX]œ›İ[™
-
-X]œ˜[™ÛJ
-HHJH
-ˆXYÈ
-ˆŠNÃBˆCBƒBˆËÈ[\ˆÛÜ›ÜXÙNˆH[š]HHÛÜ›^[˜]ÛˆÛÈHÛX[BˆËÈ˜XÚÚ[™ÈİÜ™H]HØ[Y\˜H›ÛÛKÛÈ]™\][™È\È][\YYCBˆËÈĞSQTWÖ“ÓÓHÈVSÔÒV‘KˆH[YÙ\ˆ˜XİÜˆÙY\ÈH\Üš\ÜƒBˆİœØ]™J
-NÃBˆİœØØ[JĞSQTWÖ“ÓÓHÈVSÔÒV‘KĞSQTWÖ“ÓÓHÈVSÔÒV‘JNÃBˆİ˜[œÛ]JSX]œ›İ[™
-\Ë˜Ø[Y\˜K
-H
-ÈŞSX]œ›İ[™
-\Ë˜Ø[Y\˜KJH
-ÈŞJNÃBƒBˆYˆ
-\Ë›X\
-H\Ë›X\™˜]Êİ\Ë˜Ø[Y\˜K\ËšY]ÕÚY\ËšY]ÒZYÚ
-NÃBƒBˆËÈÜ˜œÈ8 %Ü]X\™\ÈÚ]H[H[ÃBˆ›Üˆ
-ÛÛœİÜ˜ˆÙˆ\ËÜ˜œÊHÃBˆ^[™Xİ
-İÜ˜‹Ü˜‹KÜ˜‹œ˜Y]\È
-ˆËÜ˜‹œ˜Y]\È
-ˆËSUKÛİÊNÃBˆ^[™Xİ
-İÜ˜‹Ü˜‹KÜ˜‹œ˜Y]\È
-ˆK‹Ü˜‹œ˜Y]\È
-ˆK‹SUK
-NÃBˆCBƒBˆËÈ\XÛ\È8 %Ú[šŞH[X™\œÈ]Úš[šÈ\È^HYCBˆ›Üˆ
-ÛÛœİÙˆ\Ëœ\XÛ\ÊHÃBˆİ™ÛØ˜[[HHX]›X^
-X]›Z[ŠK›Y™HÈ›X^Y™JJNÃBˆ^[™Xİ
-İKœ˜Y]\È
-ˆ‹œ˜Y]\È
-ˆ‹˜ÛÛÜŠNÃBˆCBˆİ™ÛØ˜[[HHNÃBƒBˆ›Üˆ
-ÛÛœİ[™[^HÙˆ\Ë™[™[ZY\ÊHÃBˆYˆ
-[™[^K˜[]™JH[™[^K™˜]Êİ
-NÃBˆCBƒBˆËÈİ[[[ÛœÈÚİÈZ\ˆİÛˆX[[™™[XZ[ˆ[™\[™[œ›ÛHH[›ØØYÜ‹ƒBˆ›Üˆ
-ÛÛœİİ[[[ÛˆÙˆ\Ëœİ[[[ÛœÈ×JHÃBˆYˆ
-\İ[[[Û‹˜[]™JHÛÛ[YNÃBˆ^[™Xİ
-İİ[[[Û‹İ[[[Û‹K	ÈÌÎLM	ÊNÃBˆ^[™Xİ
-İİ[[[Û‹İ[[[Û‹Kİ[[[Û‹œ˜Y]\È
-ˆKİ[[[Û‹œ˜Y]\È
-ˆKİ[[[Û‹˜ÛÛÜŠNÃBˆ^[™Xİ
-İİ[[[Û‹İ[[[Û‹K‹‹	ÈÙŒ™‰ÊNÃBˆİ™š[İ[HH	ÈÌXLŒ	ÎÃBˆİ™š[™Xİ
-Û˜\
-İ[[[Û‹HLŠKÛ˜\
-İ[[[Û‹HHİ[[[Û‹œ˜Y]\ÈH
-KÊNÃBˆİ™š[İ[HHİ[[[Û‹˜ÛÛÜˆ	ÈØYMN	ÎÃBˆİ™š[™Xİ
-Û˜\
-İ[[[Û‹HLŠKÛ˜\
-İ[[[Û‹HHİ[[[Û‹œ˜Y]\ÈH
-K
-ˆX]›X^
-İ[[[Û‹šX[Èİ[[[Û‹›X^X[
-KÊNÃBˆCBƒBˆËÈ^Y\ˆ[]ÃBˆ›Üˆ
-ÛÛœİˆÙˆ\Ë˜[]ÊHÃBˆ^[™Xİ
-İ‹‹K‹œ˜Y]\È
-ˆ‹‹œ˜Y]\È
-ˆ‹‹˜ÛÛÜˆSUKœ^Y\”Úİ
-NÃBˆ^[™Xİ
-İ‹‹K‹œ˜Y]\Ë‹œ˜Y]\ËSUK˜›Û™JNÃBˆCBƒBˆËÈ[™[^H[]È8 %İ\‹Ú]HœšYÚÛÜ™HÛÈ^H™XYYØZ[œİ›ÛÜƒBˆ›Üˆ
-ÛÛœİˆÙˆ\Ë™[™[^P[]ÊHÃBˆ^[™Xİ
-İ‹‹K‹œ˜Y]\È
-ˆ‹‹œ˜Y]\È
-ˆ‹SUK˜›ÛÙ
-NÃBˆ^[™Xİ
-İ‹‹K‹œ˜Y]\È
-ˆKK‹œ˜Y]\È
-ˆKKSUK™[™[^TÚİ
-NÃBˆ^[™Xİ
-İ‹‹K‹œ˜Y]\È
-ˆË‹œ˜Y]\È
-ˆËSUKšY
-NÃBˆCBƒBˆYˆ
-\Ëœ^Y\ˆ	‰ˆ\Ëœ^Y\‹šX[ˆ
-H\Ëœ^Y\‹™˜]Êİ
-NÃBˆ›Üˆ
-ÛÛœİ^Y\ˆÙˆ\Ëœ™[[İT^Y\œÈ×JHÃBˆYˆ
-^Y\‹šX[ˆ
-H^Y\‹™˜]Êİ
-NÃBˆCBƒBˆËÈØš™Xİ]™HÚ]œ›Û‹ˆÚ]İ][ˆ^]ÈXY›Ü‹H^Y\ˆÛİ[™CBˆËÈ[[™ÈH›ÜÜÈ›ÛÛH›[™XÜ›ÜÜÈHÌX\ÛÈHX\šÙ\ˆÚ[ÃBˆËÈ]H›ÜÜÈš\œİ[™H^]Û›HÛ˜ÙH]\ÈÜ[™YƒBˆYˆ
-\Ë›X\	‰ˆ\Ëœ^Y\ŠHÃBˆÛÛœİ\™Ù]H\Ë›X\™^]Bˆ
-\Ë›X\˜›ÜÜÔ›ÛÛHÈÈˆ\Ë›X\˜›ÜÜÔ›ÛÛK˜ŞNˆ\Ë›X\˜›ÜÜÔ›ÛÛK˜ŞHHˆ[
-NÃBˆYˆ
-\™Ù]
-HÃBˆÛÛœİH\™Ù]H\Ëœ^Y\‹ÃBˆÛÛœİHH\™Ù]HH\Ëœ^Y\‹NÃBˆYˆ
-X]š\İ
-JHˆM
-HÃBˆÛÛœİHHX]˜][ŒŠK
-NÃBˆÛÛœİH\Ëœ^Y\‹
-ÈX]˜ÛÜÊJH
-ˆÃBˆÛÛœİHH\Ëœ^Y\‹H
-ÈX]œÚ[ŠJH
-ˆÃBˆÛÛœİÛÛH\Ë›X\™^]ÈSUK™^]ˆSUK™[™Ù\ÃBˆ^[™Xİ
-İKKKÛÛ
-NÃBˆ^[™Xİ
-İKSUK›ÚY
-NÃBˆCBˆCBˆCBƒBˆİœ™\İÜ™J
-NÃBƒBˆËÈKKKHØÜ™Y[‹\ÜXÙH\ÜÙ\Ë[ˆØ[˜\È^[ÈKKKCBƒBˆ\Ë™˜]ÕšYÛ™]JİÕËÒ
-NÃBƒBˆËÈ[XYÙH›\ÚˆH™YØ\Ú]˜Y\Èİ™\ˆ]È™[XZ[š[™Èœ˜[Y\ÃBˆYˆ
-\Ë™[XYÙQ›\Úˆ
-HÃBˆİ™ÛØ˜[[HHX]›Z[ŠK\Ë™[XYÙQ›\ÚÈLŠNÃBˆİ™š[İ[HHSUK™[™Ù\ÃBˆİ™š[™Xİ
-ÕËÒ
-NÃBˆİ™ÛØ˜[[HHNÃBˆCBƒBˆËÈİËZX[[ÙCBˆYˆ
-\Ëœ^Y\ˆ	‰ˆ\Ëœ^Y\‹šX[ˆ	‰ƒBˆ\Ëœ^Y\‹šX[È\Ëœ^Y\‹›X^X[ŒÊHÃBˆÛÛœİ[ÙHHŒLˆ
-ÈŒ
-ˆX]œÚ[Š\Ë™œ˜[YPÛİ[
-ˆŒMJNÃBˆİ™ÛØ˜[[HH[ÙNÃBˆİ™š[İ[HHSUK˜›ÛÙÃBˆİ™š[™Xİ
-ÕËÒ
-NÃBˆİ™ÛØ˜[[HHNÃBˆCBƒBˆËÈ›ÛÛH˜[œÚ][Ûˆ˜YCBˆYˆ
-\Ë˜[œÚ][Ûš[™ÊHÃBˆİ™ÛØ˜[[HHX]›X^
-X]›Z[ŠK\Ë˜[œÚ][Û[JJNÃBˆİ™š[İ[HHSUK›ÚYÃBˆİ™š[™Xİ
-ÕËÒ
-NÃBˆİ™ÛØ˜[[HHNÃBˆCBƒBˆ\ËZKœ™[™\“›İYšXØ][ÛŠİ
-NÃBƒBˆYˆ
-\Ë›X\	‰ˆ\Ëœ^Y\ŠHÃBˆ\ËZK™[™[ZY\ÈH\Ë™[™[ZY\ÎÃBˆ\ËZK™˜]ÓZ[š[X\
-\Ë›X\\Ë˜Ø[Y\˜K\Ëœ^Y\ŠNÃBˆCBˆCBƒBˆÊŠƒBˆ
-ˆ\šÙ[ˆHYÙ\ÈÙˆHœ˜[YKƒBˆ
-ƒBˆ
-ˆØXÚY™XØ]\ÙHZ[[™ÈHÜ˜YY[]™\Hœ˜[YH\ÈØ\İY[[™™XZ[Bˆ
-ˆÛ›HÚ[ˆHØ[˜\È[Y[œÚ[ÛœÈÚ[™ÙKƒBˆ
-‹ÃBˆ˜]ÕšYÛ™]JİË
-HÃBˆYˆ
-]\Ë—İšYÛ™]H\Ë—İšYÛ™]UÈOOHÈ\Ë—İšYÛ™]ROOH
-HÃBˆÛÛœİÈHİ˜Ü™X]T˜YX[Ü˜YY[
-BˆÈÈ‹È‹X]›Z[ŠË
-H
-ˆ‹BˆÈÈ‹È‹X]›X^
-Ë
-H
-ˆÌƒBˆ
-NÃBˆË˜YÛÛÜ”İÜ
-	Ü™Ø˜J
-IÊNÃBˆË˜YÛÛÜ”İÜ
-K	Ü™Ø˜JJIÊNÃBˆ\Ë—İšYÛ™]HHÎÃBˆ\Ë—İšYÛ™]UÈHÎÃBˆ\Ë—İšYÛ™]RHÃBˆCBˆİ™š[İ[HH\Ë—İšYÛ™]NÃBˆİ™š[™Xİ
-Ë
-NÃBˆCBŸCB
+        // Wide health bar, drawn as discrete blocks
+        const blocks = 12;
+        const filled = Math.ceil((this.health / this.maxHealth) * blocks);
+        const bw = 7, gap = 2;
+        const total = blocks * bw + (blocks - 1) * gap;
+        const x0 = this.x - total / 2, y = this.y - r - 10;
+        for (let i = 0; i < blocks; i++) {
+            ctx.fillStyle = i < filled ? PALETTE.danger : PALETTE.blood;
+            ctx.fillRect(snap(x0 + i * (bw + gap)), snap(y), bw, 4);
+        }
+    }
+}
