@@ -1,0 +1,34 @@
+COCHINILLA ESQUINERO — CONDICIONES DE APARICIÓN
+
+Categoría
+- Mini-jefe (mini-jefes).
+- Su tipo interno es «cochinilla-esquinero».
+
+Salas donde puede aparecer
+- Solo aparece en una sala generada con tipo «combat-hard».
+- No aparece en salas «combat»/«combat-simple», hubs, entrada, tesoro, jefe ni en la sala de pruebas 0-0 por esta generación procedural.
+- La sala difícil conserva además su grupo normal de esbirros. La aparición de la Cochinilla no reemplaza ni reduce ese grupo.
+
+Cantidad y probabilidad
+- Máximo: 1 Cochinilla Esquinero por sala «combat-hard».
+- Probabilidad actual: 100% cuando la sala es «combat-hard» y tiene al menos una esquina válida.
+- Si ninguna esquina cumple las condiciones del espacio libre, la probabilidad efectiva es 0% para esa sala y no se fuerza el spawn.
+- No se lanza una tirada aleatoria para decidir si aparece. La selección de la esquina tampoco es aleatoria: se revisan en este orden: superior izquierda, superior derecha, inferior izquierda, inferior derecha, y se usa la primera válida.
+
+Condiciones de esquina válida
+- La sala debe tener una plantilla con máscara de colisión y medir al menos 4 casillas de ancho y 4 de alto.
+- Debe existir, en una esquina, un bloque completo de 3 × 3 casillas de suelo transitable.
+- Cada una de las 9 casillas debe tener el valor de máscara 1 (suelo normal).
+- Puertas, paredes, obstáculos u otras casillas con un valor distinto de 1 invalidan esa esquina. En particular, una puerta dentro del bloque impide usarla.
+- El bloque se ubica una casilla hacia dentro desde los bordes de la plantilla. Para la esquina superior izquierda abarca las casillas (1,1) a (3,3); las otras esquinas usan el bloque equivalente reflejado en sus bordes.
+- Las casillas de suelo miden 40 × 40 px. El cuerpo visual del mini-jefe mide 120 × 120 px y queda centrado sobre el bloque de 3 × 3.
+
+Resumen del flujo
+1. El generador crea una sala «combat-hard».
+2. Comprueba las esquinas en el orden indicado buscando un bloque libre de 3 × 3.
+3. Si encuentra uno, genera allí exactamente una Cochinilla Esquinero.
+4. Genera también la cantidad convencional de esbirros de la sala difícil.
+5. Si no encuentra un bloque válido, la sala conserva sus esbirros pero no genera la Cochinilla.
+
+Nota sobre el 100%
+El 100% se refiere a una sala difícil que ofrece al menos una esquina válida; no significa que toda sala del piso vaya a ser difícil ni que una sala difícil sin espacio despejado deba deformar su plantilla o colocar al enemigo sobre obstáculos.
