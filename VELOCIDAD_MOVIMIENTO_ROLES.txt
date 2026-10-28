@@ -1,0 +1,189 @@
+VELOCIDAD DE MOVIMIENTO DE LOS ROLES
+Análisis y propuesta de parche para cámara al 200%
+Fecha: 2026-10-26
+Estado: APLICADO el 2026-10-26. Se adoptó la Opción A (factor 0.5) y también
+la segunda fase: enemigos, invocaciones y proyectiles bajaron a la mitad.
+
+====================================================================
+1. RESUMEN
+====================================================================
+
+La velocidad base de los roles se diseñó para una cámara 1:1. Con el
+zoom actual de 200%, la cámara muestra la mitad del mundo en cada eje,
+pero la simulación sigue avanzando a la misma velocidad. El resultado
+es que cada píxel de mundo ocupa 2 píxeles de pantalla y el movimiento
+se percibe exactamente al doble de velocidad.
+
+Parche recomendado: multiplicar por 0.5 la velocidad base de los seis
+roles y la velocidad de la invocación del Invocador. Así se recupera la
+velocidad de pantalla que el juego tenía antes del zoom, sin tocar la
+cámara ni la nitidez del pixel art.
+
+====================================================================
+2. CÓMO SE CALCULA
+====================================================================
+
+- El motor simula a 60 pasos fijos por segundo (FIXED_STEP_MS = 1000/60).
+- `speed` es la cantidad de unidades de mundo que se avanza por paso.
+- Velocidad en mundo: speed x 60 px/s.
+- Velocidad en pantalla con zoom 2: speed x 60 x 2 = speed x 120 px/s.
+- Antes del zoom, la velocidad en pantalla era speed x 60 px/s.
+- Por eso el mismo valor de `speed` se ve exactamente 2 veces más rápido.
+- El movimiento diagonal ya está normalizado: no es más rápido en diagonal.
+- En cooperativo se usa el mismo `roles.js` en el servidor, así que el
+  parche afectaría por igual a solitario y multijugador.
+
+Referencia de pantalla usada en las tablas: 1000 px de ancho.
+Con zoom 2, esa pantalla muestra 500 unidades de mundo.
+
+====================================================================
+3. VALORES ACTUALES
+====================================================================
+
+Rol            speed   Mundo px/s   Pantalla px/s (zoom 2)   Tiempo en cruzar 1000 px
+-------------------------------------------------------------------------------------
+Pistolero       5.0       300              600                    1.67 s
+Tirador         3.0       180              360                    2.78 s
+Perdigonero     3.8       228              456                    2.19 s
+Invocador       3.4       204              408                    2.45 s
+Piromano        5.0       300              600                    1.67 s
+Bastión         2.8       168              336                    2.98 s
+
+Invocación del Invocador:
+- speed 3.8 => 228 px/s de mundo => 456 px/s de pantalla.
+- Es más rápida que el propio Invocador (3.4), como estaba diseñado.
+
+Comparación: antes del zoom, el Pistolero se movía a 300 px/s de
+pantalla. Ahora se mueve a 600 px/s. De ahí la sensación de ir al doble.
+
+====================================================================
+4. PARCHE RECOMENDADO (OPCIÓN A: FACTOR 0.5)
+====================================================================
+
+Rol            speed actual   speed nuevo   Mundo px/s   Pantalla px/s (zoom 2)   Tiempo en cruzar 1000 px
+-----------------------------------------------------------------------------------------------------------
+Pistolero          5.0            2.5          150              300                    3.33 s
+Tirador            3.0            1.5           90              180                    5.56 s
+Perdigonero        3.8            1.9          114              228                    4.39 s
+Invocador          3.4            1.7          102              204                    4.90 s
+Piromano           5.0            2.5          150              300                    3.33 s
+Bastión            2.8            1.4           84              168                    5.95 s
+
+Invocación del Invocador:
+- speed 3.8 -> 1.9 (228 -> 114 px/s de mundo; 456 -> 228 px/s de pantalla).
+- Mantiene la misma proporción respecto al Invocador.
+
+Resultado: la velocidad en pantalla vuelve a ser la misma que antes del
+zoom. El juego se sigue viendo al 200%, pero deja de sentirse acelerado.
+
+====================================================================
+5. OTRAS OPCIONES
+====================================================================
+
+OPCIÓN B: reducir solo un 25% (factor 0.75)
+- Pistolero 3.75, Tirador 2.25, Perdigonero 2.85,
+  Invocador 2.55, Piromano 3.75, Bastión 2.10.
+- Pantalla: 450 / 270 / 342 / 306 / 450 / 252 px/s.
+- Sigue siendo un 50% más rápido que antes del zoom.
+- Útil si la Opción A se siente demasiado lenta.
+
+OPCIÓN C: reducir un 40% (factor 0.60)
+- Pistolero 3.0, Tirador 1.8, Perdigonero 2.28,
+  Invocador 2.04, Piromano 3.0, Bastión 1.68.
+- Pantalla: 360 / 216 / 274 / 245 / 360 / 202 px/s.
+- Punto intermedio: un 20% más rápido que antes del zoom.
+
+Recomendación: probar primero la Opción A. Es la única que restaura
+exactamente la sensación previa al zoom.
+
+====================================================================
+6. AJUSTES QUE VAN CON EL PARCHE
+====================================================================
+
+6.1. Mejora "Swiftness"
+- Actualmente da +0.5 de speed.
+- Con las velocidades base a la mitad, +0.5 pasa a valer el doble en
+  proporción (por ejemplo, Pistolero 2.5 -> 3.0 es +20%, antes era +10%).
+- Propuesta: cambiar la mejora a +0.25, o a un +8% multiplicativo para
+  que todas las clases ganen lo mismo en proporción.
+- Archivo: js/game.js, definición de la mejora Swiftness.
+
+6.2. Invocador
+- La invocación debe bajar de 3.8 a 1.9 para no quedar desconectada de
+  la nueva velocidad del jugador.
+- Archivo: js/characters/roles.js, bloque `summon: { speed: ... }`.
+
+6.3. Enemigos y proyectiles (segunda fase) — APLICADO
+- Si solo se bajan los roles, los enemigos y las balas conservan su
+  velocidad de mundo y se verán el doble de rápidos en pantalla.
+- Eso puede hacer que el juego se sienta más agresivo y difícil, sobre
+  todo al esquivar.
+- Aplicado el 2026-10-26 con factor 0.5: básico 1.1, tirador 0.75,
+  espiral 0.6, jefe 0.4 y cochinilla 0.55. Proyectiles enemigos: básico
+  1.5, tirador 2.5, espiral 1.25 y jefe 1.25 / 2.5 / 1.0.
+- Las balas del jugador también bajaron a la mitad (4.5 / 7.5 / 3.5 /
+  3.5 / 3.75). La cadencia de disparo, las recargas y las animaciones no
+  cambiaron.
+
+6.4. Bastión
+- En modo torreta su velocidad ya es 0. No requiere cambio adicional.
+- Su speed base 2.8 -> 1.4 mantiene la misma relación con los demás.
+
+====================================================================
+7. CAMBIOS EXACTOS PARA APLICAR LA OPCIÓN A
+====================================================================
+
+Archivo: js/characters/roles.js
+
+  pistolero:   speed: 5.0  -> 2.5
+  tirador:     speed: 3.0  -> 1.5
+  perdigonero: speed: 3.8  -> 1.9
+  invocador:   speed: 3.4  -> 1.7
+  piromano:    speed: 5.0  -> 2.5
+  bastion:     speed: 2.8  -> 1.4
+
+  invocador.summon.speed: 3.8 -> 1.9
+
+Archivo: js/game.js (opcional, recomendado)
+
+  Swiftness: "+0.5 Speed" -> "+0.25 Speed"
+  o bien: p.speed *= 1.08
+
+No hace falta tocar el servidor: server/simulation.js carga el mismo
+js/characters/roles.js y js/player.js dentro de su máquina virtual.
+
+====================================================================
+8. VERIFICACIÓN PROPUESTA
+====================================================================
+
+1. En solitario, medir el tiempo en recorrer 1000 px de pantalla con
+   cada rol y compararlo con la tabla de la Opción A.
+2. Repetir en cooperativo con dos clientes y confirmar que ambos ven la
+   misma velocidad.
+3. Comprobar que la diagonal no es más rápida que la horizontal.
+4. Comprobar que el Bastión sigue quieto al mantener el disparo en modo
+   torreta.
+5. Comprobar que la invocación del Invocador ya no adelanta al jugador.
+6. Revisar la sensación contra enemigos: si se sienten demasiado rápidos,
+   aplicar la segunda fase del punto 6.3.
+7. Repetir las pruebas de sprites, colores, tamaños, jefe y texturas.
+
+====================================================================
+9. DECISIÓN TOMADA
+====================================================================
+
+Se adoptó la Opción A: factor 0.5 para restaurar exactamente la
+velocidad de pantalla previa al zoom. También se aplicó la segunda fase
+(enemigos y proyectiles), la mejora Swiftness a +0.25 y la invocación del
+Invocador a 1.9.
+
+Verificación automatizada del 2026-10-26:
+- Velocidades de los seis roles, invocación, enemigos y proyectiles.
+- Balas detenidas por muros (máscara 0) y obstáculos azules (máscara 3)
+  en solitario y en el servidor cooperativo.
+- XP multinivel, pantalla de mejoras y su aplicación autoritativa online.
+- Salas treasure: curación, XP, aviso y marcador visible.
+
+====================================================================
+FIN DEL DOCUMENTO
+====================================================================

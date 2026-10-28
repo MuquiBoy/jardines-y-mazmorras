@@ -1,0 +1,42 @@
+JARDINES Y MAZMORRAS
+VALORES DE ROLES Y EQUIPO — VERSIÓN 3
+
+Estos son los valores actuales de balance de la demo jugable. Las conversiones usan 60 frames por segundo. Los frames son los valores que utiliza el juego; los segundos se incluyen para facilitar la lectura.
+
+ROL          VELOCIDAD      CADENCIA                         DAÑO                     VIDA
+Pistolero    5,0 px/frame   18 frames (0,30 s)              12 por proyectil         36 HP
+Tirador      3,0 px/frame   126 frames (2,10 s)             32 por proyectil         30 HP
+Perdigonero  3,8 px/frame   66 frames (1,10 s)              6 por perdigón           38 HP
+Invocador    3,4 px/frame   32 frames (0,53 s)             2 por ataque invocado    38 HP
+Piromano     5,0 px/frame   72 frames (1,20 s)              6 por proyectil         32 HP
+Bastión      2,8 px/frame   7 frames (0,12 s)               4 por proyectil         150 HP
+
+MUNICIÓN Y RECARGA
+Las recargas se convierten de segundos a frames y se redondean al frame entero más cercano.
+
+ROL          MUNICIÓN POR CARGADOR   TIEMPO DE RECARGA
+Pistolero    15 proyectiles          54 frames (0,90 s)
+Tirador      3 proyectiles           198 frames (3,30 s)
+Perdigonero  5 cartuchos             128 frames (2,13 s)
+Invocador    6 despliegues           272 frames (4,53 s)
+Piromano     7 cartuchos             142 frames (2,37 s)
+Bastión      100 proyectiles         420 frames (7,00 s)
+
+UNIDAD INVOCADA DEL INVOCADOR
+Se documenta como unidad independiente porque tiene atributos propios de combate.
+
+VELOCIDAD DE MOVIMIENTO   VELOCIDAD DE ATAQUE             DAÑO POR ATAQUE   VIDA
+3,8 px/frame              - frames (0,53 s) por ataque   2                28 HP
+
+Límite: el Invocador solo puede desplegar 6 unidades por cargador y tener hasta 6 invocaciones activas simultáneamente. Al agotar los 6 despliegues debe recargar. Si ya hay 6 unidades activas, una nueva invocación reemplaza a la más antigua. Las unidades también desaparecen al agotarse su duración máxima de 900 frames (15 s) o al quedarse sin vida.
+
+MECÁNICAS Y PASIVAS
+- Perdigonero: dispara 5 perdigones por cartucho; cada perdigón causa 6 de daño.
+- Piromano: cada impacto causa 6 de daño y aplica quemadura de 2 de daño cada 24 frames (0,40 s), durante 144 frames (2,40 s).
+- Bastión — Aguante: recibe el 75 % del daño de los proyectiles enemigos (25 % de reducción).
+- Bastión — Rebote: cada proyectil enemigo que lo impacta tiene un 50 % de probabilidad de rebotar. El proyectil sigue siendo hostil y puede herir a otros jugadores.
+- Bastión — Torreta: mientras mantiene el disparo, queda inmóvil; puede moverse al dejar de disparar.
+- Invocador — Despliegues limitados: solo tiene 6 invocaciones por cargador y un máximo de 6 unidades activas; si el límite activo está ocupado, el despliegue nuevo sustituye a la unidad más antigua.
+
+CONVERSIÓN
+Frames = segundos × 60, redondeado al entero más cercano. Por ejemplo, 2,13 s se convierten en 128 frames y 0,12 s en 7 frames.

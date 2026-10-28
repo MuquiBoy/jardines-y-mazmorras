@@ -1,0 +1,11 @@
+Pistolero: Buena cadencia, cargador de capacidad moderada (15 balas) y movilidad alta. Personaje de alance medio
+
+Tirador: Cadencia sumamente lenta, cargador de solo 3 balas y movilidad baja. Personaje de alcance elevado.
+
+Perdigonero: Dispara un cono de 5 proyectiles , tiene una cadencia media y 5 cartuchos antes de recargar. Personaje de movilidad media y corto alcance. Su rendimiento depende de acercarse lo suficiente para concentrar la mayor cantidad de impactos sobre el mismo objetivo.
+
+Invocador: Personaje de tamaño medio-alto, con una escala visual equivalente a 1,5 veces el personaje base y movilidad media. No dispara munición convencional: cada disparo lanza o despliega una unidad invocada que busca enemigos mediante auto-aim y se desplaza hacia ellos para atacarlos. Cada unidad posee su propia barra de vida y puede ser eliminada por los enemigos antes de cumplir su función. El Invocador puede desplegar hasta 10 unidades antes de recargar.
+
+Piromano: Personaje de movilidad alta y corto alcance. Tiene una cadencia de disparo lenta, similar a la del "Tirador", pero conserva la movilidad alta del "Pistolero". Cuenta con "7 cartuchos" antes de recargar. Sus proyectiles tienen un alcance reducido y aplican un efecto de quemadura a los enemigos impactados, causando daño adicional durante un intervalo de tiempo. Su rendimiento depende de acercarse lo suficiente para acertar sus disparos y aprovechar el daño por quemadura, retirándose mientras recupera su munición.
+
+Bastión: Personaje de gran tamaño, movilidad baja y vida elevada. Debe medir visualmente al menos 2,2 veces el tamaño del personaje base. Su arma funciona como una torreta: al mantener el disparo, queda inmóvil hasta que deja de disparar. Tiene una cadencia rápida y un cargador de 50 balas, pero sus proyectiles son imprecisos y causan poco daño individual. Su fortaleza está en mantener fuego continuo sobre grupos de enemigos, compensando la baja precisión con la cantidad de disparos.

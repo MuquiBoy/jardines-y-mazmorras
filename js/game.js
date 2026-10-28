@@ -270,6 +270,21 @@ class Game {
                 enemies.push(enemy);
             }
         }
+        // One corner cochinilla per corner, on the exact 3x3 spawn block taken
+        // from the art (block centre = 2.5 cells from the corner). Handy to
+        // check all four mirrored poses and their laser origins at once.
+        const ts = this.map.tileSize;
+        const corners = [
+            { corner: 'top-left', bx: 1, by: 1 },
+            { corner: 'top-right', bx: room.tw - 4, by: 1 },
+            { corner: 'bottom-left', bx: 1, by: room.th - 4 },
+            { corner: 'bottom-right', bx: room.tw - 4, by: room.th - 4 }
+        ];
+        for (const spot of corners) {
+            const x = room.x + (spot.bx + 1.5) * ts;
+            const y = room.y + (spot.by + 1.5) * ts;
+            enemies.push(new CochinillaEsquinero(x, y, room, spot.corner));
+        }
         this.enemies = enemies;
         this.bullets = []; this.enemyBullets = []; this.xpOrbs = []; this.particles = []; this.summons = [];
     }
@@ -398,15 +413,27 @@ class Game {
                 const distance = Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y);
                 if (distance < nearest) { target = candidate; nearest = distance; }
             }
-            const updateResult = enemy.update(target, this.enemies, this.map);
+            const updateResult = enemy.update ? enemy.update(target, this.enemies, this.map, targets) : null;
             const event = typeof updateResult === 'string' ? updateResult : null;
             const bullets = Array.isArray(updateResult) ? updateResult : null;
             if (enemy instanceof CochinillaPerforamuros) {
                 if (event === 'warning') this.audio.cochinillaCharge();
             }
-            if (enemy instanceof CochinillaPerforamuros && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
-                this.player.health = Math.max(0, this.player.health - 1);
+            if (enemy instanceof CochinillaEsquinero) {
+                if (event === 'warning') this.audio.cochinillaCharge();
+            }
+            if (enemy instanceof CochinillaPerforamuros && enemy.touchesBeam && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
+                const dmg = enemy.laserDamagePerTick || 6;
+                this.player.health = Math.max(0, this.player.health - dmg);
                 this.damageFlash = Math.max(this.damageFlash, 2);
+            }
+            if (enemy instanceof CochinillaEsquinero && enemy.touchesBeam && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
+                // Universal rule: a laser tick is 6 HP, once per simulation tick.
+                const dmg = enemy.laserDamageFor ? enemy.laserDamageFor(this.player) : 0;
+                if (dmg > 0) {
+                    this.player.health = Math.max(0, this.player.health - dmg);
+                    this.damageFlash = Math.max(this.damageFlash, 2);
+                }
             }
             if (bullets && bullets.length) {
                 newEnemyBullets.push(...bullets);
@@ -414,7 +441,7 @@ class Game {
             }
         }
         this.audio.setCochinillaBeam(this.enemies.some(enemy =>
-            enemy.alive && enemy instanceof CochinillaPerforamuros && enemy.phase === 'beam'));
+            enemy.alive && ((enemy instanceof CochinillaPerforamuros && enemy.phase === 'beam') || (enemy instanceof CochinillaEsquinero && enemy.phase === 'active'))));
         if (burnSound) this.audio.burnTick();
         this.enemyBullets.push(...newEnemyBullets);
 

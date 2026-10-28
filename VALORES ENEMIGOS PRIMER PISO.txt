@@ -1,0 +1,31 @@
+﻿JARDINES Y MAZMORRAS
+ESTADÍSTICAS DE ENEMIGOS — PRIMER PISO
+
+Referencia: estadísticas efectivas tras aplicar la dificultad del piso 1.
+Velocidad expresada en píxeles del mundo por frame de juego.
+Cadencia expresada en frames entre salvas; equivalencia en segundos a 60 frames por segundo.
+La salud corresponde a los puntos de salud máximos.
+
+ENEMIGO       VELOCIDAD       CADENCIA                   DAÑO POR PROYECTIL   VIDA
+Básico        1,21 px/frame   171 frames (2,85 s)        10                  30
+Tirador       0,825 px/frame  114 frames (1,90 s)        15                  20
+Espiral       0,66 px/frame   86 frames (1,43 s)         8                   50
+Jefe          0,44 px/frame* 57 frames (0,95 s)          20                  500
+
+PATRONES Y VELOCIDAD DE LOS PROYECTILES EN EL PISO 1
+- Básico: una bala por salva; proyectil a 1,8 px/frame.
+- Tirador: una bala por salva; proyectil a 3 px/frame.
+- Espiral: cinco balas por salva; proyectiles a 1,5 px/frame.
+- Jefe: cambia de patrón cada 100 frames (1,67 s). Dispara cada 57 frames:
+  - Espiral: 8 proyectiles a 1,5 px/frame.
+  - Ráfaga dirigida: 3 proyectiles a 3 px/frame.
+  - Anillo: 12 proyectiles a 1,2 px/frame.
+
+CÓMO SE CALCULAN LOS VALORES DEL PISO 1
+- La velocidad configurada se multiplica por 0,55.
+- El intervalo entre salvas se multiplica por 1,9 y se redondea al frame entero más cercano.
+- La velocidad de los proyectiles se multiplica por 0,60.
+- La vida y el daño por proyectil conservan sus valores base en el piso 1.
+- El tiempo hasta la primera salva se aleatoriza al aparecer; la cadencia de la tabla es el intervalo normal entre salvas.
+
+* El jefe tiene velocidad nominal de 0,44 px/frame tras el ajuste del piso 1, pero su movimiento real sigue una órbita fija alrededor del centro de la sala y no utiliza directamente ese valor.

@@ -15,11 +15,11 @@ function refreshTemplateCatalog() {
 
 const context = vm.createContext({ console });
 context.RoomTemplateLibrary = loadTemplateCatalog(TEMPLATE_ROOT);
-for (const file of ['palette.js', 'upgrades.js', 'characters/roles.js', 'bullet.js', 'player.js', 'enemy.js', 'map.js']) {
+for (const file of ['palette.js', 'upgrades.js', 'characters/roles.js', 'bullet.js', 'player.js', 'enemy.js', 'enemies/cochinilla_esquinero/cochinilla_esquinero.js', 'map.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
-const ENEMY_CLASSES = { basic: Engine.BasicEnemy, shooter: Engine.ShooterEnemy, spiral: Engine.SpiralEnemy, boss: Engine.BossEnemy };
+const Engine = vm.runInContext('({ DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
+const ENEMY_CLASSES = { basic: Engine.BasicEnemy, shooter: Engine.ShooterEnemy, spiral: Engine.SpiralEnemy, boss: Engine.BossEnemy, 'cochinilla-esquinero': Engine.CochinillaEsquinero, 'cochinilla-esquinero': Engine.CochinillaEsquinero, 'cochinilla_esquinero': Engine.CochinillaEsquinero };
 
 function newPlayer(member, x, y) {
     const player = new Engine.Player(x, y);
@@ -247,8 +247,22 @@ function stepRun(run, inputs) {
             const distance = Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y);
             if (distance < best) { target = candidate; best = distance; }
         }
+        if (enemy instanceof Engine.CochinillaEsquinero) {
+            const bullets = enemy.update ? enemy.update(target, run.enemies, run.map, targets) : null;
+            if (bullets && Array.isArray(bullets)) run.enemyBullets.push(...bullets);
+            // Authoritative laser damage: 6 HP per simulation tick of contact.
+            // The client only replays snapshots, so nothing is applied twice.
+            if (enemy.laserDamageFor) {
+                for (const player of players) {
+                    if (player.health <= 0 || player.invincibleTimer > 0) continue;
+                    const dmg = enemy.laserDamageFor(player);
+                    if (dmg > 0) player.health = Math.max(0, player.health - dmg);
+                }
+            }
+            continue;
+        }
         const bullets = enemy.update(target, run.enemies, run.map);
-        if (bullets) run.enemyBullets.push(...bullets);
+        if (bullets && Array.isArray(bullets)) run.enemyBullets.push(...bullets);
     }
 
     const keptPlayerBullets = [];
@@ -327,7 +341,8 @@ function playerState(player) {
     return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
 }
 function enemyState(enemy) {
-    return Object.fromEntries(['id','type','roomIndex','x','y','health','maxHealth','speed','damage','radius','color','xpValue','shootCooldown','shootTimer','bulletSpeedScale','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse'].filter(key => enemy[key] !== undefined).map(key => [key, enemy[key]]));
+    const base = ['id','type','roomIndex','x','y','health','maxHealth','speed','damage','radius','color','xpValue','shootCooldown','shootTimer','bulletSpeedScale','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse','corner','anchorX','anchorY','beamEndX','beamEndY','targetId'];
+    return Object.fromEntries(base.filter(key => enemy[key] !== undefined).map(key => [key, enemy[key]]));
 }
 function bulletState(bullet) {
     return Object.fromEntries(['x','y','vx','vy','damage','pierce','hits','radius','color','ownerId','range','travelled','burn','ignorePlayerId','ignoreFrames'].filter(key => bullet[key] !== undefined).map(key => [key, bullet[key]]));

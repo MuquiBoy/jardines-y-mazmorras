@@ -16,6 +16,7 @@ $serverFiles = @(
     'js/bullet.js',
     'js/player.js',
     'js/enemy.js',
+    'js/enemies/cochinilla_esquinero/cochinilla_esquinero.js',
     'js/map.js'
 )
 

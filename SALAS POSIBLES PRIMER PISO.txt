@@ -1,0 +1,34 @@
+JARDINES Y MAZMORRAS
+SALAS POSIBLES DEL PRIMER PISO — ESTADO ACTUAL
+
+La generación actual usa estas categorías de sala:
+
+1. Inicio (start)
+   Sala inicial. No genera enemigos.
+
+2. Combate (combat)
+   Genera de 2 a 4 enemigos: básicos, tiradores o espirales, elegidos aleatoriamente.
+
+3. Combate difícil (combat-hard)
+   Genera de 4 a 6 enemigos de tipo tirador o espiral.
+
+4. Tesoro (treasure)
+   No genera enemigos. Al entrar, concede 30 HP de curación y 30 XP.
+
+5. Vacía (empty)
+   No genera enemigos ni recompensa especial.
+
+6. Jefe (boss)
+   La sala más alejada del inicio se convierte en la sala del jefe. Contiene al jefe y 2 enemigos adicionales en el primer piso.
+
+7. Salida (exit)
+   No se asigna durante la generación inicial. Se abre en la sala del jefe cuando este muere.
+
+Probabilidades y cantidades observables en el código:
+- Las salas distintas de inicio reciben pesos aleatorios: combate 5, combate difícil 3, tesoro 2, vacía 2. La sala más alejada se reemplaza por jefe.
+- Sala de combate: 2–4 enemigos.
+- Combate difícil: 4–6 enemigos.
+- Jefe: 1 jefe + 2 enemigos acompañantes en piso 1.
+- El mapa genera entre 6 y 9 salas en total, contando la sala de inicio.
+
+Nota: “salida” es un estado que se asigna tras derrotar al jefe, no una sala adicional generada desde el principio.

@@ -15,7 +15,7 @@
     let offeredOwed = 0;
     let awaitingOwed = -1;
     const characterNames = { pistolero: 'Pistolero', tirador: 'Tirador', perdigonero: 'Perdigonero', invocador: 'Invocador', piromano: 'Piromano', bastion: 'Bastión' };
-    const enemyClasses = { basic: BasicEnemy, shooter: ShooterEnemy, spiral: SpiralEnemy, boss: BossEnemy };
+    const enemyClasses = { basic: BasicEnemy, shooter: ShooterEnemy, spiral: SpiralEnemy, boss: BossEnemy, 'cochinilla-esquinero': CochinillaEsquinero, 'cochinilla-esquinero': CochinillaEsquinero };
 
     function restoreMap(state) {
         const map = new DungeonMap(state.width, state.height);
@@ -61,8 +61,17 @@
 
     function enemyObject(state, existing) {
         const Ctor = enemyClasses[state.type] || BasicEnemy;
-        const enemy = existing || new Ctor(state.x, state.y);
+        let enemy = existing;
+        if (!enemy) {
+            if (Ctor === CochinillaEsquinero) {
+                enemy = new CochinillaEsquinero(state.x, state.y, null, state.corner || 'top-left');
+            } else {
+                enemy = new Ctor(state.x, state.y);
+            }
+        }
         Object.assign(enemy, state);
+        if (enemy.anchorX === undefined) enemy.anchorX = enemy.x;
+        if (enemy.anchorY === undefined) enemy.anchorY = enemy.y;
         return enemy;
     }
 

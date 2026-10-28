@@ -886,6 +886,22 @@ class DungeonMap {
                 break;
 
             case 'combat':
+                // Try to spawn cochinilla_esquinero if valid corner exists (higher chance for testing)
+                {
+                    const isLarge = (room.tw >= 20 || room.th >= 20);
+                    const maxCorners = isLarge ? 2 : 1;
+                    const cornerList = this.findCornerCochinillaList(room, maxCorners);
+                    if (cornerList.length && Math.random() < 0.8) {
+                        for (const c of cornerList) {
+                            enemies.push(createEnemy('cochinilla-esquinero', c.x, c.y, room, c.corner));
+                        }
+                    } else if (cornerList.length) {
+                        // still try to spawn at least one sometimes
+                        if (Math.random() < 0.5) {
+                            enemies.push(createEnemy('cochinilla-esquinero', cornerList[0].x, cornerList[0].y, room, cornerList[0].corner));
+                        }
+                    }
+                }
                 const count = 2 + Math.floor(Math.random() * 3) + extra; // 2-4 (+endgame)
                 for (let i = 0; i < count; i++) {
                     const p = spawn();
@@ -894,6 +910,17 @@ class DungeonMap {
                 break;
 
             case 'combat-hard':
+                // 100% chance in combat-hard if valid corner exists
+                {
+                    const isLarge = (room.tw >= 20 || room.th >= 20);
+                    const maxCorners = isLarge ? 2 : 1;
+                    const cornerList = this.findCornerCochinillaList(room, maxCorners);
+                    if (cornerList.length) {
+                        for (const c of cornerList) {
+                            enemies.push(createEnemy('cochinilla-esquinero', c.x, c.y, room, c.corner));
+                        }
+                    }
+                }
                 const hCount = 4 + Math.floor(Math.random() * 3) + extra; // 4-6 (+endgame)
                 for (let i = 0; i < hCount; i++) {
                     const p = spawn();
@@ -927,6 +954,60 @@ class DungeonMap {
         }
 
         return enemies;
+    }
+
+    /**
+     * Find a valid corner for the corner cochinilla.
+     *
+     * The authored spawn block is exactly the 3x3 floor square that starts one
+     * cell inside the corner of the template, i.e. cells (1,1)-(3,3) of that
+     * corner quadrant. That is the green block of
+     * cochinilla_esquinero_generacion en salas.aseprite and the magenta block
+     * ("punto de aparición") of cochinilla_esquinero_ejemplo punto de
+     * spawn.aseprite and of the four corner variants.
+     *
+     * All nine cells must be plain floor (mask === 1). Doorway cells
+     * (mask === 2) never qualify: a corner broken by a door is not an interior
+     * corner any more.
+     */
+    findCornerCochinilla(room) {
+        const list = this.findCornerCochinillaList(room, 1);
+        return list[0] || null;
+    }
+
+    findCornerCochinillaList(room, maxCount = 1) {
+        if (!room || !room.template || !room.template.mask) return [];
+        const ts = this.tileSize;
+        const tw = room.tw, th = room.th;
+        const mask = room.template.mask;
+        if (tw < 4 || th < 4) return [];
+        const corners = [
+            { name: 'top-left', bx: 1, by: 1 },
+            { name: 'top-right', bx: tw - 4, by: 1 },
+            { name: 'bottom-left', bx: 1, by: th - 4 },
+            { name: 'bottom-right', bx: tw - 4, by: th - 4 }
+        ];
+        const results = [];
+        for (const corner of corners) {
+            if (results.length >= maxCount) break;
+            let ok = true;
+            // The whole 3x3 block, doors included, must be walkable floor.
+            for (let y = 0; y < 3 && ok; y++) {
+                for (let x = 0; x < 3; x++) {
+                    const cellX = corner.bx + x;
+                    const cellY = corner.by + y;
+                    if (cellX < 0 || cellY < 0 || cellX >= tw || cellY >= th) { ok = false; break; }
+                    if (mask[cellY * tw + cellX] !== 1) { ok = false; break; }
+                }
+            }
+            if (!ok) continue;
+            // Anchor = centre of that block: 2.5 cells from the corner, the
+            // point the 120x120 body is centred on in the art files.
+            const px = room.x + (corner.bx + 1.5) * ts;
+            const py = room.y + (corner.by + 1.5) * ts;
+            results.push({ x: px, y: py, corner: corner.name, blockX: corner.bx, blockY: corner.by });
+        }
+        return results;
     }
 
     /** Get treasure rewards for a room. */

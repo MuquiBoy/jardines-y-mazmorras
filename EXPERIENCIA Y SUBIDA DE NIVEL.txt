@@ -1,0 +1,41 @@
+JARDINES Y MAZMORRAS
+EXPERIENCIA DE ENEMIGOS Y SUBIDA DE NIVEL
+
+Los valores corresponden al primer piso y al balance actual del juego.
+
+EXPERIENCIA POR ENEMIGO DERROTADO
+Enemigo                 XP total
+Básico (basic)           10 XP
+Tirador (shooter)        15 XP
+Espiral (spiral)         20 XP
+Jefe (boss)              200 XP
+
+La XP se suelta como orbes. Cada orbe vale como máximo 5 XP; el total de orbes por enemigo se calcula para repartir todo el valor de XP. El jugador debe recoger los orbes para recibir la experiencia.
+
+EXPERIENCIA PARA SUBIR DE NIVEL
+Nivel actual → siguiente   XP requerida
+1 → 2                      50 XP
+2 → 3                      120 XP
+3 → 4                      220 XP
+4 → 5                      350 XP
+5 → 6                      520 XP
+6 → 7                      750 XP
+7 → 8                      1.050 XP
+8 → 9                      1.400 XP
+9 → 10                     1.850 XP
+10 → 11                    2.400 XP
+
+A partir del nivel 11, el requisito crece un 20 % por nivel respecto al umbral de 2.400 XP, redondeado al entero más cercano:
+11 → 12: 2.880 XP
+12 → 13: 3.456 XP
+13 → 14: 4.147 XP
+
+La experiencia sobrante al subir de nivel se conserva. La subida se activa al recoger orbes; las mejoras se eligen en la pantalla de subida.
+
+BONIFICACIÓN DE SALA
+Sala de tesoro: concede 30 XP directamente, además de 30 HP de curación.
+
+NOTAS DE ESCALADO
+En el primer piso se usan los valores base anteriores. En pisos posteriores, el valor de XP puede aumentar durante la rampa de dificultad de niveles avanzados. Las salas de combate comunes generan 2–4 enemigos, las difíciles 4–6, y la sala del jefe del piso 1 contiene al jefe y 2 enemigos acompañantes.
+
+Fuente: configuración actual de js/enemy.js, js/player.js y js/map.js.

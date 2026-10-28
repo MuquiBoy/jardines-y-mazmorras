@@ -209,6 +209,31 @@ class Enemy {
     }
 
     /**
+     * Find the first point of obstruction along a ray using the existing
+     * collision grid. Used by the corner cochinilla to clamp both drawing and
+     * damage to walls.
+     */
+    raycastObstacle(map, startX, startY, dirX, dirY, maxDist = 2000, step = 4) {
+        if (!map || !Number.isFinite(dirX) || !Number.isFinite(dirY)) {
+            return { x: startX + dirX * maxDist, y: startY + dirY * maxDist, hit: false, dist: maxDist };
+        }
+        const len = Math.hypot(dirX, dirY) || 1;
+        const dx = dirX / len;
+        const dy = dirY / len;
+        const samples = Math.ceil(maxDist / step);
+        for (let i = 1; i <= samples; i++) {
+            const dist = i * step;
+            if (dist > maxDist) break;
+            const x = startX + dx * dist;
+            const y = startY + dy * dist;
+            if (!map.isWalkable(x, y)) {
+                return { x: startX + dx * Math.max(0, dist - step), y: startY + dy * Math.max(0, dist - step), hit: true, dist: Math.max(0, dist - step) };
+            }
+        }
+        return { x: startX + dx * maxDist, y: startY + dy * maxDist, hit: false, dist: maxDist };
+    }
+
+    /**
      * Back away from a threat, preferring a visible free spot behind the
      * enemy. When the room is a dead end it follows an A* route to the best
      * reachable escape instead of walking into the wall.
@@ -256,15 +281,20 @@ class Enemy {
 
     shootTowardPlayer(angle, speed = 1.5) {
         const v = speed * this.bulletSpeedScale;
+        // Universal projectile rules:
+        // - standard enemy projectile: 6 HP
+        // - boss special projectile: 12 HP (marked via bullet.type === 'boss-special')
+        const dmg = (this.type === 'boss') ? 12 : 6;
         return {
             x: this.x,
             y: this.y,
             vx: Math.cos(angle) * v,
             vy: Math.sin(angle) * v,
-            damage: this.damage,
+            damage: dmg,
             radius: 6,
             color: this.color,
-            speed: v
+            speed: v,
+            projectileType: (this.type === 'boss') ? 'boss-special' : 'standard'
         };
     }
 
@@ -389,6 +419,7 @@ class CochinillaPerforamuros extends Enemy {
         this.moveSign = Math.random() < 0.5 ? -1 : 1; this.lockedX = x; this.lockedY = y;
         this.warnFrames = 54; this.beamFrames = 180; this.recoverFrames = 120;
         this.beamWidth = 28;
+        this.laserDamagePerTick = 6;
         this.animationTick = 0; this.walkFrames = CochinillaPerforamuros.walkFrames;
         this.loadSprites();
         this.loadWalkFrames();
@@ -547,6 +578,7 @@ class CochinillaPerforamuros extends Enemy {
         this.drawHealth(ctx, 24);
     }
 }
+
 
 // ===== BasicEnemy — Chaser =====
 class BasicEnemy extends Enemy {
@@ -835,12 +867,15 @@ class BossEnemy extends Enemy {
 /**
  * Create an enemy instance from a type string.
  */
-function createEnemy(type, x, y) {
+function createEnemy(type, x, y, ...args) {
     switch (type) {
         case 'basic':    return new BasicEnemy(x, y);
         case 'shooter':  return new ShooterEnemy(x, y);
         case 'spiral':   return new SpiralEnemy(x, y);
         case 'boss':     return new BossEnemy(x, y);
+        case 'cochinilla-esquinero':
+        case 'corner-cochinilla':
+            return new CochinillaEsquinero(x, y, args[0] || null, args[1] || 'top-left');
         default:         return new BasicEnemy(x, y);
     }
 }
