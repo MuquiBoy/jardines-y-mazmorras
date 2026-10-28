@@ -422,7 +422,7 @@ class Game {
             this.updatePointerWorld();
             this.camera.x = Math.max(0, Math.min(this.player.x - this.viewWidth / 2, this.map.width - this.viewWidth));
             this.camera.y = Math.max(0, Math.min(this.player.y - this.viewHeight / 2, this.map.height - this.viewHeight));
-            if (this.pointerClientX !== undefined) {
+            if (!wasAiming && this.player.sniperAiming && this.pointerClientX !== undefined) {
                 const ax = this.camera.x + this.input.mouseX - this.player.x;
                 const ay = this.camera.y + this.input.mouseY - this.player.y;
                 const length = Math.hypot(ax, ay) || 1; this.player.aimX = ax / length; this.player.aimY = ay / length;
