@@ -39,6 +39,18 @@ function enemyCategoriesForRoom(roomType) {
     return ENEMY_CATEGORIES_BY_ROOM[roomType] || [];
 }
 
+function enemyCategoryForType(type) {
+    for (const [category, types] of Object.entries(ENEMY_TYPES_BY_CATEGORY)) {
+        if (types.includes(type)) return category;
+    }
+    return null;
+}
+
+function enemyTypeAllowedInRoom(type, roomType) {
+    const category = enemyCategoryForType(type);
+    return !!category && enemyCategoriesForRoom(roomType).includes(category);
+}
+
 function chooseEnemyType(types) {
     return types[Math.floor(Math.random() * types.length)];
 }

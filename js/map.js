@@ -875,6 +875,12 @@ class DungeonMap {
     getEnemiesForRoom(room, avoid = null, minDist = 280, floor = 1) {
         const enemies = [];
         const spawn = () => this.spawnPointInRoom(room, avoid, minDist);
+        const spawnCategorizedEnemy = (type, x, y, ...args) => {
+            if (!enemyTypeAllowedInRoom(type, room.type)) {
+                throw new Error('Enemy type ' + type + ' is not allowed in room category ' + room.type + '.');
+            }
+            enemies.push(createEnemy(type, x, y, ...args));
+        };
         // Past the ramp, rooms get steadily busier as well as tougher.
         const extra = Math.floor(endgameFloors(floor) / ENDGAME.countEvery);
 
@@ -893,7 +899,7 @@ class DungeonMap {
                     const count = 2 + Math.floor(Math.random() * 3) + extra;
                     for (let i = 0; i < count; i++) {
                         const p = spawn();
-                        enemies.push(createEnemy(randomEnemyType(ENEMY_CATEGORY.MINIONS), p.x, p.y));
+                        spawnCategorizedEnemy(randomEnemyType(ENEMY_CATEGORY.MINIONS), p.x, p.y);
                     }
                 }
                 break;
@@ -904,18 +910,17 @@ class DungeonMap {
                 if (categories.includes(ENEMY_CATEGORY.MINI_BOSSES)) {
                     // Minibosses are exclusive to hard rooms. Spawn only where
                     // the authored corners provide enough clear floor.
-                    const isLarge = (room.tw >= 20 || room.th >= 20);
-                    const maxCorners = isLarge ? 2 : 1;
-                    const cornerList = this.findCornerCochinillaList(room, maxCorners);
-                    for (const c of cornerList) {
-                        enemies.push(createEnemy(randomMiniBossType(), c.x, c.y, room, c.corner));
+                    const corner = this.findCornerCochinillaList(room, 1)[0];
+                    if (corner) {
+                        // Exactly one miniboss per hard room, independent of room size.
+                        spawnCategorizedEnemy(randomMiniBossType(), corner.x, corner.y, room, corner.corner);
                     }
                 }
                 if (categories.includes(ENEMY_CATEGORY.MINIONS)) {
                     const hCount = 4 + Math.floor(Math.random() * 3) + extra;
                     for (let i = 0; i < hCount; i++) {
                         const p = spawn();
-                        enemies.push(createEnemy(hardEnemyType(), p.x, p.y));
+                        spawnCategorizedEnemy(hardEnemyType(), p.x, p.y);
                     }
                 }
                 break;
