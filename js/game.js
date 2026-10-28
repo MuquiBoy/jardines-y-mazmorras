@@ -138,7 +138,7 @@ class Game {
      * camera is zoomed by CAMERA_ZOOM, so canvas dimensions are not world
      * dimensions — camera maths must use these.
      */
-    get cameraZoom() { return this.player?.character === 'tirador' && this.player.sniperAiming ? 2.0 : CAMERA_ZOOM; }
+    get cameraZoom() { return this.player?.character === 'tirador' && this.player.sniperAiming ? TIRADOR_AIM_ZOOM : CAMERA_ZOOM; }
     get viewWidth()  { return this.canvas.width * PIXEL_SIZE / this.cameraZoom; }
     get viewHeight() { return this.canvas.height * PIXEL_SIZE / this.cameraZoom; }
 

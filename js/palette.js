@@ -1,31 +1,9 @@
 /**
- * Visual identity — palette and pixel-grid constants.
- *
- * The look is "loose modern retro": a chunky pixel grid and a tight, grimy
- * palette, but without the hard constraints of a real 8-bit target (no fixed
- * colour count, no sprite/tile limits). Colours lean on DOOM's register —
- * rust and dried blood for the world, hot amber and fire for anything that
- * demands attention, sickly green for pickups.
+ * Pixel-perfect camera scales: both the fixed view and Tirador aim use
+ * whole-number zoom factors, so each authored pixel stays a uniform square.
  */
-
-/**
- * Internal render scale: one world pixel maps to one canvas pixel.
- *
- * The canvas backing store is the window divided by this, then upscaled with
- * smoothing disabled, so everything lands on a visible grid. It also settles
- * the HiDPI question: integer upscaling is what a pixel look wants, where a
- * devicePixelRatio-smoothed canvas would fight it.
- */
-const PIXEL_SIZE = 1;
-
-/**
- * Camera zoom, in screen pixels per authored world pixel.
- *
- * 2.5 enlarges each authored world pixel to 250% in CSS pixels. Nearest-neighbor
- * rendering stays enabled; fractional scaling can alternate 2 px and 3 px
- * raster blocks so the average remains 2.5 px without smoothing the art.
- */
-const CAMERA_ZOOM = 2.5;
+const CAMERA_ZOOM = 3.0;
+const TIRADOR_AIM_ZOOM = 2.0;
 
 const PALETTE = {
     // World

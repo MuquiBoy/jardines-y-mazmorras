@@ -73,13 +73,19 @@ test('returns no target when all players are down', () => {
     assert.equal(result.targetId, null);
 });
 
-test('2.5x camera zoom produces the expected visible world size', () => {
+test('fixed camera and Tirador aim use integer pixel-perfect zooms', () => {
     const palette = fs.readFileSync(path.join(root, 'js/palette.js'), 'utf8');
-    assert.match(palette, /const CAMERA_ZOOM = 2\.5;/);
+    const game = fs.readFileSync(path.join(root, 'js/game.js'), 'utf8');
+    assert.match(palette, /const CAMERA_ZOOM = 3\\.0;/);
+    assert.match(palette, /const TIRADOR_AIM_ZOOM = 2\\.0;/);
+    assert.match(game, /this\\.player\\.sniperAiming \\? TIRADOR_AIM_ZOOM : CAMERA_ZOOM/);
     const zoomContext = vm.createContext({});
     vm.runInContext(palette, zoomContext);
-    assert.equal(vm.runInContext('1920 / CAMERA_ZOOM', zoomContext), 768);
-    assert.equal(vm.runInContext('1080 / CAMERA_ZOOM', zoomContext), 432);
+    assert.equal(vm.runInContext('1920 / CAMERA_ZOOM', zoomContext), 640);
+    assert.equal(vm.runInContext('1080 / CAMERA_ZOOM', zoomContext), 360);
+    assert.equal(vm.runInContext('1920 / TIRADOR_AIM_ZOOM', zoomContext), 960);
+    assert.equal(vm.runInContext('1080 / TIRADOR_AIM_ZOOM', zoomContext), 540);
+    assert.equal(vm.runInContext('Number.isInteger(CAMERA_ZOOM) && Number.isInteger(TIRADOR_AIM_ZOOM)', zoomContext), true);
 });
 test('shared target clears when everyone revives or no survivor remains', () => {
     const downed = player('a', 0);

@@ -2,44 +2,48 @@ CONFIGURACIÓN DE CÁMARA DEL JUGADOR
 Jardines y Mazmorras — 28/10/2026
 
 1. Zoom actual
-La cámara usa CAMERA_ZOOM = 2.5 y PIXEL_SIZE = 1 (js/palette.js). El zoom efectivo es 2,5×, equivalente al 250% del tamaño original de los píxeles del mundo: cada píxel de arte ocupa matemáticamente 2,5 × 2,5 píxeles CSS en pantalla. No significa un aumento del 250%; el tamaño final es 2,5 veces el original (un aumento del 150%).
+La cámara normal usa CAMERA_ZOOM = 3.0 y PIXEL_SIZE = 1 (js/palette.js). Cada píxel del mundo ocupa exactamente un bloque de 3 × 3 píxeles del canvas: el zoom es entero y no alterna tamaños entre píxeles.
 
-El factor 2,5 no es entero. Con el suavizado desactivado, el dibujo sigue siendo nearest-neighbor, pero al rasterizar algunos píxeles ocuparán 2 px y otros 3 px para aproximar el promedio de 2,5 px. No se aplica desenfoque.
+Mientras el Tirador apunta, su cámara local usa TIRADOR_AIM_ZOOM = 2.0. También es un factor entero: cada píxel ocupa un bloque uniforme de 2 × 2. Al soltar el disparo o cancelar el apuntado, la cámara vuelve a 3.0. La cámara de cada cliente es independiente; el zoom del Tirador no afecta a sus compañeros.
 
 2. Cómo se presenta el juego
-El canvas se dimensiona al ancho y alto visibles del navegador en píxeles CSS (js/main.js). El renderizador desactiva el suavizado y escala el mundo con CAMERA_ZOOM / PIXEL_SIZE = 2.5 (js/game.js).
+El canvas usa un buffer del tamaño de la ventana en píxeles CSS (js/main.js), y CSS conserva esa misma dimensión. El renderizador desactiva el suavizado y dibuja el mundo con la escala de cámara activa (js/game.js). Los factores 3 y 2 son enteros, así que el pixel art conserva bloques cuadrados uniformes en ambos estados.
 
-La cámara local sigue al jugador y se limita a los bordes del mapa. En cooperativo, si el jugador local cae, su cámara especta a un compañero vivo. El servidor elige al azar un objetivo compartido para los jugadores caídos y lo mantiene hasta que ese objetivo muere; entonces elige a otro superviviente. Si el jugador espectado revive, su cámara vuelve a seguirlo. Si no queda nadie vivo, termina la partida. Los jugadores vivos conservan su propia cámara; en un grupo de dos, coincide con la cámara del único superviviente.
+La cámara sigue al jugador y se limita a los bordes del mapa. En cooperativo, si el jugador cae, su cámara sigue a un compañero vivo. El HUD y el minimapa permanecen en pantalla y no reciben el zoom del mundo.
 
-El HUD y el minimapa se dibujan en la pantalla y no forman parte del zoom del mundo. Durante el espectado, el marcador de objetivo y el minimapa usan al compañero que sigue la cámara.
+3. Tamaño mostrado de referencias
+Zoom normal 3.0:
+- Píxel original de sprite: 1 × 1 px de mundo → 3 × 3 px CSS.
+- Jugador estándar de 24 × 24 px → 72 × 72 px CSS.
+- Baldosa de 40 × 40 px → 120 × 120 px CSS.
+- Invocador de 32 × 32 px → 96 × 96 px CSS.
+- Bastión de 40 × 40 px → 120 × 120 px CSS.
 
-3. Tamaño final de referencias del juego
-- Píxel original de un sprite: 1 × 1 px de mundo → 2,5 × 2,5 px CSS en promedio.
-- Jugador estándar y sus sprites de 24 × 24 px: se muestran a 60 × 60 px CSS.
-- Baldosa de suelo de 40 × 40 px: se muestra a 100 × 100 px CSS.
-- Invocador: arte y escala actuales de 32 × 32 px de mundo → 80 × 80 px CSS.
-- Bastión: arte y escala actuales de 40 × 40 px de mundo → 100 × 100 px CSS.
+Durante el apuntado del Tirador a 2.0:
+- Píxel original de sprite: 1 × 1 px de mundo → 2 × 2 px CSS.
+- Jugador estándar de 24 × 24 px → 48 × 48 px CSS.
+- Baldosa de 40 × 40 px → 80 × 80 px CSS.
 
-Las escalas actuales relativas al jugador estándar son 1,33× para el Invocador y 1,67× para el Bastión (js/characters/roles.js). La cámara aplica 2,5× a todos. El zoom de cámara no cambia las hitboxes.
+El zoom no modifica la hitbox ni las distancias de combate.
 
-4. Área del mundo visible
-El tamaño de mundo que cabe en la pantalla se calcula así:
-- ancho visible = canvas.width × PIXEL_SIZE / CAMERA_ZOOM
-- alto visible = canvas.height × PIXEL_SIZE / CAMERA_ZOOM
+4. Área de mundo visible
+El área visible se calcula con:
+- ancho = canvas.width × PIXEL_SIZE / zoom activo
+- alto = canvas.height × PIXEL_SIZE / zoom activo
 
-Ejemplos con PIXEL_SIZE = 1 y CAMERA_ZOOM = 2.5:
-- Ventana de 1920 × 1080 px CSS: se ven aproximadamente 768 × 432 px de mundo.
-- Ventana de 1366 × 768 px CSS: se ven aproximadamente 546 × 307 px de mundo.
+Ejemplos con PIXEL_SIZE = 1:
+- Ventana de 1920 × 1080, cámara normal 3.0: 640 × 360 px de mundo.
+- Ventana de 1366 × 768, cámara normal 3.0: aproximadamente 455 × 256 px.
+- Ventana de 1920 × 1080, apuntado del Tirador 2.0: 960 × 540 px de mundo.
+- Ventana de 1366 × 768, apuntado del Tirador 2.0: 683 × 384 px.
 
-5. Píxeles CSS y píxeles físicos
-El 250% se refiere a píxeles CSS, que son las unidades del canvas y el navegador. Con devicePixelRatio 1, un píxel original ocupa en promedio 2,5 × 2,5 píxeles físicos; con devicePixelRatio 2, el promedio es 5 × 5 píxeles físicos. La rasterización no entera puede alternar bloques de 2 y 3 píxeles CSS (o bloques equivalentes según DPR). El zoom del navegador y el escalado del sistema operativo cambian el tamaño físico visible, pero no CAMERA_ZOOM.
+5. Píxeles CSS y físicos
+Las dimensiones anteriores son píxeles CSS. Con devicePixelRatio 1, un píxel original ocupa 3 × 3 píxeles físicos en zoom normal y 2 × 2 al apuntar. Con devicePixelRatio 2, ocupa respectivamente 6 × 6 y 4 × 4 píxeles físicos. El zoom del navegador o del sistema puede alterar la dimensión física final.
 
 FUENTES EN EL CÓDIGO
-- js/palette.js: PIXEL_SIZE y CAMERA_ZOOM.
+- js/palette.js: PIXEL_SIZE, CAMERA_ZOOM y TIRADOR_AIM_ZOOM.
 - js/main.js: tamaño del canvas y su tamaño CSS.
-- js/game.js: escala del render, tamaño visible del mundo, límites de cámara y dibujo del marcador/minimapa.
-- js/camera.js: selección estable del objetivo de espectado.
-- js/coop-game.js: seguimiento de cámara para cada cliente cooperativo.
-- server/simulation.js: objetivo de espectado compartido en las instantáneas del servidor.
-- js/player.js y js/characters/roles.js: tamaños visuales de los roles.
-- js/map.js: dibujo del mapa y sus baldosas.
+- js/game.js: escala del render, área visible, apuntado y límites de cámara.
+- js/coop-game.js y server/simulation.js: cámaras y estado autoritativo en cooperativo.
+- js/player.js y js/characters/roles.js: dimensiones y escalas de personajes.
+
