@@ -20,6 +20,7 @@ for (const file of [
     'upgrades.js',
     'characters/roles.js',
     'bullet.js',
+    'enemy-projectile-pool.js',
     'player.js',
     'enemy.js',
     'enemies/esbirros/basic-enemy.js',
@@ -31,7 +32,7 @@ for (const file of [
 ]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 function newPlayer(member, x, y) {
@@ -64,7 +65,7 @@ function generateFloor(run) {
     run.map = map;
     run.enemies = [];
     run.playerBullets = [];
-    run.enemyBullets = [];
+    run.enemyProjectilePool.releaseAll(run.enemyBullets);
     run.summons = [];
     run.notices = [];
     run.visitedRooms = new Set([0]);
@@ -80,8 +81,12 @@ function generateFloor(run) {
     run.mapVersion++;
 }
 
-function createRun(members) {
-    const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [], summons: [], notices: [], visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0 };
+function createRun(members, reusableProjectilePool = null) {
+    const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [],
+        enemyProjectilePool: reusableProjectilePool || new Engine.EnemyProjectilePool(), summons: [], notices: [],
+        visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0 };
+    run.enemyProjectilePool.releaseAll(run.enemyBullets);
+    run.enemyProjectilePool.resetRunStats();
     for (const member of members) run.players.set(member.id, newPlayer(member, 0, 0));
     generateFloor(run);
     return run;
@@ -261,7 +266,7 @@ function stepRun(run, inputs) {
             if (distance < best) { target = candidate; best = distance; }
         }
         if (enemy instanceof Engine.CochinillaEsquinero) {
-            const bullets = enemy.update ? enemy.update(target, run.enemies, run.map, targets) : null;
+            const bullets = enemy.update ? enemy.update(target, run.enemies, run.map, targets, run.enemyProjectilePool) : null;
             if (bullets && Array.isArray(bullets)) run.enemyBullets.push(...bullets);
             // Authoritative laser damage: 6 HP per simulation tick of contact.
             // The client only replays snapshots, so nothing is applied twice.
@@ -274,7 +279,7 @@ function stepRun(run, inputs) {
             }
             continue;
         }
-        const bullets = enemy.update(target, run.enemies, run.map);
+        const bullets = enemy.update(target, run.enemies, run.map, targets, run.enemyProjectilePool);
         if (bullets && Array.isArray(bullets)) run.enemyBullets.push(...bullets);
     }
 
@@ -303,25 +308,30 @@ function stepRun(run, inputs) {
     }
     run.playerBullets = keptPlayerBullets;
 
-    const keptEnemyBullets = [];
-    for (const bullet of run.enemyBullets) {
+    let keptEnemyBulletCount = 0;
+    for (let i = 0; i < run.enemyBullets.length; i++) {
+        const bullet = run.enemyBullets[i];
         bullet.x += bullet.vx; bullet.y += bullet.vy;
         if (bullet.ignoreFrames > 0) bullet.ignoreFrames--;
-        if (!run.map.isWalkable(bullet.x, bullet.y)) continue;
-        const target = targets.find(p => p.alive !== false && p.health > 0 &&
-            !(p.id === bullet.ignorePlayerId && bullet.ignoreFrames > 0) &&
-            Engine.circleCollision(bullet.x, bullet.y, bullet.radius, p.x, p.y, p.radius));
-        if (target) {
-            const ricochetChance = target.enemyProjectileRicochetChance ?? 0;
-            const damageMultiplier = target.incomingDamageMultiplier ?? 1;
-            target.takeDamage(bullet.damage * damageMultiplier);
-            if (ricochetChance > 0 && Math.random() < ricochetChance) {
-                Engine.ricochetEnemyBulletTowardParty(bullet, target, players);
-                keptEnemyBullets.push(bullet);
+        let keep = run.map.isWalkable(bullet.x, bullet.y);
+        if (keep) {
+            const target = targets.find(p => p.alive !== false && p.health > 0 &&
+                !(p.id === bullet.ignorePlayerId && bullet.ignoreFrames > 0) &&
+                Engine.circleCollision(bullet.x, bullet.y, bullet.radius, p.x, p.y, p.radius));
+            if (target) {
+                const ricochetChance = target.enemyProjectileRicochetChance ?? 0;
+                const damageMultiplier = target.incomingDamageMultiplier ?? 1;
+                target.takeDamage(bullet.damage * damageMultiplier);
+                keep = ricochetChance > 0 && Math.random() < ricochetChance;
+                if (keep) Engine.ricochetEnemyBulletTowardParty(bullet, target, players);
             }
-        } else if (bullet.x > -50 && bullet.x < run.map.width + 50 && bullet.y > -50 && bullet.y < run.map.height + 50) keptEnemyBullets.push(bullet);
+        }
+        keep = keep && bullet.x > -50 && bullet.x < run.map.width + 50 &&
+            bullet.y > -50 && bullet.y < run.map.height + 50;
+        if (keep) run.enemyBullets[keptEnemyBulletCount++] = bullet;
+        else run.enemyProjectilePool.release(bullet);
     }
-    run.enemyBullets = keptEnemyBullets;
+    run.enemyBullets.length = keptEnemyBulletCount;
 
     run.enemies = run.enemies.filter(enemy => enemy.alive);
     for (const room of run.map.rooms) {
@@ -386,4 +396,5 @@ function applyUpgrade(run, playerId, upgradeId) {
     return true;
 }
 
-module.exports = { createRun, stepRun, snapshot, applyUpgrade };
+module.exports = { createRun, stepRun, snapshot, applyUpgrade,
+    getProjectilePoolStats: run => run?.enemyProjectilePool?.getStats() || null };

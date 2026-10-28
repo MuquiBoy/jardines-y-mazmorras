@@ -60,7 +60,7 @@ class ShooterEnemy extends Enemy {
         this.drawHealth(ctx, Math.max(width, height));
     }
 
-    update(player, enemies, map) {
+    update(player, enemies, map, allTargets = null, projectilePool = null) {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -81,7 +81,7 @@ class ShooterEnemy extends Enemy {
         this.shootTimer--;
         if (this.shootTimer <= 0) {
             this.shootTimer = this.shootCooldown;
-            return [this.shootTowardPlayer(Math.atan2(dy, dx), 2.5)];
+            return [this.shootTowardPlayer(Math.atan2(dy, dx), 2.5, projectilePool)];
         }
         return [];
     }

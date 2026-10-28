@@ -34,6 +34,7 @@
     const ui = new UI(canvas, minimapCanvas);
     const game = new Game(canvas, ui, audio);
     window.abyssGame = game;
+    let retryLoadingAction = null;
 
     // Music tracks are optional: drop files in audio/ and they play, otherwise
     // the game runs with effects only.
@@ -51,22 +52,43 @@
     window.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
     window.addEventListener('keydown', unlockAudio, { once: true, capture: true });
 
-    function startGame(characterId = 'pistolero', testRoom = false) {
+    async function startGame(characterId = 'pistolero', testRoom = false) {
         // Browsers start an AudioContext suspended; only a user gesture may
         // resume it, so this has to happen here rather than at load.
         audio.unlock();
-        RoomTemplateLibrary.load().then(() => {
+        retryLoadingAction = () => startGame(characterId, testRoom);
+        ui.showLoading();
+        try {
+            // Let the browser paint the cover before allocating the pool or
+            // waiting for room templates to finish loading.
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            await Promise.all([
+                RoomTemplateLibrary.load(),
+                Promise.resolve().then(() => game.prepareForNewRun())
+            ]);
             audio.ensureMusic(0);
             requestFullscreenIfTouch();
             if (touch) touch.releaseAll();
             game.start(characterId, testRoom);
             game.startLoop();
-        });
+            ui.hideLoading();
+            retryLoadingAction = null;
+        } catch (error) {
+            console.error('No se pudo preparar la nueva partida.', error);
+            ui.showLoadingError('No se pudieron preparar los recursos. Comprueba la conexión o inténtalo de nuevo.');
+        }
         // Blur any focused element so keyboard events reach window listeners
-        if (document.activeElement) document.activeElement.blur();
-        // Also set focus to the canvas itself to ensure key events are captured
-        canvas.focus();
+        if (!ui.loadingScreen?.classList.contains('has-error')) {
+            if (document.activeElement) document.activeElement.blur();
+            // Also set focus to the canvas itself to ensure key events are captured
+            canvas.focus();
+        }
     }
+
+    document.getElementById('loading-retry').addEventListener('click', () => {
+        if (retryLoadingAction) retryLoadingAction();
+        else if (window.coopGame?.retryStart) window.coopGame.retryStart();
+    });
 
     // Wire up button handlers
     document.getElementById('start-btn').addEventListener('click', (e) => {
@@ -76,7 +98,11 @@
 
     document.getElementById('restart-btn').addEventListener('click', (e) => {
         e.preventDefault();
-        if (game.coopMode) window.coopClient.send({ type: 'restart' });
+        if (game.coopMode) {
+            window.coopClient.starting = true;
+            game.ui.showLoading();
+            window.coopClient.send({ type: 'restart' });
+        }
         else startGame();
     });
 

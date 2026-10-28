@@ -8,6 +8,7 @@
     let renderStarted = false;
     let templatesReady = false;
     let pendingSnapshot = null;
+    let retrySnapshot = null;
     let sendTimer = null;
     const seenNoticeIds = new Set();
     // Level-up flow: the server owns pendingLevelUps. offeredOwed is the count
@@ -216,27 +217,48 @@
         start(initialSnapshot) {
             game = window.abyssGame;
             if (!game) return;
+            retrySnapshot = initialSnapshot;
+            game.ui.showLoading();
             // The online flow starts from a WebSocket message, not from a
             // button, so it never went through startGame(). Unlock here too;
             // the page-wide gesture listener is what actually resumes the
             // context when the browser requires a user gesture.
             game.audio.unlock();
             return RoomTemplateLibrary.load().then(() => {
-            templatesReady = true;
-            game.coopMode = true;
-            game.loopRunning = false;
-            game.audio.ensureMusic(0);
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('gameover-screen').classList.add('hidden');
-            applySnapshot(pendingSnapshot || initialSnapshot);
-            pendingSnapshot = null;
-            if (!renderStarted) { renderStarted = true; requestAnimationFrame(renderFrame); }
-            if (sendTimer) clearInterval(sendTimer);
-            sendTimer = setInterval(() => {
-                if (game?.state === 'PLAYING') window.coopClient.send(readMovement());
-            }, 50);
-            document.getElementById('game').focus();
+                templatesReady = true;
+                game.clearEnemyProjectiles(); // only clears any old local run before remote snapshots take over
+                game.input.keys = {};
+                game.input.mouseDown = false;
+                game.input.moveX = 0;
+                game.input.moveY = 0;
+                game.input.aimActive = false;
+                game.coopMode = true;
+                game.loopRunning = false;
+                game.audio.ensureMusic(0);
+                document.getElementById('start-screen').classList.add('hidden');
+                document.getElementById('gameover-screen').classList.add('hidden');
+                applySnapshot(pendingSnapshot || initialSnapshot);
+                pendingSnapshot = null;
+                game.ui.hideLoading();
+                if (!renderStarted) { renderStarted = true; requestAnimationFrame(renderFrame); }
+                if (sendTimer) clearInterval(sendTimer);
+                sendTimer = setInterval(() => {
+                    if (game?.state === 'PLAYING') window.coopClient.send(readMovement());
+                }, 50);
+                retrySnapshot = null;
+                document.getElementById('game').focus();
+            }).catch(error => {
+                console.error('No se pudieron preparar los recursos para la partida en línea.', error);
+                game.ui.showLoadingError('No se pudieron cargar las salas de la partida. Comprueba la conexión e inténtalo de nuevo.');
             });
+        },
+        retryStart() {
+            if (retrySnapshot) return this.start(retrySnapshot);
+            if (window.coopClient?.gameEnabled) {
+                window.coopClient.starting = true;
+                game?.ui.showLoading();
+                window.coopClient.send({ type: 'restart' });
+            }
         },
         applySnapshot,
         noteUpgradeSent

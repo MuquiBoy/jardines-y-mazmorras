@@ -58,7 +58,12 @@
         selectedCharacter: 'pistolero',
         socket: null,
         send(data) { if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(data)); },
-        requestStart() { this.send({ type: 'start' }); }
+        requestStart() {
+            this.starting = true;
+            window.abyssGame?.ui.showLoading();
+            this.send({ type: 'start' });
+        },
+        starting: false
     };
 
     function connect() {
@@ -78,13 +83,21 @@
         socket.addEventListener('message', event => {
             let message;
             try { message = JSON.parse(event.data); } catch (_) { return; }
-            if (message.type === 'error') { status.textContent = message.message; return; }
+            if (message.type === 'error') {
+                status.textContent = message.message;
+                if (client.starting && client.gameEnabled) window.abyssGame?.ui.showLoadingError(message.message);
+                else window.abyssGame?.ui.hideLoading();
+                client.starting = false;
+                return;
+            }
             if (message.type === 'welcome') { client.playerId = message.playerId; return; }
             if (message.type === 'game_start') {
                 client.gameEnabled = true;
                 client.phase = 'playing';
+                client.starting = false;
                 screen.classList.add('hidden');
                 document.getElementById('net-game-status').textContent = 'Conectado';
+                window.abyssGame?.ui.showLoading();
                 window.coopGame.start(message.snapshot);
                 return;
             }

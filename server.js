@@ -94,10 +94,22 @@ function broadcast(room) {
 }
 
 function startSharedRun(room) {
-    room.run = Simulation.createRun([...room.players.values()]);
-    room.phase = 'playing';
-    const initial = { type: 'game_start', snapshot: Simulation.snapshot(room.run) };
-    for (const player of room.players.values()) send(player.socket, initial);
+    const previousRun = room.run;
+    try {
+        const reusablePool = previousRun?.enemyProjectilePool || null;
+        if (reusablePool) reusablePool.releaseAll(previousRun.enemyBullets);
+        room.run = Simulation.createRun([...room.players.values()], reusablePool);
+        room.phase = 'playing';
+        const initial = { type: 'game_start', snapshot: Simulation.snapshot(room.run) };
+        for (const player of room.players.values()) send(player.socket, initial);
+    } catch (error) {
+        console.error('No se pudo preparar la partida compartida.', error);
+        room.run = previousRun;
+        room.phase = previousRun ? 'ended' : 'lobby';
+        for (const player of room.players.values()) {
+            send(player.socket, { type: 'error', message: 'No se pudo preparar la mazmorra. Intenta iniciar de nuevo.' });
+        }
+    }
 }
 
 setInterval(() => {

@@ -73,6 +73,32 @@ canvas#game {
     pointer-events: none;
 }
 
+/* Small retro startup cover; progress is animated because no reliable percent exists. */
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 250;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(5, 8, 5, .97);
+    color: var(--bone);
+    text-align: center;
+}
+.loading-screen.hidden { display: none; }
+.loading-screen .hidden { display: none; }
+.loading-screen.has-error .loading-spinner { display: none; }
+.loading-card { display: grid; justify-items: center; gap: 1.4rem; width: min(520px, 92vw); }
+.loading-card h1 { color: #9dff31; font: 700 clamp(.8rem, 2vw, 1rem) var(--font-pixel); line-height: 1.8; }
+.loading-card p { font: 700 .72rem Arial, sans-serif; line-height: 1.6; }
+.loading-spinner { display: flex; gap: 8px; height: 16px; align-items: center; }
+.loading-spinner i { width: 10px; height: 10px; background: #9dff31; opacity: .3; animation: loading-pulse .8s steps(2, end) infinite; }
+.loading-spinner i:nth-child(2) { animation-delay: .2s; }
+.loading-spinner i:nth-child(3) { animation-delay: .4s; }
+.loading-error { color: #ff886f; max-width: 440px; }
+.loading-card .btn { margin-top: .2rem; }
+@keyframes loading-pulse { 50% { opacity: 1; transform: translateY(-3px); } }
+
 /* ===== Start screen ===== */
 .game-title {
     font-size: clamp(1.4rem, 5vw, 3.2rem);

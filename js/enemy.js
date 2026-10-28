@@ -279,12 +279,15 @@ class Enemy {
         return false;
     }
 
-    shootTowardPlayer(angle, speed = 1.5) {
+    shootTowardPlayer(angle, speed = 1.5, projectilePool = null) {
         const v = speed * this.bulletSpeedScale;
         // Universal projectile rules:
         // - standard enemy projectile: 6 HP
         // - boss special projectile: 12 HP (marked via bullet.type === 'boss-special')
         const dmg = (this.type === 'boss') ? 12 : 6;
+        if (projectilePool && typeof projectilePool.acquire === 'function') {
+            return projectilePool.acquire(this, angle, speed);
+        }
         return {
             x: this.x,
             y: this.y,
@@ -294,7 +297,11 @@ class Enemy {
             radius: 6,
             color: this.color,
             speed: v,
-            projectileType: (this.type === 'boss') ? 'boss-special' : 'standard'
+            projectileType: (this.type === 'boss') ? 'boss-special' : 'standard',
+            faction: 'enemy',
+            ownerId: this.id ?? null,
+            enemyId: this.id ?? null,
+            active: true
         };
     }
 
@@ -446,286 +453,245 @@ class CochinillaPerforamuros extends Enemy {
             for (let f = 0; f < frameCount; f++) {
                 const frameBytes = data.getUint32(frameOffset, true), chunkCount = data.getUint16(frameOffset + 6, true);
                 durations.push(data.getUint16(frameOffset + 8, true) || 100);
-                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true);
-                const ctx = canvas.getContext('2d'); let chunkOffset = frameOffset + 16;
-                for (let c = 0; c < chunkCount; c++) {
-                    const size = data.getUint32(chunkOffset, true), type = data.getUint16(chunkOffset + 4, true), q = chunkOffset + 6;
-                    if (type === 0x2005 && data.getUint16(q + 7, true) === 2) {
-                        const x = data.getInt16(q + 2, true), y = data.getInt16(q + 4, true);
-                        const w = data.getUint16(q + 16, true), h = data.getUint16(q + 18, true);
-                        const start = q + 20, end = chunkOffset + size;
-                        const stream = new Blob([new Uint8Array(data.buffer, start, end - start)]).stream().pipeThrough(new DecompressionStream('deflate'));
-                        const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
-                        ctx.putImageData(new ImageData(rgba, w, h), x, y);
-                    }
-                    chunkOffset += size;
-                }
-                frames.push(canvas); frameOffset += frameBytes;
-            }
-            return { frames, durations };
-        })();
-        try {
-            const animation = await CochinillaPerforamuros.walkPromise;
-            this.walkFrames = CochinillaPerforamuros.walkFrames = animation.frames;
-            CochinillaPerforamuros.walkFrameDurations = animation.durations;
-        }
-        catch (error) { CochinillaPerforamuros.walkPromise = null; console.warn('No se pudo cargar la caminata Aseprite de la Cochinilla.', error); }
-    }
-    async loadChargeFrames() {
-        if (CochinillaPerforamuros.chargeFrames) { this.chargeFrames = CochinillaPerforamuros.chargeFrames; return; }
-        if (typeof DecompressionStream === 'undefined') return;
-        if (!CochinillaPerforamuros.chargePromise) CochinillaPerforamuros.chargePromise = (async () => {
-            const response = await fetch('00-sprites/enemigos/cochinilla_perforamuros/charging_cochinilla_perforamuros.aseprite');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = new DataView(await response.arrayBuffer());
-            const frameCount = data.getUint16(6, true), frames = [];
-            let frameOffset = 128;
-            for (let f = 0; f < frameCount; f++) {
-                const frameBytes = data.getUint32(frameOffset, true), chunkCount = data.getUint16(frameOffset + 6, true);
-                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true);
-                const ctx = canvas.getContext('2d'); let chunkOffset = frameOffset + 16;
-                for (let c = 0; c < chunkCount; c++) {
-                    const size = data.getUint32(chunkOffset, true), type = data.getUint16(chunkOffset + 4, true), q = chunkOffset + 6;
-                    if (type === 0x2005 && data.getUint16(q + 7, true) === 2) {
-                        const x = data.getInt16(q + 2, true), y = data.getInt16(q + 4, true);
-                        const w = data.getUint16(q + 16, true), h = data.getUint16(q + 18, true);
-                        const stream = new Blob([new Uint8Array(data.buffer, q + 20, chunkOffset + size - q - 20)]).stream().pipeThrough(new DecompressionStream('deflate'));
-                        const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
-                        ctx.putImageData(new ImageData(rgba, w, h), x, y);
-                    }
-                    chunkOffset += size;
-                }
-                frames.push(canvas); frameOffset += frameBytes;
-            }
-            return frames;
-        })();
-        try { this.chargeFrames = CochinillaPerforamuros.chargeFrames = await CochinillaPerforamuros.chargePromise; }
-        catch (error) { CochinillaPerforamuros.chargePromise = null; console.warn('No se pudo cargar la animaci√≥n de carga de la Cochinilla.', error); }
-    }
-    update() {
-        const r = this.room, inset = 13;
-        const previousPhase = this.phase;
-        if (this.phase === 'move') {
-            this.animationTick++;
-            if (this.wall === 'left' || this.wall === 'right') {
-                this.y += this.speed * this.moveSign;
-                if (this.y < r.y + inset || this.y > r.y + r.h - inset) { this.y = Math.max(r.y + inset, Math.min(r.y + r.h - inset, this.y)); this.moveSign *= -1; }
-            } else {
-                this.x += this.speed * this.moveSign;
-                if (this.x < r.x + inset || this.x > r.x + r.w - inset) { this.x = Math.max(r.x + inset, Math.min(r.x + r.w - inset, this.x)); this.moveSign *= -1; }
-            }
-            if (--this.phaseTimer <= 0) { this.phase = 'warning'; this.phaseTimer = this.warnFrames; this.lockedX = this.x; this.lockedY = this.y; }
-        } else {
-            this.x = this.lockedX; this.y = this.lockedY;
-            if (--this.phaseTimer <= 0) {
-                if (this.phase === 'warning') { this.phase = 'beam'; this.phaseTimer = this.beamFrames; }
-                else if (this.phase === 'beam') { this.phase = 'recover'; this.phaseTimer = this.recoverFrames; }
-                else { this.phase = 'move'; this.phaseTimer = 180 + Math.floor(Math.random() * 241); }
-            }
-        }
-        return this.phase !== previousPhase ? this.phase : null;
-    }
-    takeDamage(amount) {
-        // The shell is vulnerable only while the laser is actively exposed.
-        if (!this.alive || this.phase !== 'beam') return false;
-        super.takeDamage(amount);
-        return true;
-    }
-    touchesBeam(p) {
-        if (this.phase !== 'beam') return false;
-        const horizontal = this.wall === 'left' || this.wall === 'right';
-        return horizontal ? Math.abs(p.y - this.y) <= this.beamWidth / 2 + p.radius && p.x + p.radius >= this.room.x && p.x - p.radius <= this.room.x + this.room.w
-            : Math.abs(p.x - this.x) <= this.beamWidth / 2 + p.radius && p.y + p.radius >= this.room.y && p.y - p.radius <= this.room.y + this.room.h;
-    }
-    draw(ctx) {
-        const horizontal = this.wall === 'left' || this.wall === 'right';
-        const sx = this.wall === 'left' ? this.room.x : this.wall === 'right' ? this.room.x + this.room.w : this.x;
-        const sy = this.wall === 'top' ? this.room.y : this.wall === 'bottom' ? this.room.y + this.room.h : this.y;
-        if (this.phase === 'warning' || this.phase === 'beam') {
-            ctx.save(); ctx.globalAlpha = this.phase === 'warning' ? 0.55 : 0.9;
-            ctx.strokeStyle = this.phase === 'warning' ? '#fff5d6' : '#ff402c'; ctx.lineWidth = this.beamWidth;
-            ctx.beginPath(); ctx.moveTo(horizontal ? sx : this.x, horizontal ? this.y : sy);
-            ctx.lineTo(horizontal ? (this.wall === 'left' ? this.room.x + this.room.w : this.room.x) : this.x,
-                horizontal ? this.y : (this.wall === 'top' ? this.room.y + this.room.h : this.room.y)); ctx.stroke(); ctx.restore();
-        }
-        const sprite = CochinillaPerforamuros.sprites;
-        let walkImage = null;
-        if (this.walkFrames?.length) {
-            const durations = CochinillaPerforamuros.walkFrameDurations || this.walkFrames.map(() => 100);
-            const cycleMs = durations.reduce((sum, duration) => sum + duration, 0);
-            // Match the Aseprite preview playback speed shown for this revision.
-            let frameMs = (this.animationTick * 1000 / 60 * 0.25) % cycleMs;
-            let frameIndex = 0;
-            while (frameIndex < durations.length - 1 && frameMs >= durations[frameIndex]) frameMs -= durations[frameIndex++];
-            walkImage = this.walkFrames[frameIndex];
-        }
-        // Keep a solid shell sprite under the short charge overlay. The
-        // charging art is mostly transparent and looked like the enemy blinked out.
-        // During the attack, show the attack PNG alone for the full beam phase.
-        const baseImage = this.phase === 'beam' ? sprite?.attack : (walkImage || sprite?.attack);
-        const chargeFrame = this.chargeFrames?.length
-            ? this.chargeFrames[Math.min(this.chargeFrames.length - 1, Math.floor((this.warnFrames - this.phaseTimer) * this.chargeFrames.length / this.warnFrames))]
-            : sprite?.charging;
-        const actionImage = this.phase === 'warning' ? chargeFrame : null;
-        const wallRotation = { top: 0, right: Math.PI / 2, bottom: Math.PI, left: -Math.PI / 2 }[this.wall] || 0;
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(wallRotation);
-        let drewSprite = false;
-        if (baseImage?.complete !== false && baseImage && (baseImage.naturalWidth || baseImage.width)) {
-            ctx.drawImage(baseImage, -12, -8, 24, 16); drewSprite = true;
-        }
-        if (actionImage?.complete !== false && actionImage && (actionImage.naturalWidth || actionImage.width)) {
-            ctx.drawImage(actionImage, -12, -8, 24, 16); drewSprite = true;
-        }
-        if (!drewSprite) this.drawBody(ctx, '#705843', '#e1c49b', 24);
-        ctx.restore();
-        this.drawHealth(ctx, 24);
-    }
-}
+                const canvas = document.createElement('canvas'); canvas.width = data.getUint16(8, true); canvas.height = data.getUint16(10, true)=yÎ]≠¢Gß≤⁄Óù∆≠y‹ 
+H€‹Ÿ\»H€‹ú√BàÀ»€òŸHH^Y\à\»€X\àŸàHô\⁄€[ô€õH[ÉBàÀ»‹]€ú»H[ô[ZY\À€»õÿõŸHöY⁄»õ›Y⁄H€‹ùÿ^KÉBàÀ»Hõ‹‹»[ŸX[»^X›HZŸHH€€Xò]õ€€N»]√BàÀ»€‹ú»ô[‹[à⁄[àHõ‹‹»Y\»
+€êõ‹‹—YôX]Y
+KÉBàô]‘õ€€Kõÿ⁄‘[ô[ô»HùYN√BàH[ŸH√Bà\Àú‹]€îõ€€Q[ô[ZY\ ô]‘õ€€JN√Bàô]‘õ€€Kú‹]€ôYHùYN√BàCBàCBà\Àò›\úô[ùõ€€HHô]‘õ€€N√BàCBÉBàÀ»⁄X⁄»Yà^Y\à\»]^]BàYà
+\ÀõX\ô^]
+H√Bà€€ú›^]H\ÀõX\ô^]√Bà€€ú›H\Àú^Y\ãûH^]û√Bà€€ú›HH\Àú^Y\ãûHH^]ûN√Bà€€ú›\›HX]ú‹\ù
+
+à
+»H
+àJN√BÉBàYà
+\›L
+H√BàÀ»H^]€õH^\›»€òŸHHõ‹‹»\»XY€»ôXX⁄[ô»]\√BàÀ»õ€Ÿà[õ›Y⁄8†%õ»õ€€K]\H⁄X⁄»ôYYY
+[ôHõ€€H]BàÀ»‹[ú»[à\»⁄]]ô\àõ€€HH^Y\àÿ\»›[ô[ô»[äKÉBà√BàÀ»›X\ôà⁄⁄\ô]»ò[ú⁄][€ú»⁄[H€ôH\»[ôXYH[àõŸ‹ô\‹√BàYà
+\Àùò[ú⁄][€ö[ô Hô]\õé√BÉBà\Àùò[ú⁄][€ö[ô»HùYN√Bà\Àùò[ú⁄][€ê[HH√Bà\Àú›]HH	’êSî“US”íSë…Œ√BÉBàÀ»[ö[X]HòYCBà€€ú›òYR[ù\ùò[HŸ][ù\ùò[
 
 
-// ===== BossEnemy ‚Äî Boss =====
-class BossEnemy extends Enemy {
-    constructor(x, y) {
-        super(x, y, 'boss');
-        this.health = 500;
-        this.maxHealth = 500;
-        this.speed = 0.4;
-        this.damage = 20;
-        this.radius = 40;
-        this.color = '#8b0000';
-        this.xpValue = 200;
-        this.shootCooldown = 30;
-        this.phase = 0;
-        this.phaseTimer = 0;
-        this.phaseDuration = 100; // frames per phase
-        this.centerX = x;
-        this.centerY = y;
-        this.driftAngle = 0;
-        this.orbitRadiusX = 80;
-        this.orbitRadiusY = 60;
-        this.room = null;
-        this._driftStall = 0;
-    }
+HOà√Bà\Àùò[ú⁄][€ê[H
+œHåN√BàYà
+\Àùò[ú⁄][€ê[HèHJH√Bà€X\í[ù\ùò[
+òYR[ù\ùò[
+N√Bà\Àôõ€‹ä Œ√Bà\Àò]Y[Àô\ÿŸ[ô
 
-    /**
-     * Drift target that still fits the boss body. The orbit circle is shrunk
-     * until the 40px footprint is on walkable floor, and (when the room is
-     * known) inside the boss hall. This keeps the desired path away from red
-     * wall lines and blue obstacles instead of only stopping after impact.
-     */
-    _orbitTarget(map) {
-        if (!map) return {
-            x: this.centerX + Math.cos(this.driftAngle) * this.orbitRadiusX,
-            y: this.centerY + Math.sin(this.driftAngle) * this.orbitRadiusY
-        };
-        const room = this.room || map.bossRoom || null;
-        const cos = Math.cos(this.driftAngle), sin = Math.sin(this.driftAngle);
-        for (let scale = 1; scale >= 0.2; scale -= 0.1) {
-            const x = this.centerX + cos * this.orbitRadiusX * scale;
-            const y = this.centerY + sin * this.orbitRadiusY * scale;
-            if (!map.canOccupy(x, y, this.radius)) continue;
-            if (room && map.pointInRoom(x, y) !== room) continue;
-            return { x, y };
-        }
-        return { x: this.x, y: this.y };
-    }
+N√Bà\Àò]Y[Àõô^òX⁄ 
+N√Bà\ÀôŸ[ô\ò]SX\
 
-    /** Map-aware orbit movement; never assigns a position without collision. */
-    _drift(map) {
-        const target = this._orbitTarget(map);
-        if (!map) { this.x = target.x; this.y = target.y; return; }
-        if (this.steerTo(target.x, target.y, map, this.speed)) {
-            this._driftStall = 0;
-            return;
-        }
-        // Blocked by a wall or obstacle: turn the orbit and try again instead
-        // of pressing into the same corner forever.
-        if (++this._driftStall > 12) {
-            this._driftStall = 0;
-            this.driftAngle += Math.PI / 2;
-        }
-    }
+N√Bà\ÀùZKôò]”õ›YöXÿ][€ä\Àò›ì”‘à	›\Àôõ€‹üX
+N√Bà\Àùò[ú⁄][€ê[HHN√BÉBà€€ú›òYPòX⁄»HŸ][ù\ùò[
 
-    update(player, enemies, map) {
-        // Drift in a slow circle around center, but move through the same
-        // collision grid as every other enemy: the boss is far too large to
-        // be teleported across authored red walls or blue obstacles.
-        this.driftAngle += 0.01;
-        this._drift(map);
 
-        // Phase changes
-        this.phaseTimer++;
-        if (this.phaseTimer >= this.phaseDuration) {
-            this.phaseTimer = 0;
-            this.phase = (this.phase + 1) % 3;
-        }
+HOà√Bà\Àùò[ú⁄][€ê[HOHåN√BàYà
+\Àùò[ú⁄][€ê[HH
+H√Bà\Àùò[ú⁄][€ö[ô»Hò[ŸN√Bà\Àùò[ú⁄][€ê[HH√Bà\Àú›]HH	‘VRSë…Œ√Bà€X\í[ù\ùò[
+òYPòX⁄ N√BàÀ»ô\›\ùHÿ[YH€‹€»^Y\àÿ[à€€ù[ùYH^Z[ô√Bà\Àú›\ù€‹
 
-        // Attack based on phase
-        this.shootTimer--;
-        if (this.shootTimer <= 0) {
-            this.shootTimer = this.shootCooldown;
-            const bullets = [];
-            const angleToPlayer = Math.atan2(player.y - this.y, player.x - this.x);
+N√BàCBàKMäN√BàCBàKMäN√BàCBàCBàCBàÀ»òX⁄»€X\ôYõ€€\√Bàõ‹à
+€€ú›õ€€HŸà\ÀõX\úõ€€\ H√BàÀ»Hõ€€HH^Y\à\»ô]ô\à[ù\ôY\€â›ò€X\ôYà8†%]	‹»[ùö\⁄]YÉBàYà
+õ€€Kú‹]€ôY	âà\õ€€Kò€X\ôY	âà\Àö\‘õ€€P€X\ôY
+õ€€JJH√Bà\ÀõX\ò€X\îõ€€Jõ€€JN√Bà\Àúõ€€\–€X\ôY
+ Œ√BàCBàCBà\Àù\]Tõ€€Sÿ⁄‹ 
+N√BàCBÉBà äà€‹ŸH€€Xò]\õ€€H€‹ú»€òŸHH^Y\à\»ÿYô[H[ú⁄YKà
+ã√Bà\]Tõ€€Sÿ⁄‹ 
+H√Bà€€ú›õÿ⁄Ÿ\ú»H\Àô[ô[ZY\Àôö[\ä[ô[^HOà[ô[^Kò[]ôJN√Bàõ‹à
+€€ú›õ€€HŸà\ÀõX\úõ€€\ H√BàYà
+\õ€€Kõÿ⁄‘[ô[ô»õ€€Kõÿ⁄ŸYõ€€Kò€X\ôY
+H€€ù[ùYN√BàYà
+]\ÀõX\òÿ[ìÿ⁄‘õ€€Jõ€€K›\Àú^Y\óKõÿ⁄Ÿ\ú JH€€ù[ùYN√Bà\ÀõX\õÿ⁄‘õ€€Jõ€€JN√BàÀ»Hõ€€H\»ŸX[Yö\ú›»H[ò€›[ù\à›\ù»ôZ[ô€‹ŸYBàÀ»€‹úÀà‹]€ôY[€»ŸY\»H[\Hõ€€Húõ€HôZ[ô»€›[ùYBàÀ»\»€X\ôY\ö[ô»Húò[Y\»ôYõ‹ôHHÿ⁄»[ôÀÉBàYà
+\õ€€Kú‹]€ôY
+H√Bà\Àú‹]€îõ€€Q[ô[ZY\ õ€€JN√Bàõ€€Kú‹]€ôYHùYN√BàCBàCBàCBÉBà äà⁄X⁄»Yà[[ô[ZY\»[àHõ€€H\ôHXYà
+ã√Bà\‘õ€€P€X\ôY
+õ€€JH√Bà€€ú›õ€€R[ô^H\ÀõX\úõ€€\Àö[ô^Ÿäõ€€JN√Bàõ‹à
+€€ú›[ô[^HŸà\Àô[ô[ZY\ H√BàYà
+Y[ô[^Kò[]ôJH€€ù[ùYN√BàYà
+[ô[^Kúõ€€R[ô^OOH[ôYö[ôY
+H√BàYà
+[ô[^Kúõ€€R[ô^OOHõ€€R[ô^
+Hô]\õàò[ŸN√Bà€€ù[ùYN√BàCBàYà
+[ô[^KûèHõ€€Kû	âà[ô[^Kûõ€€Kû
+»õ€€Kù»	âÉBà[ô[^KûHèHõ€€KûH	âà[ô[^KûHõ€€KûH
+»õ€€Kö
+H√Bàô]\õàò[ŸN√BàCBàCBàô]\õàùYN√BàCBÉBà äàY[ô]Y]YH]ô\ûH]ô[‹õ‹‹ŸYõ›€õHHö\ú›à
+ã√Bà]ÿ\ô
+[[›[ù
+H√BàYà
+J[[›[ùà
+JHô]\õà√Bà€€ú›]ô[»H\Àú^Y\ãôÿZ[ñ
+[[›[ù
+N√Bà\Àú[ô[ô”]ô[\»
+œH]ô[Œ√Bàô]\õà]ô[Œ√BàCBÉBà äà[ôH]ô[\8†%⁄›»\‹òYHŸ[X›[€ãà
+ã√Bà[ôS]ô[\
 
-            switch (this.phase) {
-                case 0: // Spiral ‚Äî 8 bullets
-                    for (let i = 0; i < 8; i++) {
-                        bullets.push(this.shootTowardPlayer(
-                            (Math.PI * 2 / 8) * i + this.phaseTimer * 0.05,
-                            1.25
-                        ));
-                    }
-                    break;
-                case 1: // Aimed burst ‚Äî 3 fast bullets
-                    for (let i = -1; i <= 1; i++) {
-                        bullets.push(this.shootTowardPlayer(angleToPlayer + i * 0.2, 2.5));
-                    }
-                    break;
-                case 2: // Circle burst ‚Äî 12 slow bullets
-                    for (let i = 0; i < 12; i++) {
-                        bullets.push(this.shootTowardPlayer(
-                            (Math.PI * 2 / 12) * i,
-                            1
-                        ));
-                    }
-                    break;
-            }
-            return bullets;
-        }
-        return [];
-    }
+H√Bà\Àú›]HH	”UëS’T	Œ√Bà\Àò]Y[Àõ]ô[\
 
-    draw(ctx) {
-        const r = this.radius;
+N√BÉBàÀ»X⁄»»ò[ô€H\‹òY\√Bà€€ú›⁄YôõYHÀããù\Àù\‹òY\◊Kú€‹ù
 
-        // Slab body with a pulsing core keyed to the current phase
-        pixelRect(ctx, this.x, this.y, r * 2 + 8, r * 2 + 8, PALETTE.void);
-        pixelRect(ctx, this.x, this.y, r * 2, r * 2, PALETTE.boss);
-        pixelRect(ctx, this.x, this.y, r, r, PALETTE.bossLit);
 
-        const pulse = 6 + Math.sin(this.driftAngle * 6) * 3;
-        pixelRect(ctx, this.x, this.y, pulse, pulse, PALETTE.hud);
+HOàX]úò[ô€J
+HHçJN√Bà€€ú›⁄⁄XŸ\»H⁄YôõYú€XŸJ N√BÉBà\ÀúŸ[X›Y\‹òYHHù[√BÉBà\ÀùZKú⁄›”]ô[\
+⁄⁄XŸ\À
+\‹òYJHOà√Bà\ÀúŸ[X›Y\‹òYHH\‹òYN√BàJN√BàCBÉBà äà\HHŸ[X›Y\‹òYKà
+ã√Bà\U\‹òYJ
+H√BàYà
+]\ÀúŸ[X›Y\‹òYJH√BàÀ»⁄›»HúöYYàõ›YöXÿ][€à]õ»\‹òYHÿ\»Ÿ[X›YBà\ÀùZKôò]”õ›YöXÿ][€ä\Àò›	”õ»\‹òYHŸ[X›YI N√Bàô]\õé√BàCBÉBàYà
+\Àò€€‹[ŸJH√BàÀ»HŸ\ùô\à›€ú»H^Y\â‹»›]»[à€À[‹àŸ[ôH⁄‹Ÿ[àYBàÀ»[ô]H]]‹ö]]]ôHù[à\H]»Hô^€ò\⁄›⁄›‹√BàÀ»Hô]»ù[Xô\ú»[ô€X\ú»Hô^]Y]YY]ô[ÉBà⁄[ô›Àò€€‹ÿ[YOÀõõ›U\‹òYTŸ[ù
 
-        // Corner studs
-        for (const [sx, sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
-            pixelRect(ctx, this.x + sx * r, this.y + sy * r, 8, 8, PALETTE.bossLit);
-        }
+N√Bà⁄[ô›Àò€€‹€Y[ùÀúŸ[ô
+»\Nà	›\‹òYIÀ\‹òYRYà\ÀúŸ[X›Y\‹òYKöYJN√Bà\ÀúŸ[X›Y\‹òYHHù[√Bà\ÀùZKöYS]ô[\
 
-        // Phase pips
-        for (let i = 0; i < 3; i++) {
-            pixelRect(ctx, this.x - 14 + i * 14, this.y - r - 20, 8, 8,
-                      i <= this.phase ? PALETTE.hud : PALETTE.blood);
-        }
+N√Bà\Àú›]HH	‘VRSë…Œ√Bàô]\õé√BàCBÉBà\ÀúŸ[X›Y\‹òYKò\J\Àú^Y\äN√Bà\ÀùZKöYS]ô[\
 
-        // Wide health bar, drawn as discrete blocks
-        const blocks = 12;
-        const filled = Math.ceil((this.health / this.maxHealth) * blocks);
-        const bw = 7, gap = 2;
-        const total = blocks * bw + (blocks - 1) * gap;
-        const x0 = this.x - total / 2, y = this.y - r - 10;
-        for (let i = 0; i < blocks; i++) {
-            ctx.fillStyle = i < filled ? PALETTE.danger : PALETTE.blood;
-            ctx.fillRect(snap(x0 + i * (bw + gap)), snap(y), bw, 4);
-        }
-    }
-}
+N√BàÀ»ÿ[YH\»[ú]\ŸNàHUëS’Túò[ò⁄Ÿà€‹
+
+Hô]ô\à›‹YHêQÉBàÀ»⁄Z[ã€»€‹ù[õö[ô»]\››^HùYKÉBà\Àú›]HH	‘VRSë…Œ√BàCBÉBà äà[ôHÿ[YH›ô\ãà
+ã√Bàÿ[YS›ô\ä
+H√Bà\Àú›]HH	—–SQW”’ëTâŒ√Bà\Àò]Y[Àôÿ[YS›ô\ä
+N√Bà\ÀùZKöYS]ô[\
+
+N√Bà\ÀùZKú⁄›“Q
+ò[ŸJN√Bà\ÀùZKú⁄›—ÿ[YS›ô\ä\Àú^Y\ãõ]ô[\Àúõ€€\–€X\ôY\Àô[ô[ZY\“⁄[Y\Àôõ€‹äN√Bà\Àõ€‹ù[õö[ô»Hò[ŸN√BàCBÉBà äàô[ô\àHÿ[YKà
+ã√Bàô[ô\ä
+H√Bà€€ú››H\Àò›√Bà€€ú›’»H\Àòÿ[ùò\Àù⁄Y»À»ÿ[ùò\»
+ÿ[YK\^[
+H‹XŸCBà€€ú›“H\Àòÿ[ùò\ÀöZY⁄√BÉBà›úŸ]ò[úŸõ‹õJKK
+N√Bà›ö[XYŸT€[€›[ô—[òXõYHò[ŸN√BÉBàÀ»€X\à»Hõ⁄Y€€›\ÉBà›ôö[›[HHSUKùõ⁄Y√Bà›ôö[ôX›
+’À“
+N√BÉBàÀ»ÿ‹ôY[à⁄ZŸK[à€‹õ[ö]À]X[ù\ŸY»H‹öY€»H⁄€CBàÀ»[XYŸHù[\»ûH⁄€H^[»ò]\à[à€YX\ö[ôÀÉBà]ﬁHﬁHH√BàYà
+\Àú⁄ZŸHà
+H√Bà€€ú›XY»H\Àú⁄ZŸN√BàﬁHX]úõ›[ô
+
+X]úò[ô€J
+HHçJH
+àXY»
+àäN√BàﬁHHX]úõ›[ô
+
+X]úò[ô€J
+HHçJH
+àXY»
+àäN√BàCBÉBàÀ»[ù\à€‹õ‹XŸNàH[ö]HH€‹õ^[ò]€à€ù»H€X[BàÀ»òX⁄⁄[ô»›‹ôH]Hÿ[Y\òHõ€€K€»]ô\û][ô»\»][\YYûCBàÀ»–SQTêW÷ì””H»VS‘“VëKàH[ùYŸ\àòX›‹àŸY\»H\ù‹ö\‹ÉBà›úÿ]ôJ
+N√Bà›úÿÿ[J–SQTêW÷ì””H»VS‘“VëK–SQTêW÷ì””H»VS‘“VëJN√Bà›ùò[ú€]JSX]úõ›[ô
+\Àòÿ[Y\òKû
+H
+»ﬁSX]úõ›[ô
+\Àòÿ[Y\òKûJH
+»ﬁJN√BÉBàYà
+\ÀõX\
+H\ÀõX\ôò] ›\Àòÿ[Y\òK\ÀùöY]’⁄Y\ÀùöY]“ZY⁄
+N√BÉBàÀ»‹òú»8†%‹]X\ô\»⁄]H[H[√Bàõ‹à
+€€ú›‹òàŸà\Àû‹òú H√Bà^[ôX›
+›‹òãû‹òãûK‹òãúòY]\»
+àÀ‹òãúòY]\»
+àÀSUKû€› N√Bà^[ôX›
+›‹òãû‹òãûK‹òãúòY]\»
+àKçã‹òãúòY]\»
+àKçãSUKû
+N√BàCBÉBàÀ»\ùX€\»8†%⁄[öﬁH[Xô\ú»]⁄ö[ö»\»^HYCBàõ‹à
+€€ú›Ÿà\Àú\ùX€\ H√Bà›ô€ÿò[[HHX]õX^
+X]õZ[äKõYôH»õX^YôJJN√Bà^[ôX›
+›ûûKúòY]\»
+àãúòY]\»
+àãò€€‹äN√BàCBà›ô€ÿò[[HHN√BÉBàõ‹à
+€€ú›[ô[^HŸà\Àô[ô[ZY\ H√BàYà
+[ô[^Kò[]ôJH[ô[^Kôò] ›
+N√BàCBÉBàÀ»›[[[€ú»⁄›»Z\à›€àX[[ôô[XZ[à[ô\[ô[ùúõ€HH[ùõÿÿY‹ãÉBàõ‹à
+€€ú››[[[€àŸà\Àú›[[[€ú»◊JH√BàYà
+\›[[[€ãò[]ôJH€€ù[ùYN√Bà^[ôX›
+››[[[€ãû›[[[€ãûKéé	»ÃŒLMç	 N√Bà^[ôX›
+››[[[€ãû›[[[€ãûK›[[[€ãúòY]\»
+àKé›[[[€ãúòY]\»
+àKé›[[[€ãò€€‹äN√Bà^[ôX›
+››[[[€ãû›[[[€ãûKãã	»Ÿåôâ N√Bà›ôö[›[HH	»ÃXLå	Œ√Bà›ôö[ôX›
+€ò\
+›[[[€ãûHLäK€ò\
+›[[[€ãûHH›[[[€ãúòY]\»H
+Kç N√Bà›ôö[›[HH›[[[€ãò€€‹à	»ÿYMçN	Œ√Bà›ôö[ôX›
+€ò\
+›[[[€ãûHLäK€ò\
+›[[[€ãûHH›[[[€ãúòY]\»H
+Kç
+àX]õX^
+›[[[€ãöX[»›[[[€ãõX^X[
+K N√BàCBÉBàÀ»^Y\àù[]√Bàõ‹à
+€€ú›àŸà\Àòù[] H√Bà^[ôX›
+›ãûãûKãúòY]\»
+àãçãúòY]\»
+àãçãò€€‹àSUKú^Y\î⁄›
+N√Bà^[ôX›
+›ãûãûKãúòY]\ÀãúòY]\ÀSUKòõ€ôJN√BàCBÉBàÀ»[ô[^Hù[]»8†%›\ã⁄]HúöY⁄€‹ôH€»^HôXYYÿZ[ú›õ€‹ÉBàõ‹à
+€€ú›àŸà\Àô[ô[^Pù[] H√Bà^[ôX›
+›ãûãûKãúòY]\»
+àãçãúòY]\»
+àãçSUKòõ€Ÿ
+N√Bà^[ôX›
+›ãûãûKãúòY]\»
+àKçKãúòY]\»
+àKçKSUKô[ô[^T⁄›
+N√Bà^[ôX›
+›ãûãûKãúòY]\»
+àçÀãúòY]\»
+àçÀSUKöY
+N√BàCBÉBàYà
+\Àú^Y\à	âà\Àú^Y\ãöX[à
+H\Àú^Y\ãôò] ›
+N√Bàõ‹à
+€€ú›^Y\àŸà\Àúô[[›T^Y\ú»◊JH√BàYà
+^Y\ãöX[à
+H^Y\ãôò] ›
+N√BàCBÉBàÀ»ÿöôX›]ôH⁄]úõ€ãà⁄]›][à^]»XYõ‹ãH^Y\à€›[ôCBàÀ»[ù[ô»Hõ‹‹»õ€€Hõ[ôX‹õ‹‹»HÃX\€»HX\öŸ\à⁄[ù√BàÀ»]Hõ‹‹»ö\ú›[ôH^]€õH€òŸH]\»‹[ôYÉBàYà
+\ÀõX\	âà\Àú^Y\äH√Bà€€ú›\ôŸ]H\ÀõX\ô^]Bà
+\ÀõX\òõ‹‹‘õ€€H»»à\ÀõX\òõ‹‹‘õ€€KòﬁNà\ÀõX\òõ‹‹‘õ€€KòﬁHHàù[
+N√BàYà
+\ôŸ]
+H√Bà€€ú›H\ôŸ]ûH\Àú^Y\ãû√Bà€€ú›HH\ôŸ]ûHH\Àú^Y\ãûN√BàYà
+X]ö\›
+JHàM
+H√Bà€€ú›HHX]ò][åäK
+N√Bà€€ú›H\Àú^Y\ãû
+»X]ò€‹ JH
+àé√Bà€€ú›HH\Àú^Y\ãûH
+»X]ú⁄[äJH
+àé√Bà€€ú›€€H\ÀõX\ô^]»SUKô^]àSUKô[ôŸ\é√Bà^[ôX›
+›KKK€€
+N√Bà^[ôX›
+›KSUKùõ⁄Y
+N√BàCBàCBàCBÉBà›úô\›‹ôJ
+N√BÉBàÀ»KKKHÿ‹ôY[ã\‹XŸH\‹Ÿ\À[àÿ[ùò\»^[»KKKCBÉBà\Àôò]’öY€ô]J›’À“
+N√BÉBàÀ»[XYŸHõ\⁄àHôYÿ\⁄]òY\»›ô\à]»ô[XZ[ö[ô»úò[Y\√BàYà
+\Àô[XYŸQõ\⁄à
+H√Bà›ô€ÿò[[HHX]õZ[äçK\Àô[XYŸQõ\⁄»LäN√Bà›ôö[›[HHSUKô[ôŸ\é√Bà›ôö[ôX›
+’À“
+N√Bà›ô€ÿò[[HHN√BàCBÉBàÀ»›ÀZX[[ŸCBàYà
+\Àú^Y\à	âà\Àú^Y\ãöX[à	âÉBà\Àú^Y\ãöX[»\Àú^Y\ãõX^X[å H√Bà€€ú›[ŸHHåLà
+»å
+àX]ú⁄[ä\Àôúò[YP€›[ù
+àåMJN√Bà›ô€ÿò[[HH[ŸN√Bà›ôö[›[HHSUKòõ€Ÿ√Bà›ôö[ôX›
+’À“
+N√Bà›ô€ÿò[[HHN√BàCBÉBàÀ»õ€€Hò[ú⁄][€àòYCBàYà
+\Àùò[ú⁄][€ö[ô H√Bà›ô€ÿò[[HHX]õX^
+X]õZ[äK\Àùò[ú⁄][€ê[JJN√Bà›ôö[›[HHSUKùõ⁄Y√Bà›ôö[ôX›
+’À“
+N√Bà›ô€ÿò[[HHN√BàCBÉBà\ÀùZKúô[ô\ìõ›YöXÿ][€ä›
+N√BÉBàYà
+\ÀõX\	âà\Àú^Y\äH√Bà\ÀùZKô[ô[ZY\»H\Àô[ô[ZY\Œ√Bà\ÀùZKôò]”Z[ö[X\
+\ÀõX\\Àòÿ[Y\òK\Àú^Y\äN√BàCBàCBÉBà äÉBà
+à\öŸ[àHYŸ\»ŸàHúò[YKÉBà
+ÉBà
+àÿX⁄YôXÿ]\ŸHùZ[[ô»H‹òYY[ù]ô\ûHúò[YH\»ÿ\›Yù[[ôôXùZ[Bà
+à€õH⁄[àHÿ[ùò\»[Y[ú⁄[€ú»⁄[ôŸKÉBà
+ã√Bàò]’öY€ô]J›À
+H√BàYà
+]\Àó›öY€ô]H\Àó›öY€ô]U»OOH»\Àó›öY€ô]ROOH
+H√Bà€€ú›»H›ò‹ôX]TòYX[‹òYY[ù
+Bà»»ã»ãX]õZ[äÀ
+H
+àçãBà»»ã»ãX]õX^
+À
+H
+àçÃÉBà
+N√BàÀòY€€‹î›‹
+	‹ôÿòJ
+I N√BàÀòY€€‹î›‹
+K	‹ôÿòJçJI N√Bà\Àó›öY€ô]HHŒ√Bà\Àó›öY€ô]U»HŒ√Bà\Àó›öY€ô]RH√BàCBà›ôö[›[HH\Àó›öY€ô]N√Bà›ôö[ôX›
+À
+N√BàCBüCB

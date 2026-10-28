@@ -68,6 +68,9 @@ class Game {
         this.enemies = [];
         this.bullets = [];         // player bullets
         this.enemyBullets = [];    // enemy bullets
+        // Created only for an offline authoritative game. Online clients render
+        // the server's projectile snapshots and do not allocate their own pool.
+        this.enemyProjectilePool = null;
         this.xpOrbs = [];
         this.particles = [];
         this.summons = [];
@@ -189,6 +192,7 @@ class Game {
 
     /** Start a new game. */
     start(characterId = 'pistolero', testRoom = false) {
+        this.prepareForNewRun();
         this.testRoom = testRoom;
         this.enemiesKilled = 0;
         this.roomsCleared = 0;
@@ -200,8 +204,12 @@ class Game {
         if (this.testRoom) this.generateTestRoom();
         else this.generateMap();
 
-        // Reset input
+        // Do not carry inputs pressed during the loading cover into frame one.
+        this.input.keys = {};
         this.input.mouseDown = false;
+        this.input.moveX = 0;
+        this.input.moveY = 0;
+        this.input.aimActive = false;
 
         // Show HUD
         this.ui.showHUD(true);
@@ -212,6 +220,26 @@ class Game {
         this.state = 'PLAYING';
         this.loopRunning = false;
         this.pendingLevelUps = 0;
+    }
+
+    /** Prepare and reuse enemy projectile storage before a new offline run. */
+    prepareForNewRun() {
+        if (!this.enemyProjectilePool) this.enemyProjectilePool = new EnemyProjectilePool();
+        this.enemyProjectilePool.ensureCapacity(EnemyProjectilePool.INITIAL_CAPACITY);
+        this.enemyProjectilePool.releaseAll(this.enemyBullets);
+        this.enemyProjectilePool.resetRunStats();
+        return this.enemyProjectilePool.getStats();
+    }
+
+    /** Developer diagnostics; the pool is owned by this solo simulation. */
+    getEnemyProjectilePoolStats() {
+        return this.enemyProjectilePool ? this.enemyProjectilePool.getStats() : null;
+    }
+
+    /** Cancel active enemy shots without discarding the pool's allocated capacity. */
+    clearEnemyProjectiles() {
+        if (this.enemyProjectilePool) this.enemyProjectilePool.releaseAll(this.enemyBullets);
+        else this.enemyBullets.length = 0;
     }
 
     /**
@@ -244,7 +272,7 @@ class Game {
 
         // Clear other entities
         this.bullets = [];
-        this.enemyBullets = [];
+        this.clearEnemyProjectiles();
         this.xpOrbs = [];
         this.particles = [];
         this.summons = [];
@@ -286,7 +314,7 @@ class Game {
             enemies.push(new CochinillaEsquinero(x, y, room, spot.corner));
         }
         this.enemies = enemies;
-        this.bullets = []; this.enemyBullets = []; this.xpOrbs = []; this.particles = []; this.summons = [];
+        this.bullets = []; this.clearEnemyProjectiles(); this.xpOrbs = []; this.particles = []; this.summons = [];
     }
     /** Spawn enemies for a new room. */
     spawnRoomEnemies(room) {
@@ -399,7 +427,6 @@ class Game {
         }
 
         this.updateSummons();
-        const newEnemyBullets = [];
         let burnSound = false;
         const targets = [this.player, ...this.summons].filter(target => target.health > 0 && target.alive !== false);
         for (const enemy of this.enemies) {
@@ -413,7 +440,7 @@ class Game {
                 const distance = Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y);
                 if (distance < nearest) { target = candidate; nearest = distance; }
             }
-            const updateResult = enemy.update ? enemy.update(target, this.enemies, this.map, targets) : null;
+            const updateResult = enemy.update ? enemy.update(target, this.enemies, this.map, targets, this.enemyProjectilePool) : null;
             const event = typeof updateResult === 'string' ? updateResult : null;
             const bullets = Array.isArray(updateResult) ? updateResult : null;
             if (enemy instanceof CochinillaPerforamuros) {
@@ -436,15 +463,13 @@ class Game {
                 }
             }
             if (bullets && bullets.length) {
-                newEnemyBullets.push(...bullets);
+                this.enemyBullets.push(...bullets);
                 this.audio.enemyShoot();
             }
         }
         this.audio.setCochinillaBeam(this.enemies.some(enemy =>
             enemy.alive && ((enemy instanceof CochinillaPerforamuros && enemy.phase === 'beam') || (enemy instanceof CochinillaEsquinero && enemy.phase === 'active'))));
         if (burnSound) this.audio.burnTick();
-        this.enemyBullets.push(...newEnemyBullets);
-
         // Update player bullets
         this.updatePlayerBullets();
 
@@ -551,7 +576,7 @@ class Game {
             // burst rather than land a hit.
             if (!this.map.isWalkable(bullet.x, bullet.y)) {
                 this.spawnParticles(bullet.x, bullet.y, bullet.color, 3);
-                bullet.damage = 0; // Mark as consumed
+                this.enemyProjectilePool.release(bullet);
                 continue;
             }
 
@@ -559,7 +584,7 @@ class Game {
             if (summonedHit) {
                 summonedHit.takeDamage(bullet.damage);
                 this.spawnParticles(summonedHit.x, summonedHit.y, summonedHit.color, 3);
-                bullet.damage = 0;
+                this.enemyProjectilePool.release(bullet);
                 continue;
             }
 
@@ -580,13 +605,15 @@ class Game {
                     ricochetEnemyBulletTowardParty(bullet, this.player, [this.player]);
                     continue;
                 }
-                bullet.damage = 0; // Mark as consumed
+                this.enemyProjectilePool.release(bullet);
             }
         }
 
-        // Remove dead/offscreen bullets
-        this.enemyBullets = this.enemyBullets.filter(b => b.damage > 0);
-        this.enemyBullets = removeDead(this.enemyBullets, 50, this.map.width, this.map.height);
+        // Remove expired/offscreen bullets in place so the live list itself is
+        // reused along with the projectile objects.
+        this.enemyProjectilePool.compact(this.enemyBullets, bullet =>
+            bullet.damage > 0 && bullet.x > -50 && bullet.x < this.map.width + 50 &&
+            bullet.y > -50 && bullet.y < this.map.height + 50);
     }
 
     /** Update XP orbs (drift + magnet pull to player). */

@@ -20,11 +20,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=jardines-v2">
+    <link rel="stylesheet" href="css/styles.css?v=pool-loading-v1">
 </head>
 <body>
     <canvas id="game"></canvas>
     <div id="net-game-status" class="net-game-status">Conectado</div>
+
+    <!-- Startup cover shown while templates and the enemy projectile pool are prepared. -->
+    <div id="loading-screen" class="loading-screen hidden" role="status" aria-live="polite" aria-busy="true">
+        <div class="loading-card">
+            <h1>JARDINES Y MAZMORRAS</h1>
+            <div class="loading-spinner" aria-hidden="true"><i></i><i></i><i></i></div>
+            <p id="loading-message">Preparando mazmorra…</p>
+            <p id="loading-error" class="loading-error hidden"></p>
+            <button id="loading-retry" class="btn hidden" type="button">Reintentar</button>
+        </div>
+    </div>
 
     <!-- Start Screen -->
     <div id="start-screen" class="screen active">
@@ -118,20 +129,21 @@
     <script src="js/characters/roles.js?v=role-speed-scale-v1"></script>
     <script src="js/player.js?v=animated-role-walk-v1"></script>
     <script src="js/bullet.js?v=map-collision-v1"></script>
-    <script src="js/enemy.js?v=enemy-base-categories-v1"></script>
-    <script src="js/enemies/esbirros/basic-enemy.js?v=enemy-categories-v1"></script>
-    <script src="js/enemies/esbirros/shooter-enemy.js?v=enemy-categories-v1"></script>
-    <script src="js/enemies/esbirros/spiral-enemy.js?v=enemy-categories-v1"></script>
+    <script src="js/enemy-projectile-pool.js?v=enemy-projectile-pool-v1"></script>
+    <script src="js/enemy.js?v=enemy-projectile-pool-v1"></script>
+    <script src="js/enemies/esbirros/basic-enemy.js?v=enemy-projectile-pool-v1"></script>
+    <script src="js/enemies/esbirros/shooter-enemy.js?v=enemy-projectile-pool-v1"></script>
+    <script src="js/enemies/esbirros/spiral-enemy.js?v=enemy-projectile-pool-v1"></script>
     <script src="js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js?v=mini-jefe-categories-v1"></script>
     <script src="js/enemies/catalog.js?v=enemy-categories-v1"></script>
     <script src="js/room-templates.js?v=folder-catalog-v4"></script>
     <script src="js/map.js?v=corner-cochinilla-spawn-v1"></script>
-    <script src="js/ui.js?v=treasure-minimap-v1"></script>
+    <script src="js/ui.js?v=pool-loading-v1"></script>
     <script src="js/upgrades.js?v=shared-upgrades-v1"></script>
-    <script src="js/game.js?v=enemy-xp-disabled-v1"></script>
+    <script src="js/game.js?v=enemy-projectile-pool-v1"></script>
     <script src="js/touch.js?v=abyss-v2"></script>
-    <script src="js/coop-game.js?v=corner-cochinilla-v1"></script>
-    <script src="js/coop-lobby.js?v=jardines-v2"></script>
-    <script src="js/main.js?v=music-gesture-v1"></script>
+    <script src="js/coop-game.js?v=pool-loading-v1"></script>
+    <script src="js/coop-lobby.js?v=pool-loading-v1"></script>
+    <script src="js/main.js?v=pool-loading-v1"></script>
 </body>
 </html>

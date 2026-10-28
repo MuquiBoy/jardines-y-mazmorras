@@ -17,7 +17,7 @@ class BasicEnemy extends Enemy {
         this.drawBody(ctx, PALETTE.chaser, PALETTE.chaserLit);
     }
 
-    update(player, enemies, map) {
+    update(player, enemies, map, allTargets = null, projectilePool = null) {
         // Route around walls instead of pushing straight into them.
         const dx = player.x - this.x;
         const dy = player.y - this.y;
@@ -31,7 +31,7 @@ class BasicEnemy extends Enemy {
         if (this.shootTimer <= 0) {
             this.shootTimer = this.shootCooldown;
             const angle = Math.atan2(dy, dx);
-            return [this.shootTowardPlayer(angle, 1.5)];
+            return [this.shootTowardPlayer(angle, 1.5, projectilePool)];
         }
         return [];
     }

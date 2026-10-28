@@ -25,7 +25,7 @@ class SpiralEnemy extends Enemy {
         }
     }
 
-    update(player, enemies, map) {
+    update(player, enemies, map, allTargets = null, projectilePool = null) {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -43,7 +43,7 @@ class SpiralEnemy extends Enemy {
             const count = 5;
             for (let i = 0; i < count; i++) {
                 const angle = this.spiralAngle + (Math.PI * 2 / count) * i;
-                bullets.push(this.shootTowardPlayer(angle, 1.25));
+                bullets.push(this.shootTowardPlayer(angle, 1.25, projectilePool));
             }
             this.spiralAngle += 0.4; // rotate pattern each shot
             return bullets;

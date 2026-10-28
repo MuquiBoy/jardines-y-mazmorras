@@ -19,6 +19,10 @@ class UI {
         this.xpText = document.getElementById('xp-text');
         this.statsDisplay = document.getElementById('stats-display');
         this.ammoText = document.getElementById('ammo-text');
+        this.loadingScreen = document.getElementById('loading-screen');
+        this.loadingMessage = document.getElementById('loading-message');
+        this.loadingError = document.getElementById('loading-error');
+        this.loadingRetry = document.getElementById('loading-retry');
     }
 
     /** Update HUD bars from player data. */
@@ -150,6 +154,39 @@ class UI {
     /** Hide start screen. */
     hideStart() {
         document.getElementById('start-screen').classList.add('hidden');
+    }
+
+    /** Cover the game while startup resources are prepared. */
+    showLoading(message = 'Preparando mazmorra…') {
+        if (!this.loadingScreen) return;
+        this.loadingScreen.classList.remove('hidden');
+        this.loadingScreen.classList.remove('has-error');
+        this.loadingScreen.setAttribute('aria-busy', 'true');
+        if (this.loadingMessage) this.loadingMessage.textContent = message;
+        if (this.loadingError) { this.loadingError.textContent = ''; this.loadingError.classList.add('hidden'); }
+        if (this.loadingRetry) this.loadingRetry.classList.add('hidden');
+    }
+
+    /** End the startup cover once the run is ready. */
+    hideLoading() {
+        if (!this.loadingScreen) return;
+        this.loadingScreen.classList.add('hidden');
+        this.loadingScreen.classList.remove('has-error');
+        this.loadingScreen.setAttribute('aria-busy', 'false');
+    }
+
+    /** Show a recoverable startup error instead of leaving a permanent spinner. */
+    showLoadingError(message = 'No se pudo preparar la mazmorra.') {
+        if (!this.loadingScreen) return;
+        this.loadingScreen.classList.remove('hidden');
+        this.loadingScreen.classList.add('has-error');
+        this.loadingScreen.setAttribute('aria-busy', 'false');
+        if (this.loadingMessage) this.loadingMessage.textContent = 'No se pudo iniciar la partida';
+        if (this.loadingError) { this.loadingError.textContent = message; this.loadingError.classList.remove('hidden'); }
+        if (this.loadingRetry) {
+            this.loadingRetry.classList.remove('hidden');
+            this.loadingRetry.focus();
+        }
     }
 
     /** Show pause overlay. */
