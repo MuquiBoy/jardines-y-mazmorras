@@ -15,11 +15,24 @@ function refreshTemplateCatalog() {
 
 const context = vm.createContext({ console });
 context.RoomTemplateLibrary = loadTemplateCatalog(TEMPLATE_ROOT);
-for (const file of ['palette.js', 'upgrades.js', 'characters/roles.js', 'bullet.js', 'player.js', 'enemy.js', 'enemies/cochinilla_esquinero/cochinilla_esquinero.js', 'map.js']) {
+for (const file of [
+    'palette.js',
+    'upgrades.js',
+    'characters/roles.js',
+    'bullet.js',
+    'player.js',
+    'enemy.js',
+    'enemies/esbirros/basic-enemy.js',
+    'enemies/esbirros/shooter-enemy.js',
+    'enemies/esbirros/spiral-enemy.js',
+    'enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js',
+    'enemies/catalog.js',
+    'map.js'
+]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
-const ENEMY_CLASSES = { basic: Engine.BasicEnemy, shooter: Engine.ShooterEnemy, spiral: Engine.SpiralEnemy, boss: Engine.BossEnemy, 'cochinilla-esquinero': Engine.CochinillaEsquinero, 'cochinilla-esquinero': Engine.CochinillaEsquinero, 'cochinilla_esquinero': Engine.CochinillaEsquinero };
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
+const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 function newPlayer(member, x, y) {
     const player = new Engine.Player(x, y);
@@ -90,7 +103,7 @@ function spawnRoom(run, room, player) {
     const roomIndex = run.map.rooms.indexOf(room);
     if (roomIndex < 0 || run.visitedRooms.has(roomIndex)) return;
     run.visitedRooms.add(roomIndex);
-    if (['combat', 'combat-hard', 'boss'].includes(room.type) && !room.cleared) {
+    if (['combat', 'combat-simple', 'combat-hard', 'boss'].includes(room.type) && !room.cleared) {
         // Arm the encounter instead of spawning now. The room closes first
         // (updateRoomLocks), then the enemies appear behind sealed doors.
         // The boss hall seals exactly like a combat room; its doors reopen
@@ -313,7 +326,7 @@ function stepRun(run, inputs) {
     run.enemies = run.enemies.filter(enemy => enemy.alive);
     for (const room of run.map.rooms) {
         const roomIndex = run.map.rooms.indexOf(room);
-        if (!room.cleared && room.spawned && run.visitedRooms.has(roomIndex) && ['combat', 'combat-hard', 'boss'].includes(room.type) &&
+        if (!room.cleared && room.spawned && run.visitedRooms.has(roomIndex) && ['combat', 'combat-simple', 'combat-hard', 'boss'].includes(room.type) &&
             !run.enemies.some(enemy => enemy.roomIndex === roomIndex)) {
             run.map.clearRoom(room);
             run.mapVersion++;

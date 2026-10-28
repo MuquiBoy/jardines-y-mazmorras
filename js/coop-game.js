@@ -15,7 +15,7 @@
     let offeredOwed = 0;
     let awaitingOwed = -1;
     const characterNames = { pistolero: 'Pistolero', tirador: 'Tirador', perdigonero: 'Perdigonero', invocador: 'Invocador', piromano: 'Piromano', bastion: 'Bastión' };
-    const enemyClasses = { basic: BasicEnemy, shooter: ShooterEnemy, spiral: SpiralEnemy, boss: BossEnemy, 'cochinilla-esquinero': CochinillaEsquinero, 'cochinilla-esquinero': CochinillaEsquinero };
+    const enemyClasses = ENEMY_CLASSES;
 
     function restoreMap(state) {
         const map = new DungeonMap(state.width, state.height);

@@ -886,47 +886,40 @@ class DungeonMap {
                 break;
 
             case 'combat':
-                // Try to spawn cochinilla_esquinero if valid corner exists (higher chance for testing)
-                {
-                    const isLarge = (room.tw >= 20 || room.th >= 20);
-                    const maxCorners = isLarge ? 2 : 1;
-                    const cornerList = this.findCornerCochinillaList(room, maxCorners);
-                    if (cornerList.length && Math.random() < 0.8) {
-                        for (const c of cornerList) {
-                            enemies.push(createEnemy('cochinilla-esquinero', c.x, c.y, room, c.corner));
-                        }
-                    } else if (cornerList.length) {
-                        // still try to spawn at least one sometimes
-                        if (Math.random() < 0.5) {
-                            enemies.push(createEnemy('cochinilla-esquinero', cornerList[0].x, cornerList[0].y, room, cornerList[0].corner));
-                        }
+            case 'combat-simple': {
+                // Esbirros occupy ordinary rooms; the catalog preserves the
+                // existing weighted mix without admitting minibosses here.
+                if (enemyCategoriesForRoom(room.type).includes(ENEMY_CATEGORY.MINIONS)) {
+                    const count = 2 + Math.floor(Math.random() * 3) + extra;
+                    for (let i = 0; i < count; i++) {
+                        const p = spawn();
+                        enemies.push(createEnemy(randomEnemyType(ENEMY_CATEGORY.MINIONS), p.x, p.y));
                     }
                 }
-                const count = 2 + Math.floor(Math.random() * 3) + extra; // 2-4 (+endgame)
-                for (let i = 0; i < count; i++) {
-                    const p = spawn();
-                    enemies.push(createEnemy(randomEnemyType(), p.x, p.y));
-                }
                 break;
+            }
 
-            case 'combat-hard':
-                // 100% chance in combat-hard if valid corner exists
-                {
+            case 'combat-hard': {
+                const categories = enemyCategoriesForRoom(room.type);
+                if (categories.includes(ENEMY_CATEGORY.MINI_BOSSES)) {
+                    // Minibosses are exclusive to hard rooms. Spawn only where
+                    // the authored corners provide enough clear floor.
                     const isLarge = (room.tw >= 20 || room.th >= 20);
                     const maxCorners = isLarge ? 2 : 1;
                     const cornerList = this.findCornerCochinillaList(room, maxCorners);
-                    if (cornerList.length) {
-                        for (const c of cornerList) {
-                            enemies.push(createEnemy('cochinilla-esquinero', c.x, c.y, room, c.corner));
-                        }
+                    for (const c of cornerList) {
+                        enemies.push(createEnemy(randomMiniBossType(), c.x, c.y, room, c.corner));
                     }
                 }
-                const hCount = 4 + Math.floor(Math.random() * 3) + extra; // 4-6 (+endgame)
-                for (let i = 0; i < hCount; i++) {
-                    const p = spawn();
-                    enemies.push(createEnemy(hardEnemyType(), p.x, p.y));
+                if (categories.includes(ENEMY_CATEGORY.MINIONS)) {
+                    const hCount = 4 + Math.floor(Math.random() * 3) + extra;
+                    for (let i = 0; i < hCount; i++) {
+                        const p = spawn();
+                        enemies.push(createEnemy(hardEnemyType(), p.x, p.y));
+                    }
                 }
                 break;
+            }
 
             case 'treasure':
                 // No enemies, but give bonus XP
@@ -937,11 +930,6 @@ class DungeonMap {
                 const boss = createEnemy('boss', bossSpawn.x, bossSpawn.y);
                 boss.room = room; // keeps the drift inside its authored hall
                 enemies.push(boss);
-                // Minions, growing with depth
-                for (let i = 0; i < 2 + extra; i++) {
-                    const p = spawn();
-                    enemies.push(createEnemy(randomEnemyType(), p.x, p.y));
-                }
                 break;
 
             case 'empty':

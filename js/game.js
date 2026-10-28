@@ -722,7 +722,7 @@ class Game {
             // Use `spawned`, not `cleared`: every room starts out empty, so
             // `cleared` is already true before the player has ever been there.
             if (!newRoom.spawned && newRoom.type !== 'entry' && newRoom.type !== 'start') {
-                if (['combat', 'combat-hard', 'boss'].includes(newRoom.type) && !newRoom.cleared) {
+                if (['combat', 'combat-simple', 'combat-hard', 'boss'].includes(newRoom.type) && !newRoom.cleared) {
                     // Arm the encounter. updateRoomLocks() closes the doors
                     // once the player is clear of the threshold and only then
                     // spawns the enemies, so nobody fights through a doorway.
