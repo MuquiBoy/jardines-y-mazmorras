@@ -19,13 +19,14 @@ Condiciones de esquina válida
 - La sala debe tener una plantilla con máscara de colisión y medir al menos 4 casillas de ancho y 4 de alto.
 - Debe existir, en una esquina, un bloque completo de 3 × 3 casillas de suelo transitable.
 - Cada una de las 9 casillas debe tener el valor de máscara 1 (suelo normal).
+- Las casillas de puerta, identificadas en la plantilla con amarillo RGB #FFFF00, no cuentan como suelo libre. Si una sola cae dentro del bloque de 3 × 3, esa esquina queda invalidada.
 - Puertas, paredes, obstáculos u otras casillas con un valor distinto de 1 invalidan esa esquina. En particular, una puerta dentro del bloque impide usarla.
 - El bloque se ubica una casilla hacia dentro desde los bordes de la plantilla. Para la esquina superior izquierda abarca las casillas (1,1) a (3,3); las otras esquinas usan el bloque equivalente reflejado en sus bordes.
 - Las casillas de suelo miden 40 × 40 px. El cuerpo visual del mini-jefe mide 120 × 120 px y queda centrado sobre el bloque de 3 × 3.
 
 Resumen del flujo
 1. El generador crea una sala «combat-hard».
-2. Comprueba las esquinas en el orden indicado buscando un bloque libre de 3 × 3.
+2. Comprueba las esquinas en el orden indicado buscando un bloque libre de 3 × 3 compuesto únicamente por suelo normal; las casillas amarillas de puerta (#FFFF00) no son válidas.
 3. Si encuentra uno, genera allí exactamente una Cochinilla Esquinero.
 4. Genera también la cantidad convencional de esbirros de la sala difícil.
 5. Si no encuentra un bloque válido, la sala conserva sus esbirros pero no genera la Cochinilla.
