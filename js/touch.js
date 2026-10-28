@@ -105,7 +105,7 @@ class TouchControls {
         const el = kind === 'move' ? this.moveEl : this.aimEl;
         if (el) el.classList.remove('stick-idle');
         this.showStick(kind, e.clientX, e.clientY, 0, 0);
-        if (kind === 'aim') this.input.mouseDown = true;
+        if (kind === 'aim') { this.input.mouseDown = true; this.input.mousePressed = true; }
         this.apply(e.pointerId, e.clientX, e.clientY);
         e.preventDefault();
     }
@@ -127,6 +127,7 @@ class TouchControls {
         } else {
             this.input.aimActive = false;
             this.input.mouseDown = false;
+        this.input.mousePressed = false; this.input.mouseReleased = false; this.input.cancelAim = true; this.input.mouseReleased = true;
         }
         this.reparkStick(p.kind);
         e.preventDefault();

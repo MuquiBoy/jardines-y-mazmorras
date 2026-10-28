@@ -1,0 +1,26 @@
+JARDINES Y MAZMORRAS
+VALORES DE ROLES Y EQUIPO — VERSIÓN 4 (28-10-26)
+
+Estos son los valores actuales de balance de la demo jugable. Las conversiones usan 60 frames por segundo. Los frames son los valores que utiliza el juego; los segundos se incluyen para facilitar la lectura.
+
+ROL          VELOCIDAD             CADENCIA                  DAÑO                VIDA                                  RANGO DE ATAQUE
+Pistolero    2,5 px/frame (1.00)   0,30 s (18 frames)        7 por proyectil     36 HP (3 corazones de 12 HP)          8 casillas (320 px)
+Tirador      2,5 px/frame (1.00)   1,20 s (72 frames)        28 por proyectil    24 HP (2 corazones de 12 HP)          24 casillas (960 px)
+
+RANGO DE ATAQUE
+Una casilla equivale a un área de 40 × 40 px. Para expresar el rango lineal del proyectil en píxeles, se multiplica la cantidad de casillas por 40 px.
+
+ROL          RANGO EN CASILLAS    RANGO EQUIVALENTE
+Pistolero    8 casillas           320 px (8 × 40 px)
+Tirador      24 casillas          960 px (24 × 40 px)
+
+VELOCIDAD DE MOVIMIENTO
+Se considera que el valor de velocidad de movimiento es igual a 2,5 px/frame, y esto es igual a 1,00. Es decir, 1,00 de velocidad de movimiento = 2,5 px/frame.
+
+MUNICIÓN Y RECARGA
+Las recargas se convierten de segundos a frames y se redondean al frame entero más cercano.
+
+ROL          MUNICIÓN POR CARGADOR   TIEMPO DE RECARGA
+Pistolero    10 proyectiles          1,20 s (72 frames)
+Tirador      3 proyectiles           3,30 s (198 frames)
+

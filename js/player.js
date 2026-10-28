@@ -159,9 +159,11 @@ class Player {
         this.level = 1; this.xp = 0;
         this.pendingLevelUps = 0;
         this.xpTable = [50, 120, 220, 350, 520, 750, 1050, 1400, 1850, 2400];
-        this.fireTimer = 0; this.invincibleTimer = 0;
+        this.fireTimer = 0; this.invincibleTimer = 0; this.sniperAiming = false;
         this.aimX = 0; this.aimY = -1; this.angle = 0; this.character = 'pistolero';
     }
+
+    cancelSniperAim() { this.sniperAiming = false; }
 
     setCharacter(characterId) {
         const role = CHARACTER_ROLES[characterId] || CHARACTER_ROLES.pistolero;
@@ -266,6 +268,25 @@ class Player {
         if (this.fireTimer > 0) this.fireTimer--;
         if (this.invincibleTimer > 0) this.invincibleTimer--;
 
+        if (this.character === "tirador") {
+            if (input.cancelAim || this.health <= 0 || this.reloadTimer > 0) this.sniperAiming = false;
+            const pressed = !!input.mousePressed;
+            const released = !!input.mouseReleased;
+            if (pressed && !this.sniperAiming && this.fireTimer <= 0 && this.reloadTimer <= 0 && this.ammo > 0) {
+                this.sniperAiming = true;
+            }
+            if (released && this.sniperAiming) {
+                this.sniperAiming = false;
+                if (this.fireTimer <= 0 && this.reloadTimer <= 0 && this.ammo > 0) {
+                    this.fireTimer = this.fireRate;
+                    this.ammo--;
+                    if (this.ammo <= 0) this.startReload();
+                    return true;
+                }
+            }
+            return false;
+        }
+        this.sniperAiming = false;
         if (input.mouseDown && this.fireTimer <= 0 && this.reloadTimer <= 0 && this.ammo > 0) {
             this.fireTimer = this.fireRate;
             this.ammo--;
@@ -278,7 +299,7 @@ class Player {
     shoot() {
         if (this.weaponKind === 'summoner') return [];
         const bullets = [];
-        const count = this.weaponKind === 'shotgun'
+        const count = this.character === 'tirador' ? 1 : this.weaponKind === 'shotgun'
             ? this.pelletCount + Math.max(0, this.bulletCount - 1)
             : this.bulletCount;
         const baseAngle = Math.atan2(this.aimY, this.aimX);

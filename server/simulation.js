@@ -206,11 +206,15 @@ function stepRun(run, inputs) {
     if (run.notices?.length) run.notices = run.notices.filter(notice => run.tick - notice.tick < 300);
     const players = [...run.players.values()];
     for (const player of players) {
-        if (player.health <= 0) continue;
+        if (player.health <= 0) { player.cancelSniperAim?.(); continue; }
         const input = inputs.get(player.id) || { moveX: 0, moveY: 0, aimX: player.aimX, aimY: player.aimY, fire: false, reload: false };
         const gameInput = { keys: { KeyR: input.reload }, moveX: input.moveX, moveY: input.moveY,
-            aimX: input.aimX, aimY: input.aimY, aimActive: true, mouseDown: input.fire, reload: input.reload };
-        if (player.update(gameInput, null, run.map)) {
+            aimX: input.aimX, aimY: input.aimY, aimActive: true, mouseDown: input.fire,
+            mousePressed: !!input.firePressed, mouseReleased: !!input.fireReleased,
+            cancelAim: !!input.cancelAim, reload: input.reload };
+        const shouldShoot = player.update(gameInput, null, run.map);
+        input.firePressed = false; input.fireReleased = false; input.cancelAim = false;
+        if (shouldShoot) {
             if (player.weaponKind === 'summoner') {
                 const x = player.x + player.aimX * (player.radius + 15);
                 const y = player.y + player.aimY * (player.radius + 15);
@@ -365,7 +369,7 @@ function mapState(map) {
 }
 
 function playerState(player) {
-    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
+    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','sniperAiming','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
 }
 function enemyState(enemy) {
     const base = ['id','type','roomIndex','x','y','health','maxHealth','speed','damage','radius','color','xpValue','shootCooldown','shootTimer','bulletSpeedScale','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse','corner','anchorX','anchorY','beamEndX','beamEndY','targetId'];

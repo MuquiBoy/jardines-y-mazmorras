@@ -47,6 +47,9 @@ class Game {
             mouseX: 0,
             mouseY: 0,
             mouseDown: false,
+            mousePressed: false,
+            mouseReleased: false,
+            cancelAim: false,
             // Analogue touch state. moveX/moveY are a clamped vector; aimX/aimY
             // are a unit direction that only counts while aimActive.
             moveX: 0,
@@ -135,8 +138,17 @@ class Game {
      * camera is zoomed by CAMERA_ZOOM, so canvas dimensions are not world
      * dimensions — camera maths must use these.
      */
-    get viewWidth()  { return this.canvas.width * PIXEL_SIZE / CAMERA_ZOOM; }
-    get viewHeight() { return this.canvas.height * PIXEL_SIZE / CAMERA_ZOOM; }
+    get cameraZoom() { return this.player?.character === 'tirador' && this.player.sniperAiming ? 2.0 : CAMERA_ZOOM; }
+    get viewWidth()  { return this.canvas.width * PIXEL_SIZE / this.cameraZoom; }
+    get viewHeight() { return this.canvas.height * PIXEL_SIZE / this.cameraZoom; }
+
+    updatePointerWorld() {
+        if (this.pointerClientX === undefined) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const scale = (this.canvas.width / rect.width) * PIXEL_SIZE / this.cameraZoom;
+        this.input.mouseX = (this.pointerClientX - rect.left) * scale;
+        this.input.mouseY = (this.pointerClientY - rect.top) * scale;
+    }
 
     /** Kick the camera and flash the screen — called on player damage. */
     addImpact(shakeFrames, flashFrames) {
@@ -157,24 +169,20 @@ class Game {
             this.input.keys[e.code] = false;
         });
 
-        this.canvas.addEventListener('mousemove', (e) => {
-            const rect = this.canvas.getBoundingClientRect();
-            // Client coordinates are screen pixels; aim is resolved in world
-            // units, so undo the backing-store ratio and the camera zoom.
-            const scale = (this.canvas.width / rect.width) * PIXEL_SIZE / CAMERA_ZOOM;
-            this.input.mouseX = (e.clientX - rect.left) * scale;
-            this.input.mouseY = (e.clientY - rect.top) * scale;
+        window.addEventListener('mousemove', (e) => {
+            this.pointerClientX = e.clientX; this.pointerClientY = e.clientY;
+            this.updatePointerWorld();
         });
 
         this.canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { this.audio.unlock(); this.input.mouseDown = true; }
+            if (e.button === 0) { this.audio.unlock(); this.pointerClientX = e.clientX; this.pointerClientY = e.clientY; this.updatePointerWorld(); this.input.mouseDown = true; this.input.mousePressed = true; }
         });
 
         // Bound to the window, not the canvas: releasing the button after the
         // cursor has left the canvas otherwise never clears mouseDown, and the
         // player keeps firing.
         window.addEventListener('mouseup', (e) => {
-            if (e.button === 0) this.input.mouseDown = false;
+            if (e.button === 0) { this.pointerClientX = e.clientX; this.pointerClientY = e.clientY; this.updatePointerWorld(); this.input.mouseDown = false; this.input.mouseReleased = true; }
         });
 
         // A key held while the window loses focus never receives its keyup, so
@@ -182,6 +190,8 @@ class Game {
         window.addEventListener('blur', () => {
             this.input.keys = {};
             this.input.mouseDown = false;
+            this.input.mousePressed = false; this.input.mouseReleased = false; this.input.cancelAim = true;
+            this.player?.cancelSniperAim?.();
             this.input.moveX = 0;
             this.input.moveY = 0;
             this.input.aimActive = false;
@@ -405,7 +415,19 @@ class Game {
         this.camera.y = Math.max(0, Math.min(this.camera.y, this.map.height - this.viewHeight));
 
         // Update player (includes its own bounds clamping).
+        const wasAiming = this.player.sniperAiming;
         const shouldShoot = this.player.update(this.input, this.camera, this.map);
+        this.input.mousePressed = false; this.input.mouseReleased = false; this.input.cancelAim = false;
+        if (wasAiming !== this.player.sniperAiming) {
+            this.updatePointerWorld();
+            this.camera.x = Math.max(0, Math.min(this.player.x - this.viewWidth / 2, this.map.width - this.viewWidth));
+            this.camera.y = Math.max(0, Math.min(this.player.y - this.viewHeight / 2, this.map.height - this.viewHeight));
+            if (this.pointerClientX !== undefined) {
+                const ax = this.camera.x + this.input.mouseX - this.player.x;
+                const ay = this.camera.y + this.input.mouseY - this.player.y;
+                const length = Math.hypot(ax, ay) || 1; this.player.aimX = ax / length; this.player.aimY = ay / length;
+            }
+        }
 
         // Role attack: invocations are world units; other roles fire projectiles.
         if (shouldShoot) {
@@ -911,12 +933,40 @@ class Game {
 
     /** Handle game over. */
     gameOver() {
+        this.player?.cancelSniperAim?.();
         this.state = 'GAME_OVER';
         this.audio.gameOver();
         this.ui.hideLevelUp();
         this.ui.showHUD(false);
         this.ui.showGameOver(this.player.level, this.roomsCleared, this.enemiesKilled, this.floor);
         this.loopRunning = false;
+    }
+
+    drawSniperAim(ctx) {
+        const aimingPlayers = [this.player, ...(this.remotePlayers || [])]
+            .filter(p => p?.health > 0 && p.character === 'tirador' && p.sniperAiming);
+        for (const player of aimingPlayers) {
+            const maxRange = Math.min(player.range || 960, 960);
+            let endX = player.x + player.aimX * maxRange;
+            let endY = player.y + player.aimY * maxRange;
+            if (this.map?.isWalkable) {
+                let lastX = player.x, lastY = player.y;
+                for (let distance = 4; distance <= maxRange; distance += 4) {
+                    const x = player.x + player.aimX * distance;
+                    const y = player.y + player.aimY * distance;
+                    if (!this.map.isWalkable(x, y)) break;
+                    lastX = x; lastY = y;
+                }
+                endX = lastX; endY = lastY;
+            }
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#221e94';
+            ctx.lineWidth = 4 / this.cameraZoom;
+            ctx.lineCap = 'butt';
+            ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(endX, endY); ctx.stroke();
+            ctx.restore();
+        }
     }
 
     /** Render the game. */
@@ -945,10 +995,11 @@ class Game {
         // backing store at the camera zoom, so everything is multiplied by
         // CAMERA_ZOOM / PIXEL_SIZE. The integer factor keeps the art crisp.
         ctx.save();
-        ctx.scale(CAMERA_ZOOM / PIXEL_SIZE, CAMERA_ZOOM / PIXEL_SIZE);
+        ctx.scale(this.cameraZoom / PIXEL_SIZE, this.cameraZoom / PIXEL_SIZE);
         ctx.translate(-Math.round(this.camera.x) + sx, -Math.round(this.camera.y) + sy);
 
         if (this.map) this.map.draw(ctx, this.camera, this.viewWidth, this.viewHeight);
+        this.drawSniperAim(ctx);
 
         // XP orbs — squares with a dim halo
         for (const orb of this.xpOrbs) {

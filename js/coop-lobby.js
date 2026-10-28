@@ -143,6 +143,7 @@
             soloButton.disabled = true;
         });
         socket.addEventListener('close', () => {
+            window.abyssGame?.player?.cancelSniperAim?.();
             status.textContent = 'Se perdió la conexión con el servidor. Recarga para volver al lobby.';
             if (client.gameEnabled) document.getElementById('net-game-status').textContent = 'Conexión perdida';
             createButton.disabled = true;

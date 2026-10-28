@@ -11,6 +11,7 @@
     let pendingSnapshot = null;
     let retrySnapshot = null;
     let sendTimer = null;
+    let edgeListenersBound = false;
     const seenNoticeIds = new Set();
     // Level-up flow: the server owns pendingLevelUps. offeredOwed is the count
     // currently on screen; awaitingOwed is what we expect after a sent choice.
@@ -174,6 +175,7 @@
 
     function readMovement() {
         const input = game.input;
+        game.updatePointerWorld?.();
         let moveX = input.moveX || 0, moveY = input.moveY || 0;
         if (!moveX && !moveY) {
             if (input.keys.KeyA || input.keys.ArrowLeft) moveX -= 1;
@@ -193,7 +195,10 @@
             const aimLength = Math.hypot(aimX, aimY) || 1;
             aimX /= aimLength; aimY /= aimLength;
         }
-        return { type: 'input', moveX, moveY, aimX, aimY, fire: input.mouseDown, reload: !!input.keys.KeyR };
+        const message = { type: 'input', moveX, moveY, aimX, aimY, fire: input.mouseDown, reload: !!input.keys.KeyR,
+            firePressed: input.mousePressed, fireReleased: input.mouseReleased, cancelAim: input.cancelAim };
+        input.mousePressed = false; input.mouseReleased = false; input.cancelAim = false;
+        return message;
     }
 
     function renderFrame() {
@@ -242,6 +247,7 @@
                 game.clearEnemyProjectiles(); // only clears any old local run before remote snapshots take over
                 game.input.keys = {};
                 game.input.mouseDown = false;
+                game.input.mousePressed = false; game.input.mouseReleased = false; game.input.cancelAim = false;
                 game.input.moveX = 0;
                 game.input.moveY = 0;
                 game.input.aimActive = false;
@@ -255,6 +261,13 @@
                 game.ui.hideLoading();
                 if (!renderStarted) { renderStarted = true; requestAnimationFrame(renderFrame); }
                 if (sendTimer) clearInterval(sendTimer);
+                if (!edgeListenersBound) {
+                    const sendEdge = () => { if (game?.state === 'PLAYING') window.coopClient.send(readMovement()); };
+                    game.canvas.addEventListener('mousedown', (e) => { if (e.button === 0) sendEdge(); });
+                    window.addEventListener('mouseup', (e) => { if (e.button === 0) sendEdge(); });
+                    window.addEventListener('blur', () => { game.input.cancelAim = true; sendEdge(); });
+                    edgeListenersBound = true;
+                }
                 sendTimer = setInterval(() => {
                     if (game?.state === 'PLAYING') window.coopClient.send(readMovement());
                 }, 50);
