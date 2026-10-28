@@ -29,7 +29,8 @@
         <a id="coop-invite" class="coop-invite" hidden></a>
         <ol id="coop-players" class="coop-players"></ol>
         <p id="coop-stage-note" class="coop-stage-note">Hasta tres jugadores comparten la mazmorra.</p>`;
-    screen.insertBefore(panel, screen.querySelector('.controls-info'));
+    const menu = screen.querySelector('.start-menu') || screen;
+    menu.insertBefore(panel, menu.querySelector('.controls-info'));
 
     const name = panel.querySelector('#coop-name');
     const character = panel.querySelector('#coop-character');

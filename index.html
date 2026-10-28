@@ -19,8 +19,8 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=pool-loading-v1">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bungee&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=cover-screen-v1">
 </head>
 <body>
     <canvas id="game"></canvas>
@@ -39,20 +39,27 @@
 
     <!-- Start Screen -->
     <div id="start-screen" class="screen active">
-        <h1 class="game-title" aria-label="Jardines y Mazmorras"><span>JARDINES</span><span>Y MAZMORRAS</span></h1>
-        <p class="subtitle">Una expedición de fantasía en 16 bits</p>
-        <button id="start-btn" class="btn">Iniciar expedición</button>
-        <p class="build-marker">DEMO COOPERATIVA · VERSIÓN DE PRUEBA</p>
-        <div class="controls-info">
-            <p><strong>WASD</strong> — Moverse</p>
-            <p><strong>Ratón</strong> — Apuntar</p>
-            <p><strong>Clic</strong> — Disparar</p>
-            <p><strong>R</strong> — Recargar</p>
-            <p><strong>Espacio</strong> — Pausar</p>
-            <p><strong>M</strong> — Silenciar</p>
-        </div>
+        <section class="start-menu" aria-label="Menú de inicio">
+            <p class="subtitle">Una expedición de fantasía en 16 bits</p>
+            <button id="start-btn" class="btn">Iniciar expedición</button>
+            <p class="build-marker">DEMO COOPERATIVA · VERSIÓN DE PRUEBA</p>
+            <div class="controls-info">
+                <p><strong>WASD</strong> — Moverse</p>
+                <p><strong>Ratón</strong> — Apuntar</p>
+                <p><strong>Clic</strong> — Disparar</p>
+                <p><strong>R</strong> — Recargar</p>
+                <p><strong>Espacio</strong> — Pausar</p>
+                <p><strong>M</strong> — Silenciar</p>
+            </div>
+        </section>
+        <figure class="start-cover">
+            <img src="00-sprites/portada/portada-retro-640x360.png" width="640" height="360" alt="" draggable="false">
+            <h1 class="cover-title" aria-label="Jardines y Mazmorras">
+                <span>JARDINES</span>
+                <span class="cover-title-second">Y MAZMORRAS</span>
+            </h1>
+        </figure>
     </div>
-
     <!-- HUD Overlay -->
     <div id="hud" class="hud hidden">
         <div class="hud-left">
@@ -143,7 +150,7 @@
     <script src="js/game.js?v=enemy-projectile-pool-v1"></script>
     <script src="js/touch.js?v=abyss-v2"></script>
     <script src="js/coop-game.js?v=pool-loading-v1"></script>
-    <script src="js/coop-lobby.js?v=pool-loading-v1"></script>
+    <script src="js/coop-lobby.js?v=cover-screen-v1"></script>
     <script src="js/main.js?v=pool-loading-v1"></script>
 </body>
 </html>
