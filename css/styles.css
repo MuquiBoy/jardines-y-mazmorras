@@ -738,6 +738,8 @@ body.touch-device .rotate-gate { }
     #start-screen .coop-panel { padding: .7rem; }
     #start-screen .controls-info { gap: 4px 8px; }
 }
+#start-screen.hidden { display: none; }
+
 .touch-reload {
     position: absolute;
     top: 14px;
