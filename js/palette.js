@@ -21,12 +21,11 @@ const PIXEL_SIZE = 1;
 /**
  * Camera zoom, in screen pixels per authored world pixel.
  *
- * 2 gives the requested 200% view: the player sees half as much of the map and
- * every 1 px detail of the art lands on an exact 2×2 block. The backing store
- * keeps the window's native resolution, so this is a true camera zoom rather
- * than a low-resolution upscale that would drop authored pixels.
+ * 2.5 enlarges each authored world pixel to 250% in CSS pixels. Nearest-neighbor
+ * rendering stays enabled; fractional scaling can alternate 2 px and 3 px
+ * raster blocks so the average remains 2.5 px without smoothing the art.
  */
-const CAMERA_ZOOM = 2;
+const CAMERA_ZOOM = 2.5;
 
 const PALETTE = {
     // World

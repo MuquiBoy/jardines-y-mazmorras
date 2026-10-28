@@ -6,6 +6,7 @@
     let enemiesById = new Map();
     let lastSnapshotAt = 0;
     let renderStarted = false;
+    let spectatorTargetId = null;
     let templatesReady = false;
     let pendingSnapshot = null;
     let retrySnapshot = null;
@@ -92,6 +93,7 @@
             currentPlayers.set(record.id, player);
         }
         playersById = currentPlayers;
+        spectatorTargetId = state.spectatorTargetId || null;
         const local = playersById.get(localId) || state.players[0] && playersById.get(state.players[0].id);
         if (!local) return;
         game.player = local;
@@ -204,10 +206,19 @@
             player.renderX = draw.fromX + (draw.x - draw.fromX) * alpha;
             player.renderY = draw.fromY + (draw.y - draw.fromY) * alpha;
         }
-        const px = game.player.renderX ?? game.player.x;
-        const py = game.player.renderY ?? game.player.y;
-        game.camera.x = Math.max(0, Math.min(px - game.viewWidth / 2, game.map.width - game.viewWidth));
-        game.camera.y = Math.max(0, Math.min(py - game.viewHeight / 2, game.map.height - game.viewHeight));
+        const viewer = playersById.get(window.coopClient.playerId) || game.player;
+        const cameraSelection = resolveSpectatorCameraTarget(
+            viewer, [...playersById.values()], spectatorTargetId
+        );
+        spectatorTargetId = cameraSelection.targetId;
+        game.spectatorTarget = cameraSelection.spectating ? cameraSelection.target : null;
+        const focus = cameraSelection.target || viewer;
+        if (focus && focus.health > 0) {
+            const px = focus.renderX ?? focus.x;
+            const py = focus.renderY ?? focus.y;
+            game.camera.x = Math.max(0, Math.min(px - game.viewWidth / 2, game.map.width - game.viewWidth));
+            game.camera.y = Math.max(0, Math.min(py - game.viewHeight / 2, game.map.height - game.viewHeight));
+        }
         game.frameCount++;
         game.render();
         requestAnimationFrame(renderFrame);
@@ -218,6 +229,8 @@
             game = window.abyssGame;
             if (!game) return;
             retrySnapshot = initialSnapshot;
+            spectatorTargetId = null;
+            game.spectatorTarget = null;
             game.ui.showLoading();
             // The online flow starts from a WebSocket message, not from a
             // button, so it never went through startGame(). Unlock here too;

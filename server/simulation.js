@@ -17,6 +17,7 @@ const context = vm.createContext({ console });
 context.RoomTemplateLibrary = loadTemplateCatalog(TEMPLATE_ROOT);
 for (const file of [
     'palette.js',
+    'camera.js',
     'upgrades.js',
     'characters/roles.js',
     'bullet.js',
@@ -32,7 +33,7 @@ for (const file of [
 ]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 function newPlayer(member, x, y) {
@@ -84,7 +85,7 @@ function generateFloor(run) {
 function createRun(members, reusableProjectilePool = null) {
     const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [],
         enemyProjectilePool: reusableProjectilePool || new Engine.EnemyProjectilePool(), summons: [], notices: [],
-        visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0 };
+        visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0, spectatorTargetId: null };
     run.enemyProjectilePool.releaseAll(run.enemyBullets);
     run.enemyProjectilePool.resetRunStats();
     for (const member of members) run.players.set(member.id, newPlayer(member, 0, 0));
@@ -342,6 +343,9 @@ function stepRun(run, inputs) {
             run.mapVersion++;
         }
     }
+    run.spectatorTargetId = Engine.selectPartySpectatorTargetId(
+        run.players.values(), run.spectatorTargetId
+    );
     if (!livingPlayers.length) run.phase = 'ended';
 }
 
@@ -373,6 +377,7 @@ function bulletState(bullet) {
 function summonState(summon) { return Object.fromEntries(['id','ownerId','x','y','health','maxHealth','speed','damage','attackRate','attackTimer','lifetime','radius','color','alive'].map(key => [key, summon[key]])); }
 function snapshot(run) {
     return { phase: run.phase, floor: run.floor, tick: run.tick, mapVersion: run.mapVersion, map: mapState(run.map),
+        spectatorTargetId: run.spectatorTargetId || null,
         players: [...run.players.values()].map(playerState), enemies: run.enemies.map(enemyState),
         playerBullets: run.playerBullets.map(bulletState), enemyBullets: run.enemyBullets.map(bulletState),
         summons: run.summons.map(summonState), notices: run.notices || [] };

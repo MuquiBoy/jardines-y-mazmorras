@@ -58,6 +58,8 @@ class Game {
 
         // Camera
         this.camera = { x: 0, y: 0 };
+        // Online spectators focus their camera on a living teammate.
+        this.spectatorTarget = null;
 
         // Impact feedback: frames of screen shake and of red damage flash left.
         this.shake = 0;
@@ -995,19 +997,21 @@ class Game {
             if (player.health > 0) player.draw(ctx);
         }
 
+        // During co-op spectating, contextual markers follow the camera target.
+        const cameraFocus = this.spectatorTarget || this.player;
         // Objective chevron. Without an exit to head for, a player would be
         // hunting a boss room blind across a 7000px map, so the marker points
         // at the boss first and the exit only once it has opened.
-        if (this.map && this.player) {
+        if (this.map && cameraFocus) {
             const target = this.map.exit ||
                 (this.map.bossRoom ? { x: this.map.bossRoom.cx, y: this.map.bossRoom.cy } : null);
             if (target) {
-                const dx = target.x - this.player.x;
-                const dy = target.y - this.player.y;
+                const dx = target.x - cameraFocus.x;
+                const dy = target.y - cameraFocus.y;
                 if (Math.hypot(dx, dy) > 140) {
                     const a = Math.atan2(dy, dx);
-                    const px = this.player.x + Math.cos(a) * 46;
-                    const py = this.player.y + Math.sin(a) * 46;
+                    const px = cameraFocus.x + Math.cos(a) * 46;
+                    const py = cameraFocus.y + Math.sin(a) * 46;
                     const col = this.map.exit ? PALETTE.exit : PALETTE.danger;
                     pixelRect(ctx, px, py, 9, 9, col);
                     pixelRect(ctx, px, py, 4, 4, PALETTE.void);
@@ -1049,9 +1053,9 @@ class Game {
 
         this.ui.renderNotification(ctx);
 
-        if (this.map && this.player) {
+        if (this.map && cameraFocus) {
             this.ui.enemies = this.enemies;
-            this.ui.drawMinimap(this.map, this.camera, this.player);
+            this.ui.drawMinimap(this.map, this.camera, cameraFocus);
         }
     }
 
