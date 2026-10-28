@@ -2,9 +2,125 @@
 const PLAYER_SPRITE_ROOT = '00-sprites/jugador/';
 const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
+const PLAYER_WALK_VERSION = 'role-walk-v1';
+
+/**
+ * Decode the simple RGBA Aseprite files used for the six role walk cycles.
+ * The authored files contain one full-frame compressed cel per frame.
+ */
+async function decodeAsepriteWalk(url) {
+    if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
+        typeof document === 'undefined') return null;
+
+    const response = await fetch(url, { cache: 'force-cache' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const bytes = await response.arrayBuffer();
+    const data = new DataView(bytes);
+    if (data.byteLength < 144 || data.getUint16(4, true) !== 0xA5E0 ||
+        data.getUint16(12, true) !== 32) {
+        throw new Error('Formato Aseprite RGBA no compatible');
+    }
+
+    const frameCount = data.getUint16(6, true);
+    const width = data.getUint16(8, true);
+    const height = data.getUint16(10, true);
+    const frames = [];
+    const durations = [];
+    let frameOffset = 128;
+
+    for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+        if (frameOffset + 16 > data.byteLength ||
+            data.getUint16(frameOffset + 4, true) !== 0xF1FA) {
+            throw new Error('Encabezado de fotograma Aseprite inválido');
+        }
+
+        const frameBytes = data.getUint32(frameOffset, true);
+        const chunkCount = data.getUint16(frameOffset + 6, true);
+        const duration = data.getUint16(frameOffset + 8, true) || 100;
+        const frameEnd = frameOffset + frameBytes;
+        if (frameEnd > data.byteLength || frameBytes < 16) {
+            throw new Error('Fotograma Aseprite incompleto');
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        let chunkOffset = frameOffset + 16;
+
+        for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
+            if (chunkOffset + 6 > frameEnd) throw new Error('Bloque Aseprite incompleto');
+            const chunkSize = data.getUint32(chunkOffset, true);
+            const chunkType = data.getUint16(chunkOffset + 4, true);
+            if (chunkSize < 6 || chunkOffset + chunkSize > frameEnd) {
+                throw new Error('Tamaño de bloque Aseprite inválido');
+            }
+
+            const cel = chunkOffset + 6;
+            if (chunkType === 0x2005 && chunkSize >= 26 && data.getUint16(cel + 7, true) === 2) {
+                const x = data.getInt16(cel + 2, true);
+                const y = data.getInt16(cel + 4, true);
+                const opacity = data.getUint8(cel + 6);
+                const celWidth = data.getUint16(cel + 16, true);
+                const celHeight = data.getUint16(cel + 18, true);
+                const compressedStart = cel + 20;
+                const compressedEnd = chunkOffset + chunkSize;
+                const compressed = new Uint8Array(bytes, compressedStart, compressedEnd - compressedStart);
+                const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate'));
+                const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
+                if (rgba.length !== celWidth * celHeight * 4) {
+                    throw new Error('Datos de píxel Aseprite incompletos');
+                }
+                if (opacity !== 255) {
+                    for (let i = 3; i < rgba.length; i += 4) rgba[i] = Math.round(rgba[i] * opacity / 255);
+                }
+                context.putImageData(new ImageData(rgba, celWidth, celHeight), x, y);
+            }
+            chunkOffset += chunkSize;
+        }
+
+        frames.push(canvas);
+        durations.push(duration);
+        frameOffset = frameEnd;
+    }
+
+    if (!frames.length) throw new Error('La animación Aseprite no contiene fotogramas');
+    return { frames, durations, totalDuration: durations.reduce((sum, ms) => sum + ms, 0) };
+}
+
 class Player {
     static XP_GROWTH = 1.20;
     static sprites = null;
+    static animations = Object.create(null);
+    static animationPromises = Object.create(null);
+
+    /** Fetch all authored role loops once. Stickers remain visible as fallback. */
+    static loadAnimations() {
+        if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
+            typeof document === 'undefined') return;
+        for (const role of Object.values(CHARACTER_ROLES)) {
+            if (Player.animations[role.id] || Player.animationPromises[role.id]) continue;
+            const url = PLAYER_SPRITE_ROOT + role.id + '/' + role.id + '_walk.aseprite?v=' + PLAYER_WALK_VERSION;
+            Player.animationPromises[role.id] = decodeAsepriteWalk(url)
+                .then(animation => { if (animation) Player.animations[role.id] = animation; })
+                .catch(error => {
+                    delete Player.animationPromises[role.id];
+                    console.warn('No se pudo cargar la animación walk de ' + role.name + '.', error);
+                });
+        }
+    }
+
+    /** Select a frame by its authored Aseprite duration; looping never depends on movement. */
+    static walkFrameFor(character, now = (typeof performance !== 'undefined' ? performance.now() : Date.now())) {
+        const animation = Player.animations[character];
+        if (!animation) return null;
+        let time = now % animation.totalDuration;
+        for (let i = 0; i < animation.frames.length; i++) {
+            if (time < animation.durations[i]) return animation.frames[i];
+            time -= animation.durations[i];
+        }
+        return animation.frames[0];
+    }
 
     /**
      * Load the authored role stickers once.
@@ -191,14 +307,13 @@ class Player {
         if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / 3) % 2 === 0) return;
         const size = 24 * (this.visualScale || 1);
         const px = this.renderX ?? this.x, py = this.renderY ?? this.y;
+        const walkFrame = Player.walkFrameFor(this.character);
         const sprite = Player.spriteFor(this.character);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
-        if (spriteReady) {
-            // Stickers are authored at the role's final size (24, 32 or 40 px)
-            // and already include their outline. Draw them 1:1 on the pixel
-            // grid so the art stays crisp and keeps the established footprint.
+        if (walkFrame || spriteReady) {
+            // Preserve nearest-neighbor pixels and the role's authored 24/32/40 px footprint.
             ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(sprite, snap(px - size / 2), snap(py - size / 2), Math.round(size), Math.round(size));
+            ctx.drawImage(walkFrame || sprite, snap(px - size / 2), snap(py - size / 2), Math.round(size), Math.round(size));
         } else {
             pixelRect(ctx, px, py, size + 4, size + 4, PALETTE.void);
             pixelRect(ctx, px, py, size, size, this.color || PALETTE.player);
@@ -231,5 +346,6 @@ class Player {
     }
 }
 
-// Start fetching the role stickers during page load instead of on first draw.
+// Start fetching role artwork during page load instead of on first draw.
 Player.loadSprites();
+Player.loadAnimations();
