@@ -1,0 +1,46 @@
+VALORES ACTUALES DE LOS ROLES
+Vida, velocidad de movimiento y daño
+
+Fuente: js/characters/roles.js. Son los valores configurados actualmente en el código.
+
+ESCALA UNIVERSAL DE MOVIMIENTO
+- Velocidad estándar del personaje: 1,00.
+- 1,00 equivale a 2,5 píxeles del mundo por frame de simulación (150 px/s a 60 FPS).
+- La velocidad real del rol se calcula multiplicando su valor de movimiento por 2,5 px/frame.
+- El movimiento diagonal se normaliza para conservar la misma velocidad total que al moverse en línea recta.
+- Bastión tiene velocidad base 1,00, pero queda inmóvil mientras mantiene el disparo por su mecánica de torreta.
+
+VALORES BASE DE LOS ROLES
+La vida es HP inicial/máxima. El daño indicado es por proyectil o impacto, salvo donde se especifica.
+
+ROL          VIDA       VEL. ROL   MOVIMIENTO EFECTIVO       DAÑO
+Pistolero    36 HP      1,00       2,5 px/frame (150/s)      12 por bala
+Tirador      24 HP      1,00       2,5 px/frame (150/s)      32 por bala
+Perdigonero  36 HP      1,00       2,5 px/frame (150/s)      6 por perdigón
+Invocador    36 HP      1,00       2,5 px/frame (150/s)      2 por golpe de invocación
+Piromano     24 HP      1,00       2,5 px/frame (150/s)      6 por proyectil + quemadura
+Bastión      48 HP      1,00       2,5 px/frame (150/s)      2 por proyectil
+
+DETALLES DEL DAÑO
+
+Perdigonero
+- Cada disparo genera 5 perdigones de 6 HP cada uno.
+- Daño máximo teórico por disparo contra un mismo objetivo: 30 HP, si impactan los cinco.
+
+Invocador
+- El Invocador no lanza proyectiles de daño directo: despliega unidades que buscan enemigos y los atacan.
+- Cada unidad invocada tiene 28 HP, se mueve de forma independiente a 1,9 px/frame (114 px/s) y causa 2 HP por ataque.
+- Ataca cada 32 frames (aprox. 0,53 s) y el límite es de 6 unidades activas. La velocidad de la invocación no usa la escala de velocidad de jugadores.
+
+Piromano
+- Cada proyectil causa 6 HP de daño directo.
+- La quemadura causa 2 HP cada 24 frames (0,40 s) durante hasta 144 frames (2,40 s): hasta 6 ticks o 12 HP adicionales por aplicación completa.
+- Los impactos sucesivos renuevan la duración de la quemadura; no multiplican su daño por acumulación de efectos.
+
+Bastión
+- Recibe el 75 % del daño de proyectiles enemigos (25 % menos daño).
+- Tiene un 50 % de probabilidad de hacer rebotar proyectiles enemigos al impactarlo.
+
+EXPERIENCIA DE ENEMIGOS
+- Los enemigos no otorgan experiencia ni dejan orbes de experiencia al morir.
+- La función de recompensa por bajas está desactivada en solitario y en cooperativo. El sistema general de experiencia sigue disponible para recompensas ajenas a las bajas de enemigos.

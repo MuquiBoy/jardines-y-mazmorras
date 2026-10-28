@@ -1,0 +1,33 @@
+COCHINILLA ESQUINERO — VALORES Y MECÁNICAS ACTUALES
+
+Fuente: configuración del juego en js/enemies/cochinilla_esquinero/cochinilla_esquinero.js y js/enemy.js.
+
+VIDA
+- Vida base: 100 HP.
+- En los pisos 1 al 10 conserva esos 100 HP.
+- Desde el piso 11, la vida aumenta 16 % de la vida base por cada piso posterior al 10. Fórmula: redondear(100 × [1 + 0,16 × (piso − 10)]). Ejemplos: piso 11 = 116 HP; piso 12 = 132 HP.
+
+INMUNIDAD AL DAÑO
+- Es inmune mientras está esperando y durante el enfriamiento.
+- Es vulnerable a balas y otros efectos durante el casteo/aviso y durante el rayo activo. La línea blanca del casteo marca la dirección; el rayo no daña al jugador hasta la fase activa.
+- Las balas y otros efectos que usan takeDamage pueden reducir su vida durante cualquiera de esas dos fases vulnerables.
+- Ciclo actual: espera 3 s; aviso/casteo 2 s; rayo activo 5 s; enfriamiento 5 s. El ciclo se repite mientras siga viva.
+
+SEGUIMIENTO DEL RAYO
+- No hay una velocidad de giro o persecución en píxeles por segundo configurada.
+- Durante el aviso/casteo, fija la dirección del objetivo elegido y no lo persigue.
+- Durante el rayo activo, actualiza la dirección hacia la posición actual del objetivo en cada paso de simulación: 60 veces por segundo (un paso cada 16,67 ms). En la práctica, el rayo reajusta su dirección de forma inmediata en cada actualización; no tiene una aceleración ni un giro gradual.
+- Si el objetivo deja de ser válido, busca otro objetivo válido, priorizando el más cercano.
+
+DAÑO DEL RAYO
+- Daño: 6 HP por tick de simulación en contacto con el rayo.
+- La simulación funciona a 60 ticks por segundo: equivale a 360 HP por segundo si el jugador permanece dentro del rayo.
+- La fase activa dura nominalmente 5 s (300 ticks): el cálculo continuo daría 1.800 HP. Por el orden actual de actualización, el rayo se limpia al pasar a enfriamiento antes de aplicar el daño de ese último tick; el máximo efectivo puede ser un tick menor (1.794 HP), si el jugador no tiene activo su contador de invulnerabilidad.
+- El daño del rayo permanece en 6 por tick; el escalado de daño general de enemigos no modifica este valor específico.
+
+TIEMPOS DEL CICLO DE ATAQUE
+- Espera antes del casteo: 3,00 s (180 frames).
+- Casteo/aviso: 2,00 s (120 frames). Durante este tiempo fija la dirección del rayo y la cochinilla ya puede recibir daño.
+- Ataque: 5,00 s (300 frames). Es la duración nominal del rayo activo.
+- Enfriamiento tras el ataque: 5,00 s (300 frames).
+- Después del enfriamiento vuelve a esperar 3,00 s antes del siguiente casteo.

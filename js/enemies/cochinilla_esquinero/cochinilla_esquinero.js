@@ -64,10 +64,10 @@ class CochinillaEsquinero extends Enemy {
         this.anchorX = x;
         this.anchorY = y;
 
-        // State machine: wait -> warning (0.90 s) -> active (5 s) -> cooldown (5 s).
+        // State machine: wait (3 s) -> warning (2 s) -> active (5 s) -> cooldown (5 s).
         this.phase = 'wait';
-        this.waitFrames = 120;
-        this.warningFrames = 54;   // 0.90 s at the fixed 60 Hz step
+        this.waitFrames = 180;
+        this.warningFrames = 120;  // 2 s at the fixed 60 Hz step
         this.activeFrames = 300;   // 5 s
         this.cooldownFrames = 300; // 5 s
         this.phaseTimer = this.waitFrames;
@@ -93,14 +93,14 @@ class CochinillaEsquinero extends Enemy {
         CochinillaEsquinero.sprite = image;
     }
 
-    /** Only the active beam exposes the body. Wait, warning and cooldown are immune. */
+    /** The body is vulnerable during warning/cast and active beam; wait and cooldown are immune. */
     isVulnerable() {
-        return this.alive && this.phase === 'active';
+        return this.alive && (this.phase === 'warning' || this.phase === 'active');
     }
 
     /**
-     * Persistent damage (burn ticks, bullets) only lands during the active
-     * beam. Everything else is rejected before touching health.
+     * Persistent damage (burn ticks, bullets) only lands during warning/cast or active beam
+     * phases. Wait and cooldown damage is rejected before touching health.
      */
     takeDamage(amount) {
         if (!this.isVulnerable()) return false;
@@ -198,7 +198,7 @@ class CochinillaEsquinero extends Enemy {
         }
 
         if (this.phase === 'warning') {
-            // Fixed white line, still no damage.
+            // Fixed white targeting line; the enemy can take damage during the cast.
             if (--this.phaseTimer <= 0) {
                 this.phase = 'active';
                 this.phaseTimer = this.activeFrames;

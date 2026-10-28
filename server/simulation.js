@@ -18,7 +18,7 @@ context.RoomTemplateLibrary = loadTemplateCatalog(TEMPLATE_ROOT);
 for (const file of ['palette.js', 'upgrades.js', 'characters/roles.js', 'bullet.js', 'player.js', 'enemy.js', 'enemies/cochinilla_esquinero/cochinilla_esquinero.js', 'map.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, ShooterEnemy, SpiralEnemy, BossEnemy, CochinillaEsquinero, createEnemy, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = { basic: Engine.BasicEnemy, shooter: Engine.ShooterEnemy, spiral: Engine.SpiralEnemy, boss: Engine.BossEnemy, 'cochinilla-esquinero': Engine.CochinillaEsquinero, 'cochinilla-esquinero': Engine.CochinillaEsquinero, 'cochinilla_esquinero': Engine.CochinillaEsquinero };
 
 function newPlayer(member, x, y) {
@@ -31,12 +31,12 @@ function newPlayer(member, x, y) {
 }
 
 /**
- * Award a kill to the player who dealt it. The guard makes the bounty
+ * Enemy-kill XP is gated by the shared Enemy flag. The guard makes any bounty
  * idempotent when a death is observed by more than one system (burn tick,
  * bullet pass, summon contact).
  */
 function awardKill(run, enemy, ownerId) {
-    if (!enemy || enemy.xpAwarded || !ownerId || !(enemy.xpValue > 0)) return;
+    if (!Engine.Enemy.ENEMY_XP_REWARDS_ENABLED || !enemy || enemy.xpAwarded || !ownerId || !(enemy.xpValue > 0)) return;
     const player = run.players.get(ownerId);
     if (!player || player.health <= 0) return;
     enemy.xpAwarded = true;

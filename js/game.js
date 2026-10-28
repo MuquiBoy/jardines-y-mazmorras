@@ -655,8 +655,8 @@ class Game {
         this.addImpact(enemy.type === 'boss' ? 7 : 2, 0);
         this.audio.enemyDeath();
 
-        // Drop XP orbs
-        if (enemy.xpValue > 0) {
+        // Enemy XP drops are disabled by Enemy.ENEMY_XP_REWARDS_ENABLED.
+        if (Enemy.ENEMY_XP_REWARDS_ENABLED && enemy.xpValue > 0) {
             const orbCount = Math.max(1, Math.ceil(enemy.xpValue / 5));
             for (let i = 0; i < orbCount; i++) {
                 this.xpOrbs.push({

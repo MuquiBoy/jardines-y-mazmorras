@@ -402,6 +402,9 @@ class Enemy {
     }
 }
 
+/** Enemy kill XP is disabled; other reward systems remain available. */
+Enemy.ENEMY_XP_REWARDS_ENABLED = false;
+
 // ===== Cochinilla Perforamuros — fixed-wall laser tester =====
 class CochinillaPerforamuros extends Enemy {
     static sprites = null;

@@ -2,6 +2,8 @@
  * El cuerpo visible mide 24 px por visualScale; con sprite, ese tamaño incluye
  * el contorno dibujado por el autor. `sprite` es el nombre de la carpeta y del
  * PNG en 00-sprites/jugador/<sprite>/<sprite>_sticker.png. */
+const STANDARD_MOVEMENT_SPEED = 2.5; // world px per fixed 60 Hz frame; 1.00 role speed = 2.5 px/frame (150 px/s).
+
 class CharacterRole {
     constructor(config) {
         Object.assign(this, config);
@@ -10,7 +12,7 @@ class CharacterRole {
     apply(player) {
         player.character = this.id;
         player.maxHealth = player.health = this.health;
-        player.speed = this.speed;
+        player.speed = (this.movementSpeed ?? 1.00) * STANDARD_MOVEMENT_SPEED;
         player.damage = this.damage;
         player.fireRate = this.fireRate;
         player.bulletSpeed = this.bulletSpeed;
@@ -37,14 +39,14 @@ class CharacterRole {
 }
 
 const CHARACTER_ROLES = Object.freeze({
-    // Velocidades de movimiento y de proyectil a la mitad desde 2026-10-26:
-    // la cámara al 200% duplicaba la velocidad percibida en pantalla.
-    pistolero: new CharacterRole({ id: 'pistolero', name: 'Pistolero', color: '#55d64b', health: 36, speed: 2.5, damage: 12, fireRate: 18, bulletSpeed: 4.5, magazine: 15, reloadFrames: 54, range: 500, spread: 0.035, collisionRadius: 12, visualScale: 1, weaponKind: 'gun', sprite: 'pistolero' }),
-    tirador: new CharacterRole({ id: 'tirador', name: 'Tirador', color: '#48a9ff', health: 30, speed: 1.5, damage: 32, fireRate: 126, bulletSpeed: 7.5, magazine: 3, reloadFrames: 198, range: 1150, spread: 0.006, collisionRadius: 12, visualScale: 1, weaponKind: 'gun', sprite: 'tirador' }),
-    perdigonero: new CharacterRole({ id: 'perdigonero', name: 'Perdigonero', color: '#f044b5', health: 38, speed: 1.9, damage: 6, fireRate: 66, bulletSpeed: 3.5, magazine: 5, reloadFrames: 128, range: 270, spread: 0.58, pelletCount: 5, collisionRadius: 12, visualScale: 1, weaponKind: 'shotgun', sprite: null }),
-    invocador: new CharacterRole({ id: 'invocador', name: 'Invocador', color: '#ae64e8', health: 38, speed: 1.7, damage: 2, fireRate: 32, bulletSpeed: 0, magazine: 6, reloadFrames: 272, range: 0, spread: 0, collisionRadius: 12, visualScale: 32 / 24, weaponKind: 'summoner', sprite: 'invocador', summon: { health: 28, speed: 1.9, damage: 2, attackRate: 32, lifetime: 900, radius: 9, maxActive: 6, color: '#ae64e8' } }),
-    piromano: new CharacterRole({ id: 'piromano', name: 'Piromano', color: '#ff453a', health: 32, speed: 2.5, damage: 6, fireRate: 72, bulletSpeed: 3.5, magazine: 7, reloadFrames: 142, range: 235, spread: 0.07, collisionRadius: 12, visualScale: 1, weaponKind: 'fire', sprite: 'piromano', burn: { damage: 2, interval: 24, duration: 144 } }),
-    bastion: new CharacterRole({ id: 'bastion', name: 'Bastión', color: '#ff951f', health: 150, speed: 1.4, damage: 4, fireRate: 7, bulletSpeed: 3.75, magazine: 100, reloadFrames: 420, range: 480, spread: 0.30, collisionRadius: 17, visualScale: 40 / 24, incomingDamageMultiplier: 0.75, enemyProjectileRicochetChance: 0.5, weaponKind: 'turret', sprite: 'bastion' })
+    // Player movement speed uses the universal multiplier scale:
+    // 1.00 equals 2.5 world px/frame (150 px/s) at 60 Hz.
+    pistolero: new CharacterRole({ id: 'pistolero', name: 'Pistolero', color: '#55d64b', health: 36, movementSpeed: 1.00, damage: 12, fireRate: 18, bulletSpeed: 4.5, magazine: 15, reloadFrames: 54, range: 500, spread: 0.035, collisionRadius: 12, visualScale: 1, weaponKind: 'gun', sprite: 'pistolero' }),
+    tirador: new CharacterRole({ id: 'tirador', name: 'Tirador', color: '#48a9ff', health: 24, movementSpeed: 1.00, damage: 32, fireRate: 126, bulletSpeed: 7.5, magazine: 3, reloadFrames: 198, range: 1150, spread: 0.006, collisionRadius: 12, visualScale: 1, weaponKind: 'gun', sprite: 'tirador' }),
+    perdigonero: new CharacterRole({ id: 'perdigonero', name: 'Perdigonero', color: '#f044b5', health: 36, movementSpeed: 1.00, damage: 6, fireRate: 66, bulletSpeed: 3.5, magazine: 5, reloadFrames: 128, range: 270, spread: 0.58, pelletCount: 5, collisionRadius: 12, visualScale: 1, weaponKind: 'shotgun', sprite: null }),
+    invocador: new CharacterRole({ id: 'invocador', name: 'Invocador', color: '#ae64e8', health: 36, movementSpeed: 1.00, damage: 2, fireRate: 32, bulletSpeed: 0, magazine: 6, reloadFrames: 272, range: 0, spread: 0, collisionRadius: 12, visualScale: 32 / 24, weaponKind: 'summoner', sprite: 'invocador', summon: { health: 28, speed: 1.9, damage: 2, attackRate: 32, lifetime: 900, radius: 9, maxActive: 6, color: '#ae64e8' } }),
+    piromano: new CharacterRole({ id: 'piromano', name: 'Piromano', color: '#ff453a', health: 24, movementSpeed: 1.00, damage: 6, fireRate: 72, bulletSpeed: 3.5, magazine: 7, reloadFrames: 142, range: 235, spread: 0.07, collisionRadius: 12, visualScale: 1, weaponKind: 'fire', sprite: 'piromano', burn: { damage: 2, interval: 24, duration: 144 } }),
+    bastion: new CharacterRole({ id: 'bastion', name: 'Bastión', color: '#ff951f', health: 48, movementSpeed: 1.00, damage: 2, fireRate: 7, bulletSpeed: 3.75, magazine: 100, reloadFrames: 420, range: 480, spread: 0.30, collisionRadius: 17, visualScale: 40 / 24, incomingDamageMultiplier: 0.75, enemyProjectileRicochetChance: 0.5, weaponKind: 'turret', sprite: 'bastion' })
 });
 
 class SummonedUnit {
