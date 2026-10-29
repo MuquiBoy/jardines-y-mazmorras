@@ -36,6 +36,12 @@
     window.abyssGame = game;
     let retryLoadingAction = null;
 
+    function focusGameCanvas() {
+        if (game.state !== 'PLAYING' && game.state !== 'PAUSED') return;
+        try { canvas.focus({ preventScroll: true }); }
+        catch (_) { canvas.focus(); }
+    }
+
     // Escape toggles browser fullscreen. Entering on keyup prevents the
     // browser from treating the same Escape keydown as an immediate exit.
     // The requested action is captured on keydown so fullscreenchange during
@@ -47,9 +53,16 @@
     }
     function syncFullscreenCursor() {
         fullscreenRoot.classList.toggle('game-fullscreen', isGameFullscreen());
+        // Fullscreen transitions can return focus to the browser's prior UI
+        // element instead of the game surface. Restore it after the transition.
+        setTimeout(focusGameCanvas, 0);
     }
     document.addEventListener('fullscreenchange', syncFullscreenCursor);
     document.addEventListener('webkitfullscreenchange', syncFullscreenCursor);
+    window.addEventListener('focus', focusGameCanvas);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) focusGameCanvas();
+    });
     syncFullscreenCursor();
 
     window.addEventListener('keydown', (event) => {
@@ -128,8 +141,8 @@
         // Blur any focused element so keyboard events reach window listeners
         if (!ui.loadingScreen?.classList.contains('has-error')) {
             if (document.activeElement) document.activeElement.blur();
-            // Also set focus to the canvas itself to ensure key events are captured
-            canvas.focus();
+            // Also focus the now-focusable canvas so keyboard input has a stable target.
+            focusGameCanvas();
         }
     }
 
@@ -162,6 +175,7 @@
         // The thumb that tapped Resume must not be left registered as held.
         if (touch) touch.releaseAll();
         if (document.activeElement) document.activeElement.blur();
+        focusGameCanvas();
     });
 
     document.getElementById('confirm-upgrade').addEventListener('click', (e) => {
@@ -227,6 +241,7 @@
         audio.unlock();
         ui.setMuted(audio.toggleMute());
         if (document.activeElement) document.activeElement.blur();
+        focusGameCanvas();
     });
     window.startOfflineGame = startGame;
     window.startTestRoom = (characterId) => startGame(characterId, true);

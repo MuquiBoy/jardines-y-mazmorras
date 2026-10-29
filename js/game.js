@@ -242,16 +242,36 @@ class Game {
 
     /** Set up input event listeners. */
     bindInput() {
+        const gameplayKeys = new Set([
+            'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+            'Space', 'KeyR', 'KeyM', 'Escape'
+        ]);
+        const focusCanvas = () => {
+            try { this.canvas.focus({ preventScroll: true }); }
+            catch (_) { this.canvas.focus(); }
+        };
+
+        // Capture at the window before page controls can stop propagation.
+        // The canvas is programmatically focusable, so browser focus restored
+        // after fullscreen changes has a stable target for subsequent keys.
         window.addEventListener('keydown', (e) => {
+            if (this.state === 'PLAYING' && gameplayKeys.has(e.code)) {
+                e.preventDefault();
+                if (typeof document !== 'undefined' && document.activeElement !== this.canvas) focusCanvas();
+            }
             this.input.keys[e.code] = true;
+            if (e.repeat) return;
             if (e.code === 'Space' && !this.coopMode) this.togglePause();
             if (e.code === 'KeyM') this.ui.setMuted(this.audio.toggleMute());
             if (e.code === 'F3' && this.map) { this.map.debugLayout = !this.map.debugLayout; e.preventDefault(); }
-        });
+        }, true);
 
         window.addEventListener('keyup', (e) => {
             this.input.keys[e.code] = false;
-        });
+            if (this.state === 'PLAYING' && gameplayKeys.has(e.code)) e.preventDefault();
+        }, true);
+
+        this.canvas.addEventListener('pointerdown', focusCanvas);
 
         this.canvas.addEventListener('mousemove', (e) => {
             this.pointerClientX = e.clientX; this.pointerClientY = e.clientY;
