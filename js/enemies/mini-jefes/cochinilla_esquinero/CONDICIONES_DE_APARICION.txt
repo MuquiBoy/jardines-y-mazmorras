@@ -12,7 +12,7 @@ Salas donde puede aparecer
 Cantidad y probabilidad
 - Máximo: 1 mini-jefe total por sala «combat-hard».
 - Probabilidad base del sorteo: 50% Cochinilla Esquinero y 50% Babosa Persecución.
-- Si la tirada elige a la Cochinilla y no hay esquina válida, se intenta generar una Babosa en un espacio válido de 2 × 2 casillas. Así no se coloca la Cochinilla sobre puertas u obstáculos.
+- Si la tirada elige a la Cochinilla y no hay esquina válida, se intenta generar una Babosa usando una hitbox circular de radio 32 px. Su sprite visual es de 80 × 80 px; ese tamaño no se usa como radio de colisión. El punto alternativo también debe quedar libre de puertas y obstáculos.
 - La selección de la esquina no es aleatoria: se revisan en este orden: superior izquierda, superior derecha, inferior izquierda, inferior derecha, y se usa la primera válida.
 
 Condiciones de esquina válida

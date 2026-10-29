@@ -1,7 +1,7 @@
 /**
- * Babosa Persecución — 2x2-cell miniboss that pursues living players and
- * deals one contact hit on each new overlap. Movement and health use the
- * shared Enemy and map collision systems.
+ * Babosa Persecución — 80px visual miniboss with a 32px collision radius.
+ * It pursues living players and deals one contact hit on each new overlap.
+ * Movement and health use the shared Enemy and map collision systems.
  */
 const BABOSA_PERSECUCION_SIZE = 80;
 const BABOSA_PERSECUCION_SPEED_RATIO = 0.70;
@@ -11,6 +11,7 @@ const BABOSA_PERSECUCION_WALK_PATH = '00-sprites/enemigos/1_mini-jefes/babosa_pe
 const BABOSA_PERSECUCION_WALK_VERSION = 'babosa-walk-20261029-v1';
 
 class BabosaPersecucion extends Enemy {
+    static COLLISION_RADIUS = 32;
     static animation = null;
     static animationPromise = null;
 
@@ -20,7 +21,7 @@ class BabosaPersecucion extends Enemy {
         this.health = this.maxHealth = 850;
         this.setMovementSpeedMultiplier(BABOSA_PERSECUCION_SPEED_RATIO);
         this.damage = BABOSA_PERSECUCION_CONTACT_DAMAGE;
-        this.radius = BABOSA_PERSECUCION_SIZE / 2;
+        this.radius = BabosaPersecucion.COLLISION_RADIUS;
         this.color = '#a864bd';
         this.xpValue = 0;
         this.room = room;

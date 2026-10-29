@@ -25,11 +25,12 @@ ESTADÍSTICAS ACTUALES
 - Referencia universal: 1,00 = 2,5 px/frame = 150 px/s a 60 FPS.
 - Velocidad efectiva: 1,75 px/frame = 105 px/s a 60 FPS.
 - Daño: 12 HP por contacto válido.
-- Radio de colisión: 40 px; diámetro: 80 px. Equivale a un cuerpo de 2 × 2
-  casillas de 40 px.
-- Criterio de contacto: distancia entre centros menor o igual a 40 px más el
+- Radio de hitbox: 32 px; diámetro físico: 64 px.
+- Tamaño visual: 80 × 80 px (lienzo de 2 × 2 casillas). La escala visual no
+  determina el radio de colisión.
+- Criterio de contacto: distancia entre centros menor o igual a 32 px más el
   radio del jugador. Si el jugador no declara radio, el código usa 12 px, dando
-  un umbral de 52 px entre centros.
+  un umbral de 44 px entre centros.
 - Empuje: hasta 40 px alejando al jugador del centro de la Babosa, en pasos de
   2 px. El movimiento se detiene antes de atravesar una pared.
 - Experiencia al morir: 0 XP.
@@ -70,7 +71,7 @@ DESPLAZAMIENTO Y NAVEGACIÓN
   pared. Si no logra avanzar, intenta un desplazamiento lateral perpendicular
   a la dirección prevista.
 - Respeta la máscara de colisión del mapa y los límites de la sala asignada.
-  Para moverse y aparecer, necesita espacio para su radio de 40 px.
+  Para moverse y aparecer, necesita espacio para su hitbox de radio 32 px.
 - La navegación no calcula una ruta hacia un objetivo situado a más de 1.400 px;
   en ese caso puede intentar el paso lateral de recuperación.
 
@@ -104,7 +105,7 @@ APARICIÓN EN EL PISO
   generador intenta reemplazarla por Babosa Persecución. Por ello, el porcentaje
   efectivo de Babosas puede superar el 50 % según las plantillas y las esquinas
   disponibles.
-- Para la Babosa, el generador busca una posición ocupable para radio de 40 px,
+- Para la Babosa, el generador busca una posición ocupable para radio de 32 px,
   prefiere el centro de la sala y respeta la separación solicitada respecto a
   otros puntos de aparición. La posición vuelve a comprobarse antes de crearla;
   si no cabe, no aparece.
@@ -112,6 +113,6 @@ APARICIÓN EN EL PISO
 REPRESENTACIÓN VISUAL Y FÍSICA
 
 La animación walk ocupa un lienzo de 80 × 80 px y se reproduce continuamente,
-independientemente de si la Babosa se mueve. Su escala visual no modifica el
-radio físico de 40 px. Si el archivo de animación no se carga, el código conserva
-la silueta pixel-art de respaldo.
+independientemente de si la Babosa se mueve. La hitbox circular de 32 px no
+cambia el tamaño visual de 80 × 80 px. Si el archivo de animación no se carga,
+el código conserva la silueta pixel-art de respaldo.

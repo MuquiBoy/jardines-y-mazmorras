@@ -1022,7 +1022,8 @@ class DungeonMap {
     }
 
     /**
-     * Boss spawn anchor for its 40px body.
+     * Large-enemy spawn anchor; `radius` is the collision footprint supplied
+     * by the caller (the floor boss defaults to 40px, the Babosa uses 32px).
      *
      * Generic spawn markers are calibrated for 14px enemies, so a boss placed
      * on one can start with half its body inside a wall. Prefer the room
@@ -1130,15 +1131,15 @@ class DungeonMap {
                         else {
                             // A blocked/door corner is not valid Cochinilla
                             // space; use the other eligible miniboss instead.
-                            const point = this.findBossSpawn(room, avoid, minDist, 40);
-                            if (point && this.canOccupy(point.x, point.y, 40)) {
+                            const point = this.findBossSpawn(room, avoid, minDist, BabosaPersecucion.COLLISION_RADIUS);
+                            if (point && this.canOccupy(point.x, point.y, BabosaPersecucion.COLLISION_RADIUS)) {
                                 const alternative = randomMiniBossType(type);
                                 if (alternative) spawnCategorizedEnemy(alternative, point.x, point.y, room);
                             }
                         }
                     } else if (type === 'babosa_persecucion') {
-                        const point = this.findBossSpawn(room, avoid, minDist, 40);
-                        if (point && this.canOccupy(point.x, point.y, 40)) {
+                        const point = this.findBossSpawn(room, avoid, minDist, BabosaPersecucion.COLLISION_RADIUS);
+                        if (point && this.canOccupy(point.x, point.y, BabosaPersecucion.COLLISION_RADIUS)) {
                             spawnCategorizedEnemy(type, point.x, point.y, room);
                         }
                     }
