@@ -495,7 +495,7 @@ class DungeonMap {
     /** Place a room at tile grid position, return room object or null. */
     tryPlaceRoom(parent, offset) {
         // Random size
-        // Room sizes are driven by enemy AI ranges, not aesthetics. ShooterEnemy
+        // Room sizes are driven by enemy AI ranges, not aesthetics. MoscaTirador
         // holds a 180-250px standoff and SpiralEnemy closes to 140px, so a room
         // has to comfortably exceed twice the standoff or those enemies are
         // forced out through the walls the moment the player walks in.

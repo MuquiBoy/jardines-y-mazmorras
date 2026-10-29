@@ -6,7 +6,7 @@ Los valores corresponden al primer piso y al balance actual del juego.
 EXPERIENCIA POR ENEMIGO DERROTADO
 Enemigo                 XP total
 Básico (basic)           10 XP
-Tirador (shooter)        15 XP
+Mosca Tirador (mosca_tirador)        15 XP
 Espiral (spiral)         20 XP
 Jefe (boss)              200 XP
 

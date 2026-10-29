@@ -72,7 +72,7 @@ No hay limite de nivel definido. Despues de la tabla, el requisito crece un 20% 
 
 EXPERIENCIA DE ENEMIGOS Y SALAS
 - Enemigo basico (chaser): 10 XP.
-- Enemigo shooter/sniper: 15 XP.
+- Mosca Tirador (mosca_tirador): 15 XP.
 - Enemigo spiral: 20 XP.
 - Jefe: 200 XP.
 - Sala del tesoro: 30 XP y 30 de curacion.

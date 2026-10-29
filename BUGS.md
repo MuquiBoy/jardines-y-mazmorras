@@ -94,9 +94,9 @@ debugging path is part of the record, not noise.
 - **File:** `js/map.js`, `js/enemy.js`, `js/player.js`, `js/game.js`
 - **Symptom:** Enemies were on top of the player the instant a room was entered,
   and repeatedly left the room entirely.
-- **Cause:** A geometry contradiction, not a tuning problem. `ShooterEnemy`
+- **Cause:** A geometry contradiction, not a tuning problem. `MoscaTirador`
   holds a 180–250 px standoff and `SpiralEnemy` closes to 140 px, but rooms
-  were 128–256 px across. A shooter could not satisfy its standoff without
+  were 128–256 px across. The Mosca Tirador could not satisfy its standoff without
   walking out through a wall. Enemies also spawned blind at the room centre,
   which in a 256 px room is ~128 px from whoever triggered the spawn.
 - **Fix:** rooms scaled to 640–1024 px (map 2000² → 7000², room count 8–12 →

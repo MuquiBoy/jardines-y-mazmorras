@@ -26,7 +26,7 @@ the run ends.
 |---|---|
 | **Procedural maps** | 6–9 rooms grown outward from a start room, spacing-checked, then typed (combat, hard combat, treasure, empty, exit) and connected by corridors you walk down |
 | **Roguelite upgrades** | 10 upgrades drafted 3-at-a-time on level-up — health, damage, speed, multi-shot, pierce, fire rate, bullet speed, pickup magnet |
-| **Enemy variety** | Chasers, shooters that lead their target, and spiral emitters, each with its own movement and firing pattern |
+| **Enemy variety** | Basic chasers, the kiting Mosca Tirador, and spiral emitters, each with its own movement and firing pattern |
 | **Difficulty ramp** | Enemy movement, fire rate and bullet speed ease in over the first 10 floors, then health, damage and room population keep climbing indefinitely |
 | **Boss gate** | Each floor's exit is locked behind a multi-phase boss, and opens where you kill it |
 | **Sound** | Effects synthesized live via Web Audio — no samples to download — over a three-track soundtrack that advances each floor |
@@ -117,7 +117,7 @@ css/styles.css      All presentation; overlays toggle via a .hidden class
 js/
   player.js         Player state, movement, aim, shooting, XP curve, rendering
   bullet.js         Shared collision helpers and off-map cleanup
-  enemy.js          Enemy base class + Basic / Shooter / Spiral / Boss subclasses
+  enemy.js          Enemy base class; Esbirro and boss classes live in js/enemies/
   map.js            DungeonMap: procedural generation, room typing, spawn tables, world drawing
   palette.js        Colour identity and the pixel-grid constants + draw helpers
   touch.js          Twin-stick touch controls, landscape only
@@ -217,10 +217,10 @@ resolved one axis at a time, so running diagonally into a wall slides along it
 rather than stopping dead, and `canOccupy()` samples a circle's centre plus its
 four cardinal extremes against that union. Enemies use the same test, which is
 what keeps them in the room they spawned in — they have no pathfinding, so
-without it a chaser would walk through walls and a kiting shooter would reverse
+without it a chaser would walk through walls and the kiting Mosca Tirador would reverse
 straight out of the level.
 
-Room size is dictated by enemy AI ranges rather than taste. `ShooterEnemy` holds
+Room size is dictated by enemy AI ranges rather than taste. `MoscaTirador` holds
 a 180–250 px standoff and `SpiralEnemy` closes to 140 px, so a room has to
 comfortably exceed twice the standoff. Rooms are 640–1024 px for that reason;
 at the original 128–256 px those enemies were pushed through the walls the

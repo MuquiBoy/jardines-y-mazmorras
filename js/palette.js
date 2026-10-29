@@ -23,8 +23,8 @@ const PALETTE = {
     // Enemies
     chaser:      '#a01c1c',  // dried blood
     chaserLit:   '#e03b1e',
-    shooter:     '#7a3f8f',  // bruise
-    shooterLit:  '#b45fd0',
+    moscaTirador:     '#7a3f8f',  // bruise
+    moscaTiradorLit:  '#b45fd0',
     spiral:      '#c06010',  // ember
     spiralLit:   '#ffb000',
     boss:        '#5e0d0d',

@@ -10,7 +10,7 @@ const ENEMY_CATEGORY = Object.freeze({
 });
 
 const ENEMY_TYPES_BY_CATEGORY = Object.freeze({
-    [ENEMY_CATEGORY.MINIONS]: Object.freeze(['basic', 'shooter', 'spiral']),
+    [ENEMY_CATEGORY.MINIONS]: Object.freeze(['basic', 'mosca_tirador', 'spiral']),
     [ENEMY_CATEGORY.MINI_BOSSES]: Object.freeze(['cochinilla-esquinero'])
 });
 
@@ -24,7 +24,7 @@ const ENEMY_CATEGORIES_BY_ROOM = Object.freeze({
 // minion/miniboss pools.
 const ENEMY_CLASSES = Object.freeze({
     basic: BasicEnemy,
-    shooter: ShooterEnemy,
+    mosca_tirador: MoscaTirador,
     spiral: SpiralEnemy,
     boss: BossEnemy,
     'cochinilla-esquinero': CochinillaEsquinero,
@@ -32,8 +32,8 @@ const ENEMY_CLASSES = Object.freeze({
     cochinilla_esquinero: CochinillaEsquinero
 });
 
-const MINION_WEIGHTS = Object.freeze(['basic', 'basic', 'basic', 'shooter', 'shooter', 'spiral']);
-const HARD_MINION_WEIGHTS = Object.freeze(['basic', 'shooter', 'spiral', 'shooter', 'spiral']);
+const MINION_WEIGHTS = Object.freeze(['basic', 'basic', 'basic', 'mosca_tirador', 'mosca_tirador', 'spiral']);
+const HARD_MINION_WEIGHTS = Object.freeze(['basic', 'mosca_tirador', 'spiral', 'mosca_tirador', 'spiral']);
 
 function enemyCategoriesForRoom(roomType) {
     return ENEMY_CATEGORIES_BY_ROOM[roomType] || [];

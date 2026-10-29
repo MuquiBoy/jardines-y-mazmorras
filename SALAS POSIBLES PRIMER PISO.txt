@@ -7,7 +7,7 @@ La generación actual usa estas categorías de sala:
    Sala inicial. No genera enemigos.
 
 2. Combate (combat)
-   Genera de 2 a 4 enemigos: básicos, tiradores o espirales, elegidos aleatoriamente.
+   Genera de 2 a 4 enemigos: básicos, moscas tiradoras o espirales, elegidos aleatoriamente.
 
 3. Combate difícil (combat-hard)
    Genera de 4 a 6 enemigos de tipo tirador o espiral.
