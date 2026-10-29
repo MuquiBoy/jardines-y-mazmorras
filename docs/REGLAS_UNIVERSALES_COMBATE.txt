@@ -12,3 +12,6 @@ El HUD muestra la vida como corazones. Cada corazón completo equivale a 12 HP y
 Referencia numérica de daño
 Los esbirros infligen 6 HP por proyectil. Los cálculos y aplicación de daño siguen usando HP numéricos; los corazones son solo la lectura visual de esos valores.
 
+
+3. Reaparición cooperativa al despejar una sala
+En partidas cooperativas, cuando uno o más jugadores caen, el servidor conserva su posición exacta. Cuando los compañeros vivos despejan una sala y se desbloquea la puerta, los jugadores caídos reaparecen en el lugar donde murieron. Regresan con la mitad de su vida máxima (redondeada hacia arriba) y 60 frames de invulnerabilidad para evitar una muerte instantánea. La reaparición conserva rol, mejoras y progreso. En solitario, la muerte mantiene el comportamiento actual de fin de partida.

@@ -37,6 +37,10 @@ for (const file of [
 const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
+// Co-op room-clear revive tuning. The server remains authoritative.
+const COOP_RESPAWN_HEALTH_RATIO = 0.5;
+const COOP_RESPAWN_INVINCIBILITY_FRAMES = 60;
+
 function newPlayer(member, x, y) {
     const player = new Engine.Player(x, y);
     player.id = member.id;
@@ -44,6 +48,41 @@ function newPlayer(member, x, y) {
     player.setCharacter(member.character);
     player.pendingLevelUps = 0;
     return player;
+}
+
+function rememberDownedPlayers(run) {
+    if (run.players.size < 2) return;
+    for (const player of run.players.values()) {
+        if (player.health > 0 || player.deathPosition) continue;
+        const room = run.map.pointInRoom(player.x, player.y);
+        player.deathPosition = {
+            x: player.x, y: player.y, floor: run.floor,
+            roomIndex: room ? run.map.rooms.indexOf(room) : -1
+        };
+        player.cancelSniperAim?.();
+    }
+}
+
+function reviveDownedPlayers(run) {
+    if (run.players.size < 2) return 0;
+    const livingPlayers = [...run.players.values()].filter(player => player.health > 0);
+    if (!livingPlayers.length) return 0;
+
+    let revived = 0;
+    for (const player of run.players.values()) {
+        if (player.health > 0) continue;
+        const death = player.deathPosition || { x: player.x, y: player.y, floor: run.floor };
+        player.x = death.x;
+        player.y = death.y;
+        player.teleportTick = run.tick;
+        player.health = Math.max(1, Math.ceil((player.maxHealth || 100) * COOP_RESPAWN_HEALTH_RATIO));
+        player.invincibleTimer = COOP_RESPAWN_INVINCIBILITY_FRAMES;
+        player.turretActive = false;
+        player.cancelSniperAim?.();
+        player.deathPosition = null;
+        revived++;
+    }
+    return revived;
 }
 
 /**
@@ -86,7 +125,7 @@ function generateFloor(run) {
 function createRun(members, reusableProjectilePool = null) {
     const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [],
         enemyProjectilePool: reusableProjectilePool || new Engine.EnemyProjectilePool(), summons: [], notices: [],
-        visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0, spectatorTargetId: null };
+        visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0, spectatorTargetId: null, roomCompletionPending: false };
     run.enemyProjectilePool.releaseAll(run.enemyBullets);
     run.enemyProjectilePool.resetRunStats();
     for (const member of members) run.players.set(member.id, newPlayer(member, 0, 0));
@@ -195,6 +234,7 @@ function onBossDefeated(run, room, origin) {
     const bossRoom = room || run.map.bossRoom;
     if (!bossRoom) return;
     run.map.clearRoom(bossRoom);
+    run.roomCompletionPending = true;
     run.map.openExit(bossRoom, origin || { x: bossRoom.cx, y: bossRoom.cy });
     run.mapVersion++;
 }
@@ -346,13 +386,20 @@ function stepRun(run, inputs) {
         if (!room.cleared && room.spawned && run.visitedRooms.has(roomIndex) && ['combat', 'combat-simple', 'combat-hard', 'boss'].includes(room.type) &&
             !run.enemies.some(enemy => enemy.roomIndex === roomIndex)) {
             run.map.clearRoom(room);
+            run.roomCompletionPending = true;
             run.mapVersion++;
         }
+    }
+    // Capture death coordinates before a room-clear event revives the party.
+    rememberDownedPlayers(run);
+    if (run.roomCompletionPending) {
+        reviveDownedPlayers(run);
+        run.roomCompletionPending = false;
     }
     run.spectatorTargetId = Engine.selectPartySpectatorTargetId(
         run.players.values(), run.spectatorTargetId
     );
-    if (!livingPlayers.length) run.phase = 'ended';
+    if (![...run.players.values()].some(player => player.health > 0)) run.phase = 'ended';
 }
 
 function mapState(map) {
