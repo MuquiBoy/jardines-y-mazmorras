@@ -7,8 +7,13 @@ const BABOSA_PERSECUCION_SIZE = 80;
 const BABOSA_PERSECUCION_SPEED_RATIO = 0.70;
 const BABOSA_PERSECUCION_CONTACT_DAMAGE = 12;
 const BABOSA_PERSECUCION_KNOCKBACK = 40;
+const BABOSA_PERSECUCION_WALK_PATH = '00-sprites/enemigos/1_mini-jefes/babosa_persecucion/babosa_persecucion_walk.aseprite';
+const BABOSA_PERSECUCION_WALK_VERSION = 'babosa-walk-20261029-v1';
 
 class BabosaPersecucion extends Enemy {
+    static animation = null;
+    static animationPromise = null;
+
     constructor(x, y, room = null) {
         super(x, y, 'babosa_persecucion');
         this.name = 'Babosa Persecución';
@@ -21,6 +26,24 @@ class BabosaPersecucion extends Enemy {
         this.room = room;
         this.targetId = null;
         this._contactingPlayerIds = new Set();
+        this.animationStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        this.loadAnimation();
+    }
+
+    loadAnimation() {
+        if (BabosaPersecucion.animation || BabosaPersecucion.animationPromise ||
+            typeof decodeAsepriteAnimation !== 'function') return;
+        const url = BABOSA_PERSECUCION_WALK_PATH + '?v=' + BABOSA_PERSECUCION_WALK_VERSION;
+        BabosaPersecucion.animationPromise = decodeAsepriteAnimation(url)
+            .then(animation => {
+                if (animation) BabosaPersecucion.animation = animation;
+                return animation;
+            })
+            .catch(error => {
+                BabosaPersecucion.animationPromise = null;
+                console.warn('No se pudo cargar la animación walk de la Babosa Persecución.', error);
+                return null;
+            });
     }
 
     moveBy(dx, dy, map) {
@@ -116,8 +139,29 @@ class BabosaPersecucion extends Enemy {
     }
 
     draw(ctx) {
-        // Temporary pixel-art silhouette until a dedicated sprite is supplied.
         const s = BABOSA_PERSECUCION_SIZE;
+        const animation = BabosaPersecucion.animation;
+        if (animation && animation.frames.length && animation.totalDuration > 0) {
+            // The authored walk cycle loops continuously while moving or idle.
+            const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+            let frameTime = (now - this.animationStartTime) % animation.totalDuration;
+            let frameIndex = 0;
+            while (frameIndex < animation.durations.length - 1 &&
+                   frameTime >= animation.durations[frameIndex]) {
+                frameTime -= animation.durations[frameIndex++];
+            }
+            const frame = animation.frames[frameIndex];
+            const width = frame.width || s;
+            const height = frame.height || s;
+            ctx.save();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(frame, snap(this.x - width / 2), snap(this.y - height / 2), width, height);
+            ctx.restore();
+            this.drawHealth(ctx, Math.max(width, height));
+            return;
+        }
+
+        // Keep the existing fallback visible until the animation has loaded.
         pixelRect(ctx, this.x, this.y, s + 6, s + 6, PALETTE.void);
         pixelRect(ctx, this.x, this.y, s, s, '#54375f');
         pixelRect(ctx, this.x, this.y - 3, 68, 62, '#8d4eaa');
