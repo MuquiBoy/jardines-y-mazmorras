@@ -20,6 +20,9 @@ class AudioSystem {
      * than a missing one.
      */
     static MAX_VOICES = 14;
+    // Music should sit behind gameplay effects as an ambient layer.
+    // 0.315 is 30% below the previous 0.45 mix level.
+    static MUSIC_VOLUME = 0.315;
 
     /**
      * A do-nothing instance. Lets Game hold an audio system unconditionally,
@@ -91,7 +94,7 @@ class AudioSystem {
         this.sfxGain.connect(this.master);
 
         this.musicGain = this.ctx.createGain();
-        this.musicGain.gain.value = 0.45;
+        this.musicGain.gain.value = AudioSystem.MUSIC_VOLUME;
         this.musicGain.connect(this.master);
 
         if (this.ctx.state === 'suspended') this.ctx.resume();
@@ -441,7 +444,7 @@ class AudioSystem {
         try {
             const el = new Audio(source);
             el.loop = true;
-            el.volume = 0.45;
+            el.volume = AudioSystem.MUSIC_VOLUME;
             el.muted = this.muted;
             el.addEventListener('error', () => { /* run silent */ });
             const pr = el.play();
@@ -471,3 +474,4 @@ class AudioSystem {
         }
     }
 }
+
