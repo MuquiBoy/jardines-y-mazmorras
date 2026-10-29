@@ -1,27 +1,117 @@
-BABOSA PERSECUCIÓN — FICHA DE IMPLEMENTACIÓN
+JARDINES Y MAZMORRAS
+FICHA DE ENEMIGO: BABOSA PERSECUCIÓN
 
-Categoría: mini-jefe; aparece únicamente en salas combat-hard.
-Probabilidad base en el sorteo de mini-jefe: 50% (Cochinilla Esquinero: 50%).
-Máximo: una clase de mini-jefe por sala.
+FUENTES DE IMPLEMENTACIÓN
 
-Estadísticas
-- Sprite de placeholder: 80 × 80 px.
-- Huella y radio de colisión: 2 × 2 casillas, radio 40 px.
-- Casilla: 40 × 40 px.
-- Vida: 850 HP, sin escalado automático por jugador o piso.
-- Velocidad: 0,70 × velocidad universal (2,5 px/frame) = 1,75 px/frame = 105 px/s a 60 FPS.
-- Daño de contacto: 12 HP por impacto válido.
-- Retroceso: hasta 40 px en sentido opuesto al choque.
+- Lógica: js/enemies/mini-jefes/babosa_persecucion/babosa_persecucion.js
+- Animación: 00-sprites/enemigos/1_mini-jefes/babosa_persecucion/babosa_persecucion_walk.aseprite
+- Categoría y sorteo: js/enemies/catalog.js
+- Generación de salas y puntos de aparición: js/map.js
+- Daño e interfaz de vida del jugador: js/player.js y js/ui.js
 
-Comportamiento
-- Persigue al jugador vivo más cercano que permanezca en su sala.
-- Usa el movimiento y navegación existentes para rodear muros y columnas.
-- Su desplazamiento se limita a la sala y respeta la máscara de colisión.
-- No tiene ataque a distancia, aceleración, teletransporte, inmunidad ni fases.
-- El daño por contacto se aplica al comenzar cada contacto; permanecer superpuesto no repite daño.
-- Regla universal: cualquier daño recibido otorga 60 frames (1 segundo a 60 FPS) de invulnerabilidad al jugador.
-- El HUD representa la vida con corazones: 12 HP por corazón, dividido en dos mitades de 6 HP; se conserva también el valor numérico.
-- El retroceso avanza en pasos con comprobación de colisión; si una pared lo bloquea, se detiene antes de atravesarla.
+RESUMEN
 
-Arte
-- No se proporcionó sprite de la Babosa; se usa una silueta provisional dibujada en estilo pixel art. El tamaño visual es 80 × 80 px.
+La Babosa Persecución es un mini-jefe que presiona al grupo acercándose al
+jugador vivo más próximo y atacando mediante contacto. No dispara proyectiles
+ni tiene un ciclo de carga, disparo y enfriamiento. Su amenaza depende de la
+persecución, de cómo usa las rutas alrededor de obstáculos y del empuje que
+provoca al chocar con un jugador.
+
+ESTADÍSTICAS ACTUALES
+
+- Vida inicial y máxima: 850 HP. No aumenta automáticamente según el piso o la
+  cantidad de jugadores.
+- Velocidad: multiplicador 0,70 de la velocidad universal.
+- Referencia universal: 1,00 = 2,5 px/frame = 150 px/s a 60 FPS.
+- Velocidad efectiva: 1,75 px/frame = 105 px/s a 60 FPS.
+- Daño: 12 HP por contacto válido.
+- Radio de colisión: 40 px; diámetro: 80 px. Equivale a un cuerpo de 2 × 2
+  casillas de 40 px.
+- Criterio de contacto: distancia entre centros menor o igual a 40 px más el
+  radio del jugador. Si el jugador no declara radio, el código usa 12 px, dando
+  un umbral de 52 px entre centros.
+- Empuje: hasta 40 px alejando al jugador del centro de la Babosa, en pasos de
+  2 px. El movimiento se detiene antes de atravesar una pared.
+- Experiencia al morir: 0 XP.
+- Daño a distancia y proyectiles: ninguno.
+- Cadencia/enfriamiento de ataque: no aplica; el ataque depende de iniciar un
+  nuevo contacto, no de un temporizador.
+- Inmunidad propia al daño: ninguna. Hereda el daño normal de Enemy y puede ser
+  golpeada durante todo su comportamiento.
+- Color de respaldo: #a864bd; se muestra la animación cuando ya está cargada.
+- Animación: lienzo de 80 × 80 px, seis fotogramas de 100 ms. El ciclo dura
+  600 ms (10 FPS) y se repite tanto en movimiento como en reposo.
+
+Campo heredado sin función de combate: la clase base inicializa un cooldown
+genérico de disparo de 90 frames, pero esta Babosa no lo consulta y nunca
+dispara. Por tanto, no es su cadencia de ataque.
+
+ADQUISICIÓN DE OBJETIVOS
+
+1. En cada actualización reúne a los jugadores con vida y con más de 0 HP que
+   estén en la misma sala que ella.
+2. En cooperativo elige al jugador válido más cercano, usando distancia directa
+   entre centros. Actualiza el objetivo mientras juega; puede cambiar de
+   compañero si otro queda más cerca.
+3. Jugadores muertos, eliminados o ubicados en otra sala no son objetivos.
+   Invocaciones tampoco son objetivos de esta Babosa.
+4. Si no queda ningún jugador vivo elegible en su sala, deja de perseguir y
+   reinicia el registro de contactos. Al volver a haber un jugador válido,
+   vuelve a elegir el más cercano.
+
+DESPLAZAMIENTO Y NAVEGACIÓN
+
+- Con línea de visión y hasta 560 px del objetivo, avanza directamente hacia
+  él, limitando cada paso a su velocidad para no sobrepasarlo.
+- Cuando la ruta directa está bloqueada, usa la navegación A* de la mazmorra
+  para rodear muros y obstáculos. Las rutas se actualizan cuando el objetivo
+  se aleja de la ruta guardada, esta se agota o vence el intervalo de revisión.
+- El movimiento comprueba la colisión por ejes y permite deslizarse junto a una
+  pared. Si no logra avanzar, intenta un desplazamiento lateral perpendicular
+  a la dirección prevista.
+- Respeta la máscara de colisión del mapa y los límites de la sala asignada.
+  Para moverse y aparecer, necesita espacio para su radio de 40 px.
+- La navegación no calcula una ruta hacia un objetivo situado a más de 1.400 px;
+  en ese caso puede intentar el paso lateral de recuperación.
+
+PATRÓN DE ATAQUE E INTERACCIONES
+
+- Su único ataque es el contacto corporal. Se activa al comenzar un nuevo
+  solapamiento con un jugador vivo de la sala.
+- En ese contacto intenta quitar 12 HP y aplica el empuje descrito arriba.
+- Permanecer tocándola no vuelve a causar daño. El jugador debe separarse y
+  volver a entrar en contacto para iniciar otro intento de golpe.
+- El registro de contacto es individual por jugador. Puede golpear a varios
+  jugadores que se solapen con ella, aunque su persecución se dirija al más
+  cercano.
+- La regla universal del jugador concede 60 frames (1 segundo a 60 FPS) de
+  invulnerabilidad después de recibir daño. Si un nuevo contacto ocurre durante
+  esa ventana, el jugador no pierde más HP, aunque el empuje todavía se aplica.
+- En el HUD, un corazón completo representa 12 HP y cada mitad 6 HP. El daño
+  de contacto de la Babosa equivale a un corazón completo si el jugador no está
+  protegido por invulnerabilidad.
+- Si los centros del jugador y de la Babosa coinciden, la dirección de empuje
+  se calcula usando el ángulo de persecución de la Babosa.
+
+APARICIÓN EN EL PISO
+
+- Categoría: mini-jefe.
+- Sala permitida: únicamente combat-hard.
+- El generador intenta elegir un mini-jefe por sala difícil y además genera la
+  composición convencional de esbirros de esa sala.
+- El sorteo base da 50 % a Babosa Persecución y 50 % a Cochinilla Esquinero.
+- Si sale Cochinilla Esquinero pero no encuentra una esquina válida, el
+  generador intenta reemplazarla por Babosa Persecución. Por ello, el porcentaje
+  efectivo de Babosas puede superar el 50 % según las plantillas y las esquinas
+  disponibles.
+- Para la Babosa, el generador busca una posición ocupable para radio de 40 px,
+  prefiere el centro de la sala y respeta la separación solicitada respecto a
+  otros puntos de aparición. La posición vuelve a comprobarse antes de crearla;
+  si no cabe, no aparece.
+
+REPRESENTACIÓN VISUAL Y FÍSICA
+
+La animación walk ocupa un lienzo de 80 × 80 px y se reproduce continuamente,
+independientemente de si la Babosa se mueve. Su escala visual no modifica el
+radio físico de 40 px. Si el archivo de animación no se carga, el código conserva
+la silueta pixel-art de respaldo.
