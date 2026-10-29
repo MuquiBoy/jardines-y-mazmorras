@@ -1,0 +1,14 @@
+REGLAS UNIVERSALES DE COMBATE — JARDINES Y MAZMORRAS
+
+1. Invulnerabilidad tras recibir daño
+Cada vez que el jugador recibe daño válido, obtiene 60 frames (1 segundo a 60 FPS) de invulnerabilidad temporal. La regla se aplica a proyectiles, rayos y daño por contacto, y utiliza el contador de invulnerabilidad del jugador.
+
+La inmunidad impide aplicar daño nuevo durante ese intervalo. Los impactos bloqueados por la invulnerabilidad no reinician el contador.
+Mientras esté activa, el personaje parpadea suavemente con un destello rojo para comunicar la protección, sin desaparecer por completo.
+
+2. Vida visual en corazones
+El HUD muestra la vida como corazones. Cada corazón completo equivale a 12 HP y se divide en dos mitades de 6 HP. La cifra numérica de HP se conserva junto al indicador visual.
+
+Referencia numérica de daño
+Los esbirros infligen 6 HP por proyectil. Los cálculos y aplicación de daño siguen usando HP numéricos; los corazones son solo la lectura visual de esos valores.
+

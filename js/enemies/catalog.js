@@ -11,7 +11,7 @@ const ENEMY_CATEGORY = Object.freeze({
 
 const ENEMY_TYPES_BY_CATEGORY = Object.freeze({
     [ENEMY_CATEGORY.MINIONS]: Object.freeze(['basic', 'mosca_tirador', 'spiral']),
-    [ENEMY_CATEGORY.MINI_BOSSES]: Object.freeze(['cochinilla-esquinero'])
+    [ENEMY_CATEGORY.MINI_BOSSES]: Object.freeze(['cochinilla-esquinero', 'babosa_persecucion'])
 });
 
 const ENEMY_CATEGORIES_BY_ROOM = Object.freeze({
@@ -29,7 +29,8 @@ const ENEMY_CLASSES = Object.freeze({
     boss: BossEnemy,
     'cochinilla-esquinero': CochinillaEsquinero,
     'corner-cochinilla': CochinillaEsquinero,
-    cochinilla_esquinero: CochinillaEsquinero
+    cochinilla_esquinero: CochinillaEsquinero,
+    babosa_persecucion: BabosaPersecucion
 });
 
 const MINION_WEIGHTS = Object.freeze(['basic', 'basic', 'basic', 'mosca_tirador', 'mosca_tirador', 'spiral']);
@@ -62,6 +63,7 @@ function createEnemy(type, x, y, ...args) {
     if (EnemyClass === CochinillaEsquinero) {
         return new EnemyClass(x, y, args[0] || null, args[1] || 'top-left');
     }
+    if (EnemyClass === BabosaPersecucion) return new EnemyClass(x, y, args[0] || null);
     return new EnemyClass(x, y);
 }
 
@@ -77,6 +79,12 @@ function hardEnemyType() {
     return chooseEnemyType(HARD_MINION_WEIGHTS);
 }
 
-function randomMiniBossType() {
-    return randomEnemyType(ENEMY_CATEGORY.MINI_BOSSES);
+function randomMiniBossType(excludeType = null) {
+    // Per-room weighted roll: 30% Cochinilla Esquinero, 70% Babosa Persecución.
+    if (excludeType) {
+        const alternatives = (ENEMY_TYPES_BY_CATEGORY[ENEMY_CATEGORY.MINI_BOSSES] || [])
+            .filter(type => type !== excludeType);
+        return alternatives.length ? chooseEnemyType(alternatives) : null;
+    }
+    return Math.random() < 0.30 ? 'cochinilla-esquinero' : 'babosa_persecucion';
 }

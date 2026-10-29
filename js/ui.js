@@ -13,7 +13,7 @@ class UI {
         this.minimapCtx = minimapCanvas.getContext('2d');
 
         // DOM elements
-        this.hpBar = document.getElementById('hp-bar');
+        this.hpHearts = document.getElementById('hp-hearts');
         this.hpText = document.getElementById('hp-text');
         this.xpBar = document.getElementById('xp-bar');
         this.xpText = document.getElementById('xp-text');
@@ -27,9 +27,26 @@ class UI {
 
     /** Update HUD bars from player data. */
     updateHUD(player, floor = 1) {
-        // HP bar
-        const hpPercent = (player.health / player.maxHealth) * 100;
-        this.hpBar.style.width = `${hpPercent}%`;
+        // One heart contains 12 HP; each visible half represents 6 HP.
+        if (this.hpHearts) {
+            const heartCount = Math.ceil(player.maxHealth / 12);
+            const filledHalfHearts = Math.ceil(Math.max(0, player.health) / 6);
+            const layout = `${heartCount}:${filledHalfHearts}`;
+            if (layout !== this._heartLayout) {
+                this._heartLayout = layout;
+                this.hpHearts.innerHTML = Array.from({ length: heartCount }, (_, i) => {
+                    const halves = Math.max(0, Math.min(2, filledHalfHearts - i * 2));
+                    const state = halves === 2 ? 'full' : halves === 1 ? 'half' : 'empty';
+                    const gradientId = `hp-heart-half-${i}`;
+                    const fill = state === 'full' ? '#e74756' : state === 'half' ? `url(#${gradientId})` : '#35252a';
+                    const gradient = state === 'half'
+                        ? `<defs><linearGradient id="${gradientId}"><stop offset="50%" stop-color="#e74756"/><stop offset="50%" stop-color="#35252a"/></linearGradient></defs>`
+                        : '';
+                    return `<svg class="health-heart ${state}" viewBox="0 0 16 15" aria-hidden="true" shape-rendering="crispEdges">${gradient}<path d="M1 1h4v1h2v1h2V2h2V1h4v1h1v4h-1v2h-1v2h-2v2h-2v1H6v-1H4v-2H3V9H2V7H1V5H0V2h1z" fill="${fill}" stroke="#170e12" stroke-width="0.8"/></svg>`;
+                }).join('');
+                this.hpHearts.setAttribute('aria-label', `${filledHalfHearts} medios corazones de ${heartCount * 2}`);
+            }
+        }
         this.hpText.textContent = `${Math.ceil(player.health)} / ${player.maxHealth}`;
 
         // XP bar

@@ -10,10 +10,10 @@ Salas donde puede aparecer
 - La sala difícil conserva además su grupo normal de esbirros. La aparición de la Cochinilla no reemplaza ni reduce ese grupo.
 
 Cantidad y probabilidad
-- Máximo: 1 Cochinilla Esquinero por sala «combat-hard».
-- Probabilidad actual: 100% cuando la sala es «combat-hard» y tiene al menos una esquina válida.
-- Si ninguna esquina cumple las condiciones del espacio libre, la probabilidad efectiva es 0% para esa sala y no se fuerza el spawn.
-- No se lanza una tirada aleatoria para decidir si aparece. La selección de la esquina tampoco es aleatoria: se revisan en este orden: superior izquierda, superior derecha, inferior izquierda, inferior derecha, y se usa la primera válida.
+- Máximo: 1 mini-jefe total por sala «combat-hard».
+- Probabilidad base del sorteo: 30% Cochinilla Esquinero y 70% Babosa Persecución.
+- Si la tirada elige a la Cochinilla y no hay esquina válida, se intenta generar otro mini-jefe elegible en un espacio válido de 2 × 2 casillas. Así no se coloca la Cochinilla sobre puertas u obstáculos.
+- La selección de la esquina tampoco es aleatoria: se revisan en este orden: superior izquierda, superior derecha, inferior izquierda, inferior derecha, y se usa la primera válida.
 
 Condiciones de esquina válida
 - La sala debe tener una plantilla con máscara de colisión y medir al menos 4 casillas de ancho y 4 de alto.
@@ -27,9 +27,6 @@ Condiciones de esquina válida
 Resumen del flujo
 1. El generador crea una sala «combat-hard».
 2. Comprueba las esquinas en el orden indicado buscando un bloque libre de 3 × 3 compuesto únicamente por suelo normal; las casillas amarillas de puerta (#FFFF00) no son válidas.
-3. Si encuentra uno, genera allí exactamente una Cochinilla Esquinero.
+3. Genera como máximo un mini-jefe según el sorteo 30/70; la Cochinilla requiere además una esquina válida de 3 × 3.
 4. Genera también la cantidad convencional de esbirros de la sala difícil.
-5. Si no encuentra un bloque válido, la sala conserva sus esbirros pero no genera la Cochinilla.
-
-Nota sobre el 100%
-El 100% se refiere a una sala difícil que ofrece al menos una esquina válida; no significa que toda sala del piso vaya a ser difícil ni que una sala difícil sin espacio despejado deba deformar su plantilla o colocar al enemigo sobre obstáculos.
+5. Si no existe una ubicación válida para el mini-jefe elegido o su alternativa, conserva los esbirros y no lo coloca sobre obstáculos.

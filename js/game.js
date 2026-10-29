@@ -465,6 +465,10 @@ class Game {
                 if (distance < nearest) { target = candidate; nearest = distance; }
             }
             const updateResult = enemy.update ? enemy.update(target, this.enemies, this.map, targets, this.enemyProjectilePool) : null;
+            if (enemy instanceof BabosaPersecucion) {
+                const impacts = enemy.resolvePlayerContacts([this.player, ...(this.remotePlayers || [])], this.map);
+                if (impacts.length) this.damageFlash = Math.max(this.damageFlash, 3);
+            }
             const event = typeof updateResult === 'string' ? updateResult : null;
             const bullets = Array.isArray(updateResult) ? updateResult : null;
             if (enemy instanceof CochinillaPerforamuros) {
@@ -475,14 +479,14 @@ class Game {
             }
             if (enemy instanceof CochinillaPerforamuros && enemy.touchesBeam && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
                 const dmg = enemy.laserDamagePerTick || 6;
-                this.player.health = Math.max(0, this.player.health - dmg);
+                this.player.takeDamage(dmg);
                 this.damageFlash = Math.max(this.damageFlash, 2);
             }
             if (enemy instanceof CochinillaEsquinero && enemy.touchesBeam && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
                 // Universal rule: a laser tick is 6 HP, once per simulation tick.
                 const dmg = enemy.laserDamageFor ? enemy.laserDamageFor(this.player) : 0;
                 if (dmg > 0) {
-                    this.player.health = Math.max(0, this.player.health - dmg);
+                    this.player.takeDamage(dmg);
                     this.damageFlash = Math.max(this.damageFlash, 2);
                 }
             }

@@ -908,12 +908,26 @@ class DungeonMap {
             case 'combat-hard': {
                 const categories = enemyCategoriesForRoom(room.type);
                 if (categories.includes(ENEMY_CATEGORY.MINI_BOSSES)) {
-                    // Minibosses are exclusive to hard rooms. Spawn only where
-                    // the authored corners provide enough clear floor.
-                    const corner = this.findCornerCochinillaList(room, 1)[0];
-                    if (corner) {
-                        // Exactly one miniboss per hard room, independent of room size.
-                        spawnCategorizedEnemy(randomMiniBossType(), corner.x, corner.y, room, corner.corner);
+                    // Exactly one miniboss per hard room. Each type chooses a
+                    // collision-safe spawn that matches its footprint.
+                    const type = randomMiniBossType();
+                    if (type === 'cochinilla-esquinero') {
+                        const corner = this.findCornerCochinillaList(room, 1)[0];
+                        if (corner) spawnCategorizedEnemy(type, corner.x, corner.y, room, corner.corner);
+                        else {
+                            // A blocked/door corner is not valid Cochinilla
+                            // space; use another eligible miniboss instead.
+                            const point = this.findBossSpawn(room, avoid, minDist, 40);
+                            if (point && this.canOccupy(point.x, point.y, 40)) {
+                                const alternative = randomMiniBossType(type);
+                                if (alternative) spawnCategorizedEnemy(alternative, point.x, point.y, room);
+                            }
+                        }
+                    } else if (type === 'babosa_persecucion') {
+                        const point = this.findBossSpawn(room, avoid, minDist, 40);
+                        if (point && this.canOccupy(point.x, point.y, 40)) {
+                            spawnCategorizedEnemy(type, point.x, point.y, room);
+                        }
                     }
                 }
                 if (categories.includes(ENEMY_CATEGORY.MINIONS)) {

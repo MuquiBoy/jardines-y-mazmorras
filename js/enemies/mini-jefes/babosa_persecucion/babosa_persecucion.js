@@ -1,0 +1,137 @@
+/**
+ * Babosa Persecución — 2x2-cell miniboss that pursues living players and
+ * deals one contact hit on each new overlap. Movement and health use the
+ * shared Enemy and map collision systems.
+ */
+const BABOSA_PERSECUCION_SIZE = 80;
+const BABOSA_PERSECUCION_SPEED_RATIO = 0.70;
+const BABOSA_PERSECUCION_CONTACT_DAMAGE = 12;
+const BABOSA_PERSECUCION_KNOCKBACK = 40;
+
+class BabosaPersecucion extends Enemy {
+    constructor(x, y, room = null) {
+        super(x, y, 'babosa_persecucion');
+        this.name = 'Babosa Persecución';
+        this.health = this.maxHealth = 850;
+        this.speed = STANDARD_MOVEMENT_SPEED * BABOSA_PERSECUCION_SPEED_RATIO;
+        this.damage = BABOSA_PERSECUCION_CONTACT_DAMAGE;
+        this.radius = BABOSA_PERSECUCION_SIZE / 2;
+        this.color = '#a864bd';
+        this.xpValue = 0;
+        this.room = room;
+        this.targetId = null;
+        this._contactingPlayerIds = new Set();
+    }
+
+    // Its authored values stay fixed on every floor; the general enemy ramp
+    // must not change the specified 850 HP or 0.70 universal-speed ratio.
+    applyDifficulty() {}
+
+    moveBy(dx, dy, map) {
+        if (!map) return super.moveBy(dx, dy, map);
+        const room = this.room;
+        const canStep = (x, y) => map.canOccupy(x, y, this.radius) && (!room ||
+            (x - this.radius >= room.x && x + this.radius <= room.x + room.w &&
+             y - this.radius >= room.y && y + this.radius <= room.y + room.h));
+        const startX = this.x, startY = this.y;
+        if (canStep(this.x + dx, this.y)) this.x += dx;
+        if (canStep(this.x, this.y + dy)) this.y += dy;
+        return this.x !== startX || this.y !== startY;
+    }
+
+    _livingPlayers(target, allTargets, map) {
+        const candidates = Array.isArray(allTargets) ? allTargets : (target ? [target] : []);
+        const room = this.room || (map && map.pointInRoom(this.x, this.y));
+        if (!this.room && room) this.room = room;
+        return candidates.filter(player => player && Number.isFinite(player.invincibleTimer) &&
+            player.health > 0 && player.alive !== false &&
+            (!room || !map || map.pointInRoom(player.x, player.y) === room));
+    }
+
+    update(target, enemies, map, allTargets = null) {
+        if (!this.alive) return null;
+        const players = this._livingPlayers(target, allTargets, map);
+        if (!players.length) {
+            this._contactingPlayerIds.clear();
+            return null;
+        }
+
+        // Refresh the existing route target continuously; Enemy.steerTo uses
+        // map A* and collision-aware stepping to route around columns/walls.
+        let nearest = players[0];
+        let nearestDistance = Infinity;
+        for (const player of players) {
+            const distance = Math.hypot(player.x - this.x, player.y - this.y);
+            if (distance < nearestDistance) {
+                nearest = player;
+                nearestDistance = distance;
+            }
+        }
+        this.targetId = nearest.id ?? null;
+        this.angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+        const moved = this.steerTo(nearest.x, nearest.y, map, STANDARD_MOVEMENT_SPEED * BABOSA_PERSECUCION_SPEED_RATIO);
+        if (!moved && map) this._dodge(map, STANDARD_MOVEMENT_SPEED * BABOSA_PERSECUCION_SPEED_RATIO);
+        return null;
+    }
+
+    /** Resolve contact once when overlap begins; sustained overlap cannot tick damage. */
+    resolvePlayerContacts(players, map) {
+        if (!this.alive) {
+            this._contactingPlayerIds.clear();
+            return [];
+        }
+        const currentContacts = new Set();
+        const impacts = [];
+        for (const player of players || []) {
+            if (!player || player.health <= 0 || player.alive === false) continue;
+            if (this.room && map && map.pointInRoom(player.x, player.y) !== this.room) continue;
+            const playerId = player.id ?? player;
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const distance = Math.hypot(dx, dy);
+            if (distance > this.radius + (player.radius || 12)) continue;
+            currentContacts.add(playerId);
+            if (this._contactingPlayerIds.has(playerId)) continue;
+
+            const nx = distance > 0.001 ? dx / distance : Math.cos(this.angle || 0);
+            const ny = distance > 0.001 ? dy / distance : Math.sin(this.angle || 0);
+            const damage = BABOSA_PERSECUCION_CONTACT_DAMAGE;
+            if (typeof player.takeDamage === 'function') player.takeDamage(damage);
+            else if (player.invincibleTimer <= 0) {
+                player.health = Math.max(0, player.health - damage);
+                player.invincibleTimer = PLAYER_DAMAGE_INVULNERABILITY_FRAMES;
+            }
+
+            // Advance in short collision-checked increments. If a wall or
+            // column blocks the push, stop there instead of clipping through.
+            const step = 2;
+            const steps = BABOSA_PERSECUCION_KNOCKBACK / step;
+            for (let i = 0; i < steps; i++) {
+                const nextX = player.x + nx * step;
+                const nextY = player.y + ny * step;
+                if (map && !map.canOccupy(nextX, nextY, player.radius || 12)) break;
+                player.x = nextX;
+                player.y = nextY;
+            }
+            impacts.push({ player, damage });
+        }
+        this._contactingPlayerIds = currentContacts;
+        return impacts;
+    }
+
+    draw(ctx) {
+        // Temporary pixel-art silhouette until a dedicated sprite is supplied.
+        const s = BABOSA_PERSECUCION_SIZE;
+        pixelRect(ctx, this.x, this.y, s + 6, s + 6, PALETTE.void);
+        pixelRect(ctx, this.x, this.y, s, s, '#54375f');
+        pixelRect(ctx, this.x, this.y - 3, 68, 62, '#8d4eaa');
+        pixelRect(ctx, this.x - 16, this.y + 14, 14, 28, '#b66bca');
+        pixelRect(ctx, this.x + 16, this.y + 14, 14, 28, '#b66bca');
+        pixelRect(ctx, this.x - 13, this.y - 8, 7, 7, '#f7e8ff');
+        pixelRect(ctx, this.x + 13, this.y - 8, 7, 7, '#f7e8ff');
+        pixelRect(ctx, this.x - 13, this.y - 8, 3, 4, '#24142a');
+        pixelRect(ctx, this.x + 13, this.y - 8, 3, 4, '#24142a');
+        this.drawHealth(ctx, s);
+    }
+}
+

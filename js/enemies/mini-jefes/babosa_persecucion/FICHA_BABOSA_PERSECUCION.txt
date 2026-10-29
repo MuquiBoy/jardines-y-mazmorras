@@ -1,0 +1,28 @@
+BABOSA PERSECUCIÓN — FICHA DE IMPLEMENTACIÓN
+
+Categoría: mini-jefe; aparece únicamente en salas combat-hard.
+Probabilidad base en el sorteo de mini-jefe: 70% (Cochinilla Esquinero: 30%).
+Máximo: una clase de mini-jefe por sala.
+
+Estadísticas
+- Sprite de placeholder: 80 × 80 px.
+- Huella y radio de colisión: 2 × 2 casillas, radio 40 px.
+- Casilla: 40 × 40 px.
+- Vida: 850 HP, sin escalado automático por jugador o piso.
+- Velocidad: 0,70 × velocidad universal (2,5 px/frame) = 1,75 px/frame = 105 px/s a 60 FPS.
+- Daño de contacto: 12 HP por impacto válido.
+- Retroceso: hasta 40 px en sentido opuesto al choque.
+
+Comportamiento
+- Persigue al jugador vivo más cercano que permanezca en su sala.
+- Usa el movimiento y navegación existentes para rodear muros y columnas.
+- Su desplazamiento se limita a la sala y respeta la máscara de colisión.
+- No tiene ataque a distancia, aceleración, teletransporte, inmunidad ni fases.
+- El daño por contacto se aplica al comenzar cada contacto; permanecer superpuesto no repite daño.
+- Regla universal: cualquier daño recibido otorga 60 frames (1 segundo a 60 FPS) de invulnerabilidad al jugador.
+- El HUD representa la vida con corazones: 12 HP por corazón, dividido en dos mitades de 6 HP; se conserva también el valor numérico.
+- El retroceso avanza en pasos con comprobación de colisión; si una pared lo bloquea, se detiene antes de atravesarla.
+
+Arte
+- No se proporcionó sprite de la Babosa; se usa una silueta provisional dibujada en estilo pixel art. El tamaño visual es 80 × 80 px.
+

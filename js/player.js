@@ -1,4 +1,6 @@
 /** Player combat, movement, ammunition, and leveling. */
+// One second at the authoritative 60 Hz simulation rate, shared by all damage sources.
+const PLAYER_DAMAGE_INVULNERABILITY_FRAMES = 60;
 const PLAYER_SPRITE_ROOT = '00-sprites/jugador/';
 const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
@@ -194,9 +196,9 @@ class Player {
     }
 
     takeDamage(amount) {
-        if (this.invincibleTimer > 0) return;
+        if (this.invincibleTimer > 0 || amount <= 0 || this.health <= 0) return;
         this.health = Math.max(0, this.health - amount);
-        this.invincibleTimer = 30;
+        this.invincibleTimer = PLAYER_DAMAGE_INVULNERABILITY_FRAMES;
     }
 
     heal(amount) { this.health = Math.min(this.maxHealth, this.health + amount); }
@@ -325,12 +327,24 @@ class Player {
     }
 
     draw(ctx) {
-        if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / 3) % 2 === 0) return;
         const size = 24 * (this.visualScale || 1);
         const px = this.renderX ?? this.x, py = this.renderY ?? this.y;
+        const invulnerable = this.invincibleTimer > 0;
+        const redFlash = invulnerable && Math.floor(this.invincibleTimer / 6) % 2 === 0;
         const walkFrame = Player.walkFrameFor(this.character);
         const sprite = Player.spriteFor(this.character);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
+        if (redFlash) {
+            ctx.save();
+            ctx.globalAlpha = 0.30;
+            pixelRect(ctx, px, py, size + 8, size + 8, '#ff3445');
+            ctx.restore();
+        }
+        ctx.save();
+        if (invulnerable) {
+            ctx.globalAlpha = redFlash ? 0.88 : 0.96;
+            if (redFlash) ctx.filter = 'sepia(1) saturate(5) hue-rotate(315deg)';
+        }
         if (walkFrame || spriteReady) {
             // Preserve nearest-neighbor pixels and the role's authored 24/32/40 px footprint.
             ctx.imageSmoothingEnabled = false;
@@ -360,6 +374,7 @@ class Player {
             ctx.stroke();
             ctx.restore();
         }
+        ctx.restore();
     }
 
     getStatsString() {

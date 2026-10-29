@@ -256,6 +256,22 @@ canvas#game {
 .bar-health { background: var(--fire); }
 .bar-xp     { background: var(--sick); }
 
+.hp-hearts {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 58px;
+    flex: 1;
+}
+
+.health-heart {
+    display: block;
+    width: 17px;
+    height: 16px;
+    flex: 0 0 auto;
+    filter: drop-shadow(1px 1px 0 #090609);
+}
+
 .bar-text {
     font-size: 0.45rem;
     color: var(--bone);

@@ -28,12 +28,13 @@ for (const file of [
     'enemies/esbirros/mosca-tirador.js',
     'enemies/esbirros/spiral-enemy.js',
     'enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js',
+    'enemies/mini-jefes/babosa_persecucion/babosa_persecucion.js',
     'enemies/catalog.js',
     'map.js'
 ]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 function newPlayer(member, x, y) {
@@ -279,12 +280,13 @@ function stepRun(run, inputs) {
                 for (const player of players) {
                     if (player.health <= 0 || player.invincibleTimer > 0) continue;
                     const dmg = enemy.laserDamageFor(player);
-                    if (dmg > 0) player.health = Math.max(0, player.health - dmg);
+                    if (dmg > 0) player.takeDamage(dmg);
                 }
             }
             continue;
         }
         const bullets = enemy.update(target, run.enemies, run.map, targets, run.enemyProjectilePool);
+        if (enemy instanceof Engine.BabosaPersecucion) enemy.resolvePlayerContacts(livingPlayers, run.map);
         if (bullets && Array.isArray(bullets)) run.enemyBullets.push(...bullets);
     }
 
