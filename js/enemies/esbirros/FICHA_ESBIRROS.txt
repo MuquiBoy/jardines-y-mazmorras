@@ -2,10 +2,11 @@ JARDINES Y MAZMORRAS — FICHA DE ESBIRROS
 Estadísticas y comportamientos implementados
 Categoría: esbirros
 Enemigos incluidos: Básico, Mosca Tirador y Espiral.
+Aparecen en salas combat/combat-simple y como esbirros en combat-hard.
 
 UNIDADES Y ESCALADO
 
-Las velocidades se expresan en píxeles de mundo por frame, a 60 FPS. La columna “completa” es el valor de los constructores, que se alcanza en el piso 10. En el piso 1 la velocidad es el 55% de ese valor y la cadencia (intervalo entre ataques) es 1,9 veces más lenta.
+Las velocidades se expresan en píxeles de mundo por frame, a 60 FPS. La columna “completa” es el valor de los constructores, que se alcanza en el piso 10. En el piso 1 la velocidad es el 55% de ese valor y el intervalo de cadencia es 1,9 veces el intervalo base.
 
 ESBIRRO            VIDA (PISOS 1–10)  MOV. PISO 1           MOV. COMPLETA         CADENCIA PISO 1     CADENCIA COMPLETA
 Básico             30 HP              0,605 px/f (36,3/s)   1,10 px/f (66/s)      171 f (2,85 s)      90 f (1,50 s)
@@ -13,6 +14,8 @@ Mosca Tirador      20 HP              0,4125 px/f (24,75/s) 0,75 px/f (45/s)    
 Espiral            50 HP              0,33 px/f (19,8/s)    0,60 px/f (36/s)      86 f (1,43 s)       45 f (0,75 s)
 
 PATRÓN DE ATAQUE Y CONDUCTA
+
+El servidor asigna a cada esbirro el objetivo vivo más cercano entre los jugadores y las unidades invocadas.
 
 BÁSICO — perseguidor
 - Persigue continuamente al objetivo usando navegación que rodea paredes.
@@ -39,7 +42,7 @@ ESPIRAL — disparo radial
 
 DAÑO DE PROYECTILES
 
-Los proyectiles estándar de estos tres esbirros causan 6 HP por impacto (media mitad de corazón). Aunque los constructores asignan valores internos de daño 10 al Básico, 15 a la Mosca Tirador y 8 a la Espiral, el método actual de disparo fija el daño de sus proyectiles estándar en 6 HP. Por tanto, esos campos internos no son el daño real por impacto.
+Los proyectiles estándar de estos tres esbirros causan 6 HP por impacto (medio corazón). Aunque los constructores asignan valores internos de daño 10 al Básico, 15 a la Mosca Tirador y 8 a la Espiral, el método actual de disparo fija el daño de sus proyectiles estándar en 6 HP. Por tanto, esos campos internos no son el daño real por impacto.
 
 DIFICULTAD SEGÚN EL PISO
 

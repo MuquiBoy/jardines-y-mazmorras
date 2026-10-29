@@ -1,0 +1,58 @@
+JARDINES Y MAZMORRAS — CÓDIGO DE COLORES DE PLANTILLAS
+Guía de lectura de los PNG de assets/plantillas-salas
+
+CÓMO LEE EL JUEGO CADA PLANTILLA
+
+Cada PNG es una cuadrícula de casillas de 40 × 40 píxeles. El lector toma el color RGB del píxel central de cada casilla y lo convierte en una máscara de suelo, puerta, obstáculo o muro. Por eso, utiliza colores planos y exactos, sin suavizado ni bordes antialias. Lo más seguro es rellenar toda la casilla con el color correspondiente. El formato debe ser PNG; no uses JPEG.
+
+CÓDIGOS RGB
+
+COLOR RGB       CÓDIGO INTERNO  SIGNIFICADO Y EFECTO
+#00FF00         1               Suelo transitable.
+#FFFF00         2               Puerta transitable cuando está abierta.
+#0000FF         3 / 0           Obstáculo interior o muro exterior según conexión al borde.
+#00FFFF         1               Suelo y marcador de aparición del jugador.
+#FF00FF         1               Suelo y marcador preferido de aparición de enemigos.
+#FF0000         0               Muro/sólido no transitable.
+Otro RGB opaco  0               Muro/sólido no transitable.
+Transparente    0               Muro/sólido no transitable.
+
+DETALLE DE CADA COLOR
+
+#00FF00 — SUELO
+La casilla queda abierta para caminar y sirve como suelo normal. El juego dibuja encima su propia textura de piso; el verde de autoría no aparece en la partida.
+
+#FFFF00 — PUERTA
+La puerta se marca con exactamente dos casillas amarillas contiguas sobre uno de los cuatro bordes de la plantilla. El generador conecta salas solo si encuentra puertas enfrentadas, de dos casillas y alineadas tras la rotación de la plantilla. Durante un combate puede colocar una barrera sobre la puerta; al despejar la sala la abre. El amarillo se convierte visualmente en el suelo del juego. Una casilla de puerta no cuenta como suelo normal para validar el bloque de 3 × 3 de aparición de la Cochinilla Esquinero.
+
+#0000FF — OBSTÁCULO / LÍMITE EXTERIOR
+Las casillas azules no son transitables. Si un grupo azul está conectado por lados a un borde exterior del PNG, el lector lo convierte en muro/límite exterior. Si el azul está encerrado dentro del suelo, se conserva como obstáculo interior, por ejemplo una columna. Ambos bloquean el movimiento y los disparos. En pantalla se dibujan con el estilo visual del juego, no como azul.
+
+#00FFFF — APARICIÓN DEL JUGADOR
+Marca una casilla de suelo y señala la posición preferida de aparición del jugador. Se usa principalmente en la plantilla entry. Coloca solo un marcador para evitar ambigüedad; el juego conserva el último que encuentra si hay varios. El color no se muestra en la partida.
+
+#FF00FF — APARICIÓN PREFERIDA DE ENEMIGOS
+Marca una casilla de suelo que el generador puede priorizar para colocar enemigos. Puedes poner varios puntos para repartir las posiciones. Son ubicaciones preferidas, no garantizadas: si un punto no permite colocar el cuerpo del enemigo o queda demasiado cerca del jugador, el generador busca otra casilla libre. El magenta no se muestra en la partida.
+
+#FF0000 Y CUALQUIER OTRO COLOR OPACO — MURO
+El rojo no es un código decorativo independiente: como cualquier RGB opaco que no coincida exactamente con los códigos anteriores, la casilla se interpreta como muro/sólido y no se puede atravesar. Puede usarse para dibujar el límite de la sala. El borde y el sombreado visibles se generan automáticamente en el juego; no se conserva el color rojo como textura.
+
+TRANSPARENCIA
+
+Una casilla cuyo píxel central tiene alfa 0 también se interpreta como muro/sólido. No uses transparencia para indicar suelo; utiliza #00FF00.
+
+REGLAS DE FORMATO Y VALIDACIÓN
+
+- Cada casilla representa 40 × 40 px; el ancho y el alto del PNG deben ser múltiplos de 40.
+- La cuadrícula debe medir de 3 × 3 a 64 × 64 casillas.
+- Las puertas solo van en el borde y deben formar parejas de dos casillas contiguas.
+- El suelo interior y las puertas deben quedar conectados por una ruta transitable; no dejes islas separadas.
+- Los códigos se interpretan por el color RGB exacto del píxel central de cada casilla.
+- La carpeta determina el tipo de sala: entry, hub, combat, combat-hard, treasure o boss. El nombre del archivo no cambia su categoría.
+- El juego puede rotar una plantilla en pasos de 90 grados y la conexión entre salas depende de la posición y orientación de sus puertas.
+
+RESUMEN VISUAL
+
+Los colores del PNG son instrucciones para el generador, no la paleta artística final. El juego los convierte así: suelo y marcadores en suelo visual, puertas en suelo con una barrera temporal durante el combate, y azul interior, rojo, otros colores desconocidos o transparencia en superficies sólidas/no transitables con los bordes dibujados por el motor.
+
+Fuente de lectura: server/template-catalog.js y js/room-templates.js.
