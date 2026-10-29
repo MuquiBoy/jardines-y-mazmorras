@@ -17,7 +17,7 @@ SEGUIMIENTO DEL RAYO
 DAÑO DEL RAYO
 - Daño: 6 HP por tick de simulación en contacto con el rayo.
 - La simulación funciona a 60 ticks por segundo: equivale a 360 HP por segundo si el jugador permanece dentro del rayo.
-- La fase activa dura nominalmente 5 s (300 ticks): el cálculo continuo daría 1.800 HP. Por el orden actual de actualización, el rayo se limpia al pasar a enfriamiento antes de aplicar el daño de ese último tick; el máximo efectivo puede ser un tick menor (1.794 HP), si el jugador no tiene activo su contador de invulnerabilidad.
+- La regla universal de inmunidad tras daño es de 60 frames (1 s). Por ello, aunque el rayo conserva su daño nominal de 6 HP por tick, contra un jugador sin inmunidad inicial una fase continua de 5 s puede aplicar aproximadamente 30 HP en vez de causar daño cada frame. El resultado depende del momento en que comienza el contacto respecto al ciclo.
 - El daño del rayo permanece en 6 por tick; el escalado de daño general de enemigos no modifica este valor específico.
 
 TIEMPOS DEL CICLO DE ATAQUE
