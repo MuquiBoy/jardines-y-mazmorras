@@ -1,17 +1,12 @@
 COCHINILLA ESQUINERO — VALORES Y MECÁNICAS ACTUALES
 
-Fuente: configuración del juego en js/enemies/cochinilla_esquinero/cochinilla_esquinero.js y js/enemy.js.
+Fuente: js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js, js/enemy.js y server/simulation.js.
 
 VIDA
 - Vida base: 100 HP.
+- Recibe daño de ataques del jugador durante todas las fases del ciclo.
 - En los pisos 1 al 10 conserva esos 100 HP.
 - Desde el piso 11, la vida aumenta 16 % de la vida base por cada piso posterior al 10. Fórmula: redondear(100 × [1 + 0,16 × (piso − 10)]). Ejemplos: piso 11 = 116 HP; piso 12 = 132 HP.
-
-INMUNIDAD AL DAÑO
-- Es inmune mientras está esperando y durante el enfriamiento.
-- Es vulnerable a balas y otros efectos durante el casteo/aviso y durante el rayo activo. La línea blanca del casteo marca la dirección; el rayo no daña al jugador hasta la fase activa.
-- Las balas y otros efectos que usan takeDamage pueden reducir su vida durante cualquiera de esas dos fases vulnerables.
-- Ciclo actual: espera 3 s; aviso/casteo 2 s; rayo activo 5 s; enfriamiento 5 s. El ciclo se repite mientras siga viva.
 
 SEGUIMIENTO DEL RAYO
 - No hay una velocidad de giro o persecución en píxeles por segundo configurada.
@@ -27,7 +22,7 @@ DAÑO DEL RAYO
 
 TIEMPOS DEL CICLO DE ATAQUE
 - Espera antes del casteo: 3,00 s (180 frames).
-- Casteo/aviso: 2,00 s (120 frames). Durante este tiempo fija la dirección del rayo y la cochinilla ya puede recibir daño.
+- Casteo/aviso: 2,00 s (120 frames). Durante este tiempo fija la dirección del rayo.
 - Ataque: 5,00 s (300 frames). Es la duración nominal del rayo activo.
 - Enfriamiento tras el ataque: 5,00 s (300 frames).
 - Después del enfriamiento vuelve a esperar 3,00 s antes del siguiente casteo.

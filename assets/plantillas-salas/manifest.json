@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "revision": "6c85e8d43a6185e7",
+  "revision": "8cdaff1b1c955576",
   "cellWorldSize": 40,
   "sourcePixelsPerCell": 40,
   "templates": {
@@ -15,18 +15,21 @@
     ],
     "combat": [
       "combat/sala grande_3 puertas y barricada_combat.png",
-      "combat/sala grande_columneta 1_combat.png",
+      "combat/sala grande_forma s_combat.png",
+      "combat/sala grande_union por esquina_combat.png",
+      "combat/sala media_3 puertas y forma o_combat.png",
       "combat/sala media_columna 1 cerrado_combat.png",
       "combat/sala media_columna 1_combat.png",
       "combat/sala media_columna 2_combat.png",
       "combat/sala media_forma i_combat.png"
     ],
     "combat-hard": [
-      "combat-hard/sala gigante_union por esquina_combat-hard.png",
-      "combat-hard/sala grande_3 puertas_combat-hard.png",
-      "combat-hard/sala grande_centro angosto_combat-hard.png",
-      "combat-hard/sala grande_vacia_combat-hard.png",
-      "combat-hard/sala grande_vacio 2_combat-hard.png"
+      "combat-hard/sala gigante_3 puertas_combat-hard.png",
+      "combat-hard/sala gigante_palazzo-1_combat-hard.png",
+      "combat-hard/sala gigante_palazzo-2_combat-hard.png",
+      "combat-hard/sala gigante_palazzo-3_combat-hard.png",
+      "combat-hard/sala gigante_palazzo-4_combat-hard.png",
+      "combat-hard/sala gigante_palazzo-5_combat-hard.png"
     ],
     "treasure": [
       "treasure/sala tesoro 1_treasure.png",

@@ -93,24 +93,18 @@ class CochinillaEsquinero extends Enemy {
         CochinillaEsquinero.sprite = image;
     }
 
-    /** The body is vulnerable during warning/cast and active beam; wait and cooldown are immune. */
-    isVulnerable() {
-        return this.alive && (this.phase === 'warning' || this.phase === 'active');
-    }
-
     /**
-     * Persistent damage (burn ticks, bullets) only lands during warning/cast or active beam
-     * phases. Wait and cooldown damage is rejected before touching health.
+     * The Esquinero takes player damage in every living phase of its cycle.
+     * Preserve its death-state cleanup without restricting damage by phase.
      */
     takeDamage(amount) {
-        if (!this.isVulnerable()) return false;
+        if (!this.alive) return;
         super.takeDamage(amount);
         if (!this.alive) {
             this.phase = 'dead';
             this.phaseTimer = 0;
             this._clearBeam();
         }
-        return true;
     }
 
     /** Laser origin in world space: sprite-local (11, 11.5), mirrored per corner. */
