@@ -19,11 +19,10 @@ provoca al chocar con un jugador.
 
 ESTADÍSTICAS ACTUALES
 
-- Vida inicial y máxima: 850 HP. No aumenta automáticamente según el piso o la
+- Vida inicial y máxima: 500 HP. No aumenta automáticamente según el piso o la
   cantidad de jugadores.
 - Velocidad: multiplicador 0,70 de la velocidad universal.
 - Referencia universal: 1,00 = 2,5 px/frame = 150 px/s a 60 FPS.
-- Velocidad efectiva: 1,75 px/frame = 105 px/s a 60 FPS.
 - Daño: 12 HP por contacto válido.
 - Radio de hitbox: 32 px; diámetro físico: 64 px.
 - Tamaño visual: 80 × 80 px (lienzo de 2 × 2 casillas). La escala visual no
@@ -31,8 +30,17 @@ ESTADÍSTICAS ACTUALES
 - Criterio de contacto: distancia entre centros menor o igual a 32 px más el
   radio del jugador. Si el jugador no declara radio, el código usa 12 px, dando
   un umbral de 44 px entre centros.
-- Empuje: hasta 40 px alejando al jugador del centro de la Babosa, en pasos de
-  2 px. El movimiento se detiene antes de atravesar una pared.
+- Empuje: al impactar, el jugador recibe un impulso que busca aumentar en al
+  menos 80 px su distancia radial respecto al centro de la Babosa (dos casillas
+  de suelo). El impulso se aplica después del movimiento normal del jugador,
+  por lo que mantener WASD no lo cancela; dura varios frames y conserva el
+  momentum hasta alcanzar esa separación.
+- Si una pared bloquea la dirección directa, el impulso prueba direcciones
+  seguras dentro del semiplano que se aleja de la Babosa y redirige el
+  desplazamiento alrededor del obstáculo. Nunca atraviesa paredes. Si el
+  jugador está completamente encerrado y no existe una salida transitable que
+  aumente la separación, el empuje se detiene de forma segura; la geometría no
+  permite garantizar 80 px en ese caso.
 - Experiencia al morir: 0 XP.
 - Daño a distancia y proyectiles: ninguno.
 - Cadencia/enfriamiento de ataque: no aplica; el ataque depende de iniciar un
@@ -79,7 +87,7 @@ PATRÓN DE ATAQUE E INTERACCIONES
 
 - Su único ataque es el contacto corporal. Se activa al comenzar un nuevo
   solapamiento con un jugador vivo de la sala.
-- En ese contacto intenta quitar 12 HP y aplica el empuje descrito arriba.
+- En ese contacto intenta quitar 12 HP y aplica el impulso descrito arriba.
 - Permanecer tocándola no vuelve a causar daño. El jugador debe separarse y
   volver a entrar en contacto para iniciar otro intento de golpe.
 - El registro de contacto es individual por jugador. Puede golpear a varios
@@ -116,3 +124,4 @@ La animación walk ocupa un lienzo de 80 × 80 px y se reproduce continuamente,
 independientemente de si la Babosa se mueve. La hitbox circular de 32 px no
 cambia el tamaño visual de 80 × 80 px. Si el archivo de animación no se carga,
 el código conserva la silueta pixel-art de respaldo.
+

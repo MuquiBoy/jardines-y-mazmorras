@@ -11,7 +11,7 @@ Espiral       50 HP    0,50 (1,25 px/frame)      300 frames (5 s)
 
 Mini-jefe             Vida     Velocidad                 Ataque
 Cochinilla Esquinero  100 HP   0,00 (0 px/frame)         Espera 180 f; aviso 120 f; rayo 300 f; recuperación 300 f.
-Babosa Persecución    850 HP   0,70 (1,75 px/frame)      Contacto: 12 HP por choque nuevo.
+Babosa Persecución    500 HP   0,70 (1,75 px/frame)      Contacto: 12 HP por choque nuevo.
 
 OTROS ENEMIGOS
 Enemigo                  Vida     Velocidad                 Cadencia/patrón

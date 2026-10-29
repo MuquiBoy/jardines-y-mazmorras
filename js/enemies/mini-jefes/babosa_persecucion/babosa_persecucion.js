@@ -6,7 +6,7 @@
 const BABOSA_PERSECUCION_SIZE = 80;
 const BABOSA_PERSECUCION_SPEED_RATIO = 0.70;
 const BABOSA_PERSECUCION_CONTACT_DAMAGE = 12;
-const BABOSA_PERSECUCION_KNOCKBACK = 40;
+const BABOSA_PERSECUCION_KNOCKBACK = 80;
 const BABOSA_PERSECUCION_WALK_PATH = '00-sprites/enemigos/1_mini-jefes/babosa_persecucion/babosa_persecucion_walk.aseprite';
 const BABOSA_PERSECUCION_WALK_VERSION = 'babosa-walk-20261029-v1';
 
@@ -18,7 +18,7 @@ class BabosaPersecucion extends Enemy {
     constructor(x, y, room = null) {
         super(x, y, 'babosa_persecucion');
         this.name = 'Babosa Persecución';
-        this.health = this.maxHealth = 850;
+        this.health = this.maxHealth = 500;
         this.setMovementSpeedMultiplier(BABOSA_PERSECUCION_SPEED_RATIO);
         this.damage = BABOSA_PERSECUCION_CONTACT_DAMAGE;
         this.radius = BabosaPersecucion.COLLISION_RADIUS;
@@ -122,16 +122,25 @@ class BabosaPersecucion extends Enemy {
                 player.invincibleTimer = PLAYER_DAMAGE_INVULNERABILITY_FRAMES;
             }
 
-            // Advance in short collision-checked increments. If a wall or
-            // column blocks the push, stop there instead of clipping through.
-            const step = 2;
-            const steps = BABOSA_PERSECUCION_KNOCKBACK / step;
-            for (let i = 0; i < steps; i++) {
-                const nextX = player.x + nx * step;
-                const nextY = player.y + ny * step;
-                if (map && !map.canOccupy(nextX, nextY, player.radius || 12)) break;
-                player.x = nextX;
-                player.y = nextY;
+            // Queue momentum on the player so their movement input cannot
+            // cancel the hit. The player resolves map collision and redirects
+            // around a blocking wall during subsequent simulation frames.
+            if (player.health > 0 && typeof player.applyKnockbackImpulse === 'function') {
+                player.applyKnockbackImpulse(nx, ny, this.x, this.y, BABOSA_PERSECUCION_KNOCKBACK);
+            } else if (player.health > 0) {
+                // Compatibility path for non-Player objects: preserve collision
+                // safety and take short steps toward the 80px separation gain.
+                const step = 2;
+                const initialDistance = Math.hypot(player.x - this.x, player.y - this.y);
+                const targetDistance = initialDistance + BABOSA_PERSECUCION_KNOCKBACK;
+                for (let i = 0; i < BABOSA_PERSECUCION_KNOCKBACK / step; i++) {
+                    const nextX = player.x + nx * step;
+                    const nextY = player.y + ny * step;
+                    if (map && !map.canOccupy(nextX, nextY, player.radius || 12)) break;
+                    player.x = nextX;
+                    player.y = nextY;
+                    if (Math.hypot(player.x - this.x, player.y - this.y) >= targetDistance) break;
+                }
             }
             impacts.push({ player, damage });
         }
@@ -175,3 +184,4 @@ class BabosaPersecucion extends Enemy {
         this.drawHealth(ctx, s);
     }
 }
+

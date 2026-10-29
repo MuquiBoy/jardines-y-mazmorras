@@ -273,6 +273,7 @@ class Player {
         this.pendingLevelUps = 0;
         this.xpTable = [50, 120, 220, 350, 520, 750, 1050, 1400, 1850, 2400];
         this.fireTimer = 0; this.invincibleTimer = 0; this.sniperAiming = false;
+        this.knockbackImpulse = null;
         this.aimX = 0; this.aimY = -1; this.angle = 0; this.character = 'pistolero';
     }
 
@@ -310,6 +311,24 @@ class Player {
         if (this.invincibleTimer > 0 || amount <= 0 || this.health <= 0) return;
         this.health = Math.max(0, this.health - amount);
         this.invincibleTimer = PLAYER_DAMAGE_INVULNERABILITY_FRAMES;
+    }
+
+    /** Apply an outward momentum impulse that normal movement cannot cancel. */
+    applyKnockbackImpulse(directionX, directionY, sourceX, sourceY, separationGain = 80) {
+        const magnitude = Math.hypot(directionX, directionY);
+        if (magnitude < 0.001) return;
+        const dx = directionX / magnitude;
+        const dy = directionY / magnitude;
+        const currentDistance = Math.hypot(this.x - sourceX, this.y - sourceY);
+        this.knockbackImpulse = {
+            sourceX,
+            sourceY,
+            targetDistance: currentDistance + Math.max(0, separationGain),
+            directionX: dx,
+            directionY: dy,
+            frames: 0,
+            travelled: 0
+        };
     }
 
     heal(amount) { this.health = Math.min(this.maxHealth, this.health + amount); }
@@ -371,6 +390,8 @@ class Player {
             this.y = Math.max(this.radius, Math.min(this.y, map.height - this.radius));
         }
 
+        this.updateKnockbackImpulse(map, blockers);
+
         if (input.aimActive) { this.aimX = input.aimX; this.aimY = input.aimY; }
         else if (input.mouseX !== undefined) {
             const ax = (camera ? camera.x : 0) + input.mouseX - this.x;
@@ -407,6 +428,73 @@ class Player {
             return true;
         }
         return false;
+    }
+
+    /** Move the pending hit impulse after player input, redirecting around walls. */
+    updateKnockbackImpulse(map, blockers = []) {
+        const impulse = this.knockbackImpulse;
+        if (!impulse) return;
+
+        const sourceDx = this.x - impulse.sourceX;
+        const sourceDy = this.y - impulse.sourceY;
+        const distance = Math.hypot(sourceDx, sourceDy);
+        if (distance >= impulse.targetDistance - 0.5 || impulse.frames >= 30 || impulse.travelled >= 220) {
+            this.knockbackImpulse = null;
+            return;
+        }
+
+        const outwardX = distance > 0.001 ? sourceDx / distance : impulse.directionX;
+        const outwardY = distance > 0.001 ? sourceDy / distance : impulse.directionY;
+        const step = Math.min(12, Math.max(3, (impulse.targetDistance - distance) * 0.28));
+        const canStepTo = (x, y) => {
+            if (map && !map.canOccupy(x, y, this.radius)) return false;
+            for (const blocker of blockers) {
+                if (!blocker || blocker.alive === false) continue;
+                const minDistance = this.radius + (blocker.radius || 0);
+                const currentDistance = Math.hypot(this.x - blocker.x, this.y - blocker.y);
+                const nextDistance = Math.hypot(x - blocker.x, y - blocker.y);
+                if (nextDistance < minDistance &&
+                    !(currentDistance < minDistance && nextDistance > currentDistance)) return false;
+            }
+            return true;
+        };
+
+        // Try the outward direction first. If a wall blocks it, sweep the
+        // outward half-plane and take the step that increases separation most.
+        // This gives the impulse a visible slide/bounce around corners.
+        let best = null;
+        let bestScore = -Infinity;
+        for (let offset = -Math.PI / 2; offset <= Math.PI / 2 + 0.001; offset += Math.PI / 24) {
+            const angle = Math.atan2(outwardY, outwardX) + offset;
+            const dx = Math.cos(angle), dy = Math.sin(angle);
+            const nextX = this.x + dx * step;
+            const nextY = this.y + dy * step;
+            if (!canStepTo(nextX, nextY)) continue;
+            const nextDistance = Math.hypot(nextX - impulse.sourceX, nextY - impulse.sourceY);
+            const radialGain = nextDistance - distance;
+            const alignment = dx * outwardX + dy * outwardY;
+            const score = radialGain * 100 + alignment;
+            if (score > bestScore) {
+                bestScore = score;
+                best = { x: nextX, y: nextY, dx, dy };
+            }
+        }
+
+        if (!best || bestScore < -0.01) {
+            // No safe outward step exists in this geometry; do not tunnel or
+            // force the player through a wall. A later frame can retry as the
+            // player or enemy moves.
+            impulse.frames++;
+            if (impulse.frames >= 30) this.knockbackImpulse = null;
+            return;
+        }
+
+        this.x = best.x;
+        this.y = best.y;
+        impulse.directionX = best.dx;
+        impulse.directionY = best.dy;
+        impulse.travelled += step;
+        impulse.frames++;
     }
 
     shoot() {
@@ -520,3 +608,4 @@ class Player {
 Player.loadSprites();
 Player.loadAnimations();
 Player.loadDamageMasks();
+
