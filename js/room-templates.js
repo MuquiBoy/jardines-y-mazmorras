@@ -6,6 +6,9 @@
 class RoomTemplateLibrary {
     static root = 'assets/plantillas-salas/';
     static categories = ['entry', 'hub', 'combat', 'combat-hard', 'treasure', 'boss'];
+    static catalogTimeoutMs = 3500;
+    static imageTimeoutMs = 2500;
+    static imageConcurrency = 4;
     static byType = new Map();
     static byId = new Map();
     static orientedById = new Map();
@@ -32,32 +35,41 @@ class RoomTemplateLibrary {
             const entries = Object.entries(manifest.templates || {}).flatMap(([type, paths]) =>
                 this.categories.includes(type) && Array.isArray(paths)
                     ? paths.map(path => ({ type, path })) : []);
-            for (const { type, path } of entries) {
-                if (!this.safePath(type, path)) {
-                    this.diagnostics.push(`${type}/${path}: ruta inválida`);
-                    continue;
+            // A missing/stalled image must not keep the start screen open forever.
+            // Load a few at a time so slow assets do not serialize the whole catalog.
+            const results = new Array(entries.length);
+            let next = 0;
+            const worker = async () => {
+                while (next < entries.length) {
+                    const index = next++;
+                    const { type, path } = entries[index];
+                    if (!this.safePath(type, path)) {
+                        results[index] = { type, path, error: new Error('ruta inválida') };
+                        continue;
+                    }
+                    try {
+                        const image = await this.loadImage(path, manifest.revision);
+                        try {
+                            results[index] = { type, path, template: this.readImage(image, type, path) };
+                        } finally {
+                            image.src = '';
+                        }
+                    } catch (error) {
+                        results[index] = { type, path, error };
+                    }
                 }
-                try {
-                    const image = new Image();
-                    const revision = manifest.revision ? `?rev=${encodeURIComponent(manifest.revision)}` : '';
-                    image.src = this.root + path + revision;
-                    // Wait for the bitmap itself. image.decode() can stay pending
-                    // forever in a background tab, which would block the run.
-                    await new Promise((resolve, reject) => {
-                        if (image.complete && image.naturalWidth) return resolve();
-                        image.onload = () => resolve();
-                        image.onerror = () => reject(new Error('no se pudo cargar la imagen'));
-                    });
-                    const template = this.readImage(image, type, path);
-                    image.src = '';
-                    if (!template) continue;
-                    this.byType.get(type).push(template);
-                    this.byId.set(template.id, template);
-                } catch (error) {
-                    const message = `${type}/${path}: ${error?.message || 'no se pudo leer'}`;
+            };
+            await Promise.all(Array.from({ length: Math.min(this.imageConcurrency, entries.length) }, worker));
+            for (const result of results) {
+                if (result.error) {
+                    const message = `${result.type}/${result.path}: ${result.error?.message || 'no se pudo leer'}`;
                     this.diagnostics.push(message);
                     console.warn(`Plantilla ignorada: ${message}`);
+                    continue;
                 }
+                if (!result.template) continue;
+                this.byType.get(result.type).push(result.template);
+                this.byId.set(result.template.id, result.template);
             }
         } catch (error) {
             this.diagnostics.push(`No se pudo leer el catálogo de salas: ${error?.message || error}`);
@@ -69,12 +81,45 @@ class RoomTemplateLibrary {
 
     static async fetchCatalog() {
         try {
-            const response = await fetch('/api/room-templates', { cache: 'no-store' });
-            if (response.ok) return await response.json();
+            return await this.fetchJson('/api/room-templates');
         } catch (_) { /* static-host fallback below */ }
-        const response = await fetch(`${this.root}manifest.json`, { cache: 'no-store' });
-        if (!response.ok) throw new Error('manifest.json no disponible');
-        return response.json();
+        return this.fetchJson(`${this.root}manifest.json`);
+    }
+
+    static async fetchJson(url) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), this.catalogTimeoutMs);
+        try {
+            const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+            if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+            return await response.json();
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    static loadImage(path, revision) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            let settled = false;
+            const finish = (error) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                image.onload = null;
+                image.onerror = null;
+                if (error) {
+                    image.src = '';
+                    reject(error);
+                } else resolve(image);
+            };
+            const timer = setTimeout(() => finish(new Error('tiempo de espera agotado')), this.imageTimeoutMs);
+            image.onload = () => finish();
+            image.onerror = () => finish(new Error('no se pudo cargar la imagen'));
+            const cacheKey = revision ? `?rev=${encodeURIComponent(revision)}` : '';
+            image.src = this.root + path + cacheKey;
+            if (image.complete && image.naturalWidth) finish();
+        });
     }
 
     static safePath(type, value) {

@@ -61,7 +61,7 @@
         try {
             // Let the browser paint the cover before allocating the pool or
             // waiting for room templates to finish loading.
-            await new Promise(resolve => requestAnimationFrame(resolve));
+            await new Promise(resolve => setTimeout(resolve, 0));
             await Promise.all([
                 RoomTemplateLibrary.load(),
                 Promise.resolve().then(() => game.prepareForNewRun())
