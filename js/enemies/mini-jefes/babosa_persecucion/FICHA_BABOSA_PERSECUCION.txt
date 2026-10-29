@@ -25,4 +25,3 @@ Comportamiento
 
 Arte
 - No se proporcionó sprite de la Babosa; se usa una silueta provisional dibujada en estilo pixel art. El tamaño visual es 80 × 80 px.
-

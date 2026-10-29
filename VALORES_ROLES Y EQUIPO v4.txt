@@ -23,4 +23,3 @@ Las recargas se convierten de segundos a frames y se redondean al frame entero m
 ROL          MUNICIÓN POR CARGADOR   TIEMPO DE RECARGA
 Pistolero    10 proyectiles          1,20 s (72 frames)
 Tirador      3 proyectiles           3,30 s (198 frames)
-

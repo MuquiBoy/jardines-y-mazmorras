@@ -76,7 +76,7 @@ EXPERIENCIA DE ENEMIGOS Y SALAS
 - Enemigo spiral: 20 XP.
 - Jefe: 200 XP.
 - Sala del tesoro: 30 XP y 30 de curacion.
-- En pisos profundos, el XP de enemigos aumenta un 10% por cada piso de escalado endgame aplicado. El incremento se redondea al entero mas cercano.
+- El valor de XP configurado para cada enemigo permanece fijo entre pisos; la composición de encuentros puede variar.
 - La XP de cada enemigo se reparte en orbes. Se genera al menos 1 y como maximo aproximadamente 1 orbe por cada 5 XP; el valor de cada orbe se redondea hacia arriba.
 
 DETALLES A TENER EN CUENTA AL AJUSTAR
@@ -93,7 +93,7 @@ COMO SE ACUMULA LA EXPERIENCIA Y CUANTO SE RECIBE POR CUARTO
 - En un cuarto de combate dificil aparecen de 4 a 6 enemigos. En pisos iniciales, el total posible es de 40 a 120 XP.
 - En un cuarto de jefe se obtiene 200 XP por el jefe, mas la XP de al menos 2 enemigos menores: minimo aproximado de 220 XP en pisos iniciales.
 - La sala inicial no tiene enemigos. Los cuartos vacios y de salida tampoco dan XP por completarlos.
-- En pisos profundos, el valor de XP de los enemigos aumenta junto con la dificultad.
+- La cantidad y composición de los encuentros puede cambiar entre pisos; no aumenta automáticamente el XP individual configurado en cada enemigo.
 - Si una sola recompensa cruza mas de un umbral de nivel, el juego guarda todos esos niveles y presenta una eleccion de mejora por cada uno.
 
 Ejemplo: un cuarto normal con cuatro enemigos que valen 15 XP cada uno da 60 XP al recoger todos los orbes. Eso supera los 50 XP necesarios para la primera subida de nivel. Por eso puede aparecer una mejora al completar un solo cuarto, segun el tipo y cantidad de enemigos que genero.

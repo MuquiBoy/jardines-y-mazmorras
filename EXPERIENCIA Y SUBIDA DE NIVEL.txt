@@ -35,7 +35,7 @@ La experiencia sobrante al subir de nivel se conserva. La subida se activa al re
 BONIFICACIÓN DE SALA
 Sala de tesoro: concede 30 XP directamente, además de 30 HP de curación.
 
-NOTAS DE ESCALADO
-En el primer piso se usan los valores base anteriores. En pisos posteriores, el valor de XP puede aumentar durante la rampa de dificultad de niveles avanzados. Las salas de combate comunes generan 2–4 enemigos, las difíciles 4–6, y la sala del jefe del piso 1 contiene al jefe y 2 enemigos acompañantes.
+NOTAS
+Los valores de XP configurados por enemigo no reciben modificadores por piso. La cantidad y composición de enemigos de una sala sí puede variar entre pisos. Las salas de combate comunes generan 2–4 enemigos, las difíciles 4–6, y la sala del jefe contiene al jefe y enemigos acompañantes.
 
 Fuente: configuración actual de js/enemy.js, js/player.js y js/map.js.

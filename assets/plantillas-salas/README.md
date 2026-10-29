@@ -28,7 +28,7 @@ Las puertas deben medir exactamente dos losas y el suelo interior debe formar un
 
 ## Reglas de generación
 
-Cada piso contiene una entrada, seis combates simples, uno o dos combates difíciles, dos hubs, un tesoro y un jefe. En el piso 1, la cantidad de encuentros difíciles es aleatoria 1–2; en pisos posteriores aumenta gradualmente la probabilidad de generar dos, mientras el sistema de dificultad existente escala enemigos y grupos. No se cambia el balance de personajes ni enemigos.
+Cada piso contiene una entrada, seis combates simples, uno o dos combates difíciles, dos hubs, un tesoro y un jefe. En el piso 1, la cantidad de encuentros difíciles es aleatoria 1–2; en pisos posteriores aumenta gradualmente la probabilidad de generar dos. La composición y cantidad de enemigos puede variar por piso, pero las estadísticas individuales de cada enemigo permanecen fijas.
 
 El generador rota cada plantilla en incrementos de 90° y solo conecta dos puertas si quedan enfrentadas (lado opuesto), con el mismo ancho de dos losas y el mismo desplazamiento sobre el borde. **La rotación es libre siempre que las puertas coincidan y queden alineadas**; nunca se recorta la sala ni se inventa una abertura.
 

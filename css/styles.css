@@ -47,6 +47,14 @@ canvas#game {
     image-rendering: crisp-edges;
 }
 
+/* In fullscreen the in-game reticle replaces the operating-system cursor. */
+html.game-fullscreen,
+html.game-fullscreen *,
+html:fullscreen,
+html:fullscreen * {
+    cursor: none !important;
+}
+
 /* ===== Screen overlays ===== */
 .screen {
     position: absolute;

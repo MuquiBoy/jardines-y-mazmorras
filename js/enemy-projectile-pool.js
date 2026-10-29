@@ -6,6 +6,91 @@
 class EnemyProjectilePool {
     static INITIAL_CAPACITY = 512;
     static GROWTH_SIZE = 128;
+    static HITBOX_RADIUS = 4;
+    static SPRITE_DEFS = {
+        'enemy-standard': {
+            file: '10x10_proyectil enemigo.aseprite',
+            size: 10
+        }
+    };
+    static spriteAnimations = Object.create(null);
+    static spriteAnimationPromises = Object.create(null);
+    static frameCacheTimestamp = -1;
+    static frameCache = Object.create(null);
+
+    /** Register an exceptional projectile visual from its owning enemy code. */
+    static registerSprite(visualType, file, size) {
+        if (!visualType || !file || !Number.isFinite(size) || size <= 0) {
+            throw new TypeError('Projectile sprite requires a key, file and positive size.');
+        }
+        this.SPRITE_DEFS[visualType] = { file, size };
+        return this.loadSpriteAnimation(visualType);
+    }
+
+    /** Load a sprite loop asynchronously; gameplay keeps a visible fallback. */
+    static loadSpriteAnimation(visualType = 'enemy-standard') {
+        const definition = this.SPRITE_DEFS[visualType];
+        if (!definition || this.spriteAnimations[visualType]) {
+            return Promise.resolve(this.spriteAnimations[visualType] || null);
+        }
+        if (this.spriteAnimationPromises[visualType]) return this.spriteAnimationPromises[visualType];
+        if (typeof document === 'undefined' || typeof decodeAsepriteAnimation !== 'function') {
+            return Promise.resolve(null);
+        }
+
+        const url = '00-sprites/proyectiles/' + encodeURIComponent(definition.file) + '?v=enemy-projectile-10px-v1';
+        this.spriteAnimationPromises[visualType] = decodeAsepriteAnimation(url)
+            .then(animation => {
+                if (animation) this.spriteAnimations[visualType] = animation;
+                return animation;
+            })
+            .catch(error => {
+                delete this.spriteAnimationPromises[visualType];
+                console.warn('No se pudo cargar el sprite de proyectil ' + visualType + '.', error);
+                return null;
+            });
+        return this.spriteAnimationPromises[visualType];
+    }
+
+    /** Return the authored animation frame at a shared render timestamp. */
+    static frameFor(visualType = 'enemy-standard', now =
+        (typeof performance !== 'undefined' ? performance.now() : Date.now())) {
+        const key = this.spriteAnimations[visualType] ? visualType : 'enemy-standard';
+        if (this.frameCacheTimestamp !== now) {
+            this.frameCacheTimestamp = now;
+            this.frameCache = Object.create(null);
+        }
+        if (Object.prototype.hasOwnProperty.call(this.frameCache, key)) return this.frameCache[key];
+        const animation = this.spriteAnimations[key];
+        if (!animation) return null;
+        let time = now % animation.totalDuration;
+        for (let i = 0; i < animation.frames.length; i++) {
+            if (time < animation.durations[i]) {
+                this.frameCache[key] = animation.frames[i];
+                return animation.frames[i];
+            }
+            time -= animation.durations[i];
+        }
+        this.frameCache[key] = animation.frames[0];
+        return animation.frames[0];
+    }
+
+    /** Draw the projectile's configured animation without changing its hitbox. */
+    static draw(ctx, projectile, now) {
+        const visualType = projectile.visualType || 'enemy-standard';
+        const definition = this.SPRITE_DEFS[visualType] || this.SPRITE_DEFS['enemy-standard'];
+        const frame = this.frameFor(visualType, now);
+        const size = definition.size;
+        if (frame) {
+            const snapPixel = typeof snap === 'function' ? snap : Math.round;
+            ctx.save();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(frame, snapPixel(projectile.x - size / 2), snapPixel(projectile.y - size / 2), size, size);
+            ctx.restore();
+        } else {
+            pixelRect(ctx, projectile.x, projectile.y, size, size, projectile.color || '#ff453a');
+        }
+    }
 
     constructor(initialCapacity = EnemyProjectilePool.INITIAL_CAPACITY,
                 growthSize = EnemyProjectilePool.GROWTH_SIZE) {
@@ -33,6 +118,7 @@ class EnemyProjectilePool {
             projectileType: null, faction: null, ownerId: null,
             enemyId: null, range: 0, travelled: 0,
             pierce: 0, hits: 0, burn: null,
+            visualType: null,
             ignorePlayerId: null, ignoreFrames: 0
         };
     }
@@ -60,7 +146,7 @@ class EnemyProjectilePool {
         }
 
         const projectile = this.free.pop();
-        const speed = baseSpeed * (enemy.bulletSpeedScale ?? 1);
+        const speed = baseSpeed;
         if (enemy.id == null && enemy._poolProjectileOwnerId == null) {
             enemy._poolProjectileOwnerId = `enemy-${++this._anonymousEnemyId}`;
         }
@@ -75,10 +161,11 @@ class EnemyProjectilePool {
         projectile.vx = Math.cos(angle) * speed;
         projectile.vy = Math.sin(angle) * speed;
         projectile.damage = enemy.type === 'boss' ? 12 : 6;
-        projectile.radius = 6;
+        projectile.radius = EnemyProjectilePool.HITBOX_RADIUS;
         projectile.color = enemy.color;
         projectile.speed = speed;
         projectile.projectileType = enemy.type === 'boss' ? 'boss-special' : 'standard';
+        projectile.visualType = enemy.projectileVisualType || 'enemy-standard';
         projectile.faction = 'enemy';
         projectile.ownerId = ownerId;
         projectile.enemyId = ownerId;
@@ -110,6 +197,7 @@ class EnemyProjectilePool {
         projectile.color = null;
         projectile.speed = 0;
         projectile.projectileType = null;
+        projectile.visualType = null;
         projectile.faction = null;
         projectile.ownerId = null;
         projectile.enemyId = null;
@@ -175,3 +263,6 @@ class EnemyProjectilePool {
         };
     }
 }
+
+// Start loading the standard projectile animation without blocking the lobby.
+if (typeof document !== 'undefined') EnemyProjectilePool.loadSpriteAnimation();

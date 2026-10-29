@@ -1,10 +1,30 @@
 /**
+ * Visual identity — palette and pixel-grid constants.
+ *
+ * The look is "loose modern retro": a chunky pixel grid and a tight, grimy
+ * palette, but without the hard constraints of a real 8-bit target (no fixed
+ * colour count, no sprite/tile limits). Colours lean on DOOM's register —
+ * rust and dried blood for the world, hot amber and fire for anything that
+ * demands attention, sickly green for pickups.
+ */
+
+/**
+ * Internal render scale: one world pixel maps to one canvas pixel.
+ *
+ * The canvas backing store is the window divided by this, then upscaled with
+ * smoothing disabled, so everything lands on a visible grid. It also settles
+ * the HiDPI question: integer upscaling is what a pixel look wants, where a
+ * devicePixelRatio-smoothed canvas would fight it.
+ */
+const PIXEL_SIZE = 1;
+const AIM_POINTER_MIN_DISTANCE = 40;
+const AIM_POINTER_MAX_DISTANCE = 120;
+const AIM_POINTER_DEFAULT_DISTANCE = 80;
+
+/**
  * Pixel-perfect camera scales: both the fixed view and Tirador aim use
  * whole-number zoom factors, so each authored pixel stays a uniform square.
  */
-// Canvas backing scale; 1 means one canvas pixel per authored world pixel.
-const PIXEL_SIZE = 1;
-
 const CAMERA_ZOOM = 3.0;
 const TIRADOR_AIM_ZOOM = 2.0;
 
@@ -51,6 +71,49 @@ const PALETTE = {
 /** Snap a world coordinate to the pixel grid so nothing renders half-lit. */
 function snap(v) {
     return Math.floor(v);
+}
+
+/**
+ * Align a followed sprite to one exact canvas pixel while scrolling the world.
+ * Camera translation is quantized to the output pixel grid (1 / scale world
+ * units), and derived from the very same snapped sprite edge used by draw().
+ * This avoids alternating floor/round offsets at fractional movement speeds.
+ */
+function cameraOffsetForPixelAnchor(center, viewportPixels, spriteSize, scale) {
+    const spriteLeft = snap(center - spriteSize / 2);
+    const screenLeft = Math.round((viewportPixels - spriteSize * scale) / 2);
+    return spriteLeft - screenLeft / scale;
+}
+
+/** Keep a world-space aim marker anchored to the exact snapped player sprite. */
+function aimPointerPosition(centerX, centerY, spriteSize, aimX, aimY, distance) {
+    const renderedSize = Math.round(spriteSize);
+    const anchorX = snap(centerX - spriteSize / 2) + renderedSize / 2;
+    const anchorY = snap(centerY - spriteSize / 2) + renderedSize / 2;
+    const radius = clampAimPointerDistance(distance);
+    const directionLength = Math.hypot(aimX, aimY);
+    const directionX = directionLength > 0.001 ? aimX / directionLength : 0;
+    const directionY = directionLength > 0.001 ? aimY / directionLength : -1;
+    return { x: anchorX + directionX * radius, y: anchorY + directionY * radius };
+}
+
+function clampAimPointerDistance(distance) {
+    const value = Number.isFinite(distance) ? distance : AIM_POINTER_DEFAULT_DISTANCE;
+    return Math.max(AIM_POINTER_MIN_DISTANCE, Math.min(AIM_POINTER_MAX_DISTANCE, value));
+}
+
+function interpolateAimPointerDistance(from, to, alpha) {
+    const t = Math.max(0, Math.min(1, alpha));
+    return clampAimPointerDistance(from + (to - from) * t);
+}
+
+/** Interpolate aim vectors by their shortest angular path for network rendering. */
+function interpolateDirection(fromX, fromY, toX, toY, alpha) {
+    const fromAngle = Math.atan2(fromY, fromX);
+    const toAngle = Math.atan2(toY, toX);
+    const delta = Math.atan2(Math.sin(toAngle - fromAngle), Math.cos(toAngle - fromAngle));
+    const angle = fromAngle + delta * Math.max(0, Math.min(1, alpha));
+    return { x: Math.cos(angle), y: Math.sin(angle) };
 }
 
 /**

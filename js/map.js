@@ -11,6 +11,13 @@
  * .get/.set/.clear. That is exactly how it bit the touch controls.
  */
 const TEMPLATE_OPPOSITE_SIDE = { N: 'S', S: 'N', E: 'W', W: 'E' };
+const EXTRA_MINION_FLOOR_INTERVAL = 4;
+const EXTRA_MINION_FLOOR_ORIGIN = 10;
+
+/** Keep deeper-floor challenge in encounter composition, not enemy stats. */
+function extraMinionsForFloor(floor) {
+    return Math.floor(Math.max(0, floor - EXTRA_MINION_FLOOR_ORIGIN) / EXTRA_MINION_FLOOR_INTERVAL);
+}
 
 function rotateRoomTemplate(template, turns) {
     let current = template;
@@ -428,6 +435,213 @@ class DungeonMap {
         return this;
     }
 
+    /**
+     * Build the isolated 0-0 test route. This is intentionally separate from
+     * generate(): it always has entry -> hub -> combat -> hub -> combat-hard,
+     * with no treasure, boss, floor progression, or changes to run generation.
+     */
+    generateTestFloor() {
+        this.rooms = [];
+        this.corridors = [];
+        this.corridorRects = [];
+        this.doorBlockers = [];
+        this.bossRoom = null;
+        this.exit = null;
+        this.generationFallback = false;
+        this.generationDiagnostics = [];
+        this.floorNumber = 0;
+        this.layoutMode = 'test-0-0';
+
+        const sequence = [
+            { type: 'entry', doors: 1 },
+            { type: 'hub', doors: 2 },
+            { type: 'combat', doors: 2 },
+            { type: 'hub', doors: 2 },
+            { type: 'combat-hard', doors: null }
+        ];
+        const tileCountX = Math.floor(this.width / this.tileSize);
+        const tileCountY = Math.floor(this.height / this.tileSize);
+        const actualOptions = new Map();
+        for (const spec of sequence) {
+            if (actualOptions.has(spec.type)) continue;
+            const source = typeof RoomTemplateLibrary !== 'undefined'
+                ? RoomTemplateLibrary.byType?.get(spec.type) || [] : [];
+            const requiredDoors = spec.type === 'combat-hard' ? null : (spec.type === 'entry' ? 1 : 2);
+            actualOptions.set(spec.type, source.flatMap(roomTemplateOrientations)
+                .filter(template => requiredDoors === null
+                    ? template.doors?.length >= 1
+                    : template.doors?.length === requiredDoors));
+        }
+
+        const makeRoom = (spec, template, index, parent = null) => ({
+            id: `0-0-${index}`,
+            tx: 0, ty: 0,
+            tw: template.widthTiles, th: template.heightTiles,
+            type: spec.type,
+            templateId: template.id,
+            template,
+            parent,
+            cleared: spec.type === 'entry' || spec.type === 'hub',
+            spawned: spec.type === 'entry',
+            locked: false,
+            lockPending: false,
+            _usedTemplateDoors: new Array(template.doors.length).fill(false)
+        });
+
+        const layoutFits = rooms => {
+            const minX = Math.min(...rooms.map(room => room.tx));
+            const minY = Math.min(...rooms.map(room => room.ty));
+            const maxX = Math.max(...rooms.map(room => room.tx + room.tw));
+            const maxY = Math.max(...rooms.map(room => room.ty + room.th));
+            return maxX - minX <= tileCountX - 2 && maxY - minY <= tileCountY - 2;
+        };
+        const overlapsEarlierRoom = (candidate, rooms) => rooms.some(room =>
+            candidate.tx < room.tx + room.tw && candidate.tx + candidate.tw > room.tx &&
+            candidate.ty < room.ty + room.th && candidate.ty + candidate.th > room.ty);
+        const createsUnlinkedDoorTouch = (candidate, parentRoom, parentDoorIndex, childDoorIndex, rooms) => {
+            for (const other of rooms) {
+                for (let newIndex = 0; newIndex < candidate.template.doors.length; newIndex++) {
+                    for (let oldIndex = 0; oldIndex < other.template.doors.length; oldIndex++) {
+                        if (!roomDoorTouches(candidate, candidate.template.doors[newIndex], other, other.template.doors[oldIndex])) continue;
+                        const selected = other === parentRoom && oldIndex === parentDoorIndex && newIndex === childDoorIndex;
+                        if (!selected) return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        const buildSequence = options => {
+            let budget = 12000;
+            const rooms = [];
+            const corridors = [];
+            const placeNext = index => {
+                if (index >= sequence.length) return true;
+                const spec = sequence[index];
+                const parent = rooms[rooms.length - 1];
+                const variants = shuffledCopy(options.get(spec.type) || []);
+                for (const template of variants) {
+                    for (let parentDoorIndex = 0; parentDoorIndex < parent.template.doors.length; parentDoorIndex++) {
+                        if (parent._usedTemplateDoors[parentDoorIndex]) continue;
+                        const parentDoor = parent.template.doors[parentDoorIndex];
+                        for (let childDoorIndex = 0; childDoorIndex < template.doors.length; childDoorIndex++) {
+                            if (--budget < 0) return false;
+                            const childDoor = template.doors[childDoorIndex];
+                            if (TEMPLATE_OPPOSITE_SIDE[parentDoor.side] !== childDoor.side || parentDoor.length !== childDoor.length) continue;
+
+                            const room = makeRoom(spec, template, index, parent);
+                            positionRoomAtDoor(parent, parentDoor, room, childDoor);
+                            if (!roomDoorTouches(parent, parentDoor, room, childDoor) ||
+                                overlapsEarlierRoom(room, rooms) ||
+                                createsUnlinkedDoorTouch(room, parent, parentDoorIndex, childDoorIndex, rooms) ||
+                                !layoutFits([...rooms, room])) continue;
+
+                            parent._usedTemplateDoors[parentDoorIndex] = true;
+                            room._usedTemplateDoors[childDoorIndex] = true;
+                            rooms.push(room);
+                            const edge = { a: parent, b: room, doorA: parentDoorIndex, doorB: childDoorIndex, templateConnection: true };
+                            corridors.push(edge);
+                            if (placeNext(index + 1)) return true;
+                            corridors.pop();
+                            rooms.pop();
+                            parent._usedTemplateDoors[parentDoorIndex] = false;
+                        }
+                    }
+                }
+                return false;
+            };
+
+            for (const entryTemplate of shuffledCopy(options.get('entry') || [])) {
+                rooms.length = 0;
+                corridors.length = 0;
+                rooms.push(makeRoom(sequence[0], entryTemplate, 0));
+                if (placeNext(1)) return { rooms, corridors };
+            }
+            return null;
+        };
+
+        const createFallbackTemplate = (type, widthTiles, heightTiles, doorSpecs) => {
+            const mask = new Uint8Array(widthTiles * heightTiles);
+            for (let y = 1; y < heightTiles - 1; y++) {
+                for (let x = 1; x < widthTiles - 1; x++) mask[y * widthTiles + x] = 1;
+            }
+            for (const door of doorSpecs) for (let step = 0; step < 2; step++) {
+                let x, y;
+                if (door.side === 'N') { x = door.offset + step; y = 0; }
+                else if (door.side === 'S') { x = door.offset + step; y = heightTiles - 1; }
+                else if (door.side === 'W') { x = 0; y = door.offset + step; }
+                else { x = widthTiles - 1; y = door.offset + step; }
+                mask[y * widthTiles + x] = 2;
+            }
+            const walkableCells = [];
+            for (let y = 1; y < heightTiles - 1; y++) for (let x = 1; x < widthTiles - 1; x++) {
+                walkableCells.push({ x, y });
+            }
+            const path = `built-in/0-0/${type}`;
+            return { id: path, path, type, widthTiles, heightTiles, mask,
+                doors: collectRoomTemplateDoors(mask, widthTiles, heightTiles), walkableCells,
+                enemySpawns: [], playerSpawn: null };
+        };
+        const fallbackOptions = new Map([
+            ['entry', [createFallbackTemplate('entry', 12, 12, [{ side: 'E', offset: 5 }])]],
+            ['hub', [createFallbackTemplate('hub', 12, 8, [{ side: 'W', offset: 3 }, { side: 'E', offset: 3 }])]],
+            ['combat', [createFallbackTemplate('combat', 20, 16, [{ side: 'W', offset: 7 }, { side: 'E', offset: 7 }])]],
+            ['combat-hard', [createFallbackTemplate('combat-hard', 22, 18, [{ side: 'W', offset: 8 }, { side: 'E', offset: 8 }])]]
+        ]);
+
+        let result = buildSequence(actualOptions);
+        let usingFallbackTemplates = false;
+        if (!result) {
+            result = buildSequence(fallbackOptions);
+            usingFallbackTemplates = !!result;
+            if (result) this.generationDiagnostics.push('Se usó una geometría de prueba incorporada porque el catálogo no tenía una secuencia válida.');
+        }
+        if (!result) throw new Error('No se pudo construir la secuencia de salas 0-0.');
+
+        this.rooms = result.rooms;
+        this.corridors = result.corridors;
+        this.testFallbackTemplates = usingFallbackTemplates;
+
+        // The final hard room is a dead end. Seal its unused authored doorway
+        // in a cloned mask; this does not mutate the shared template catalog.
+        const finalRoom = this.rooms[this.rooms.length - 1];
+        const finalEdge = this.corridors[this.corridors.length - 1];
+        const linkedDoor = finalRoom.template.doors[finalEdge.doorB];
+        const unusedDoors = finalRoom.template.doors.filter((_, index) => index !== finalEdge.doorB);
+        if (unusedDoors.length) {
+            const mask = finalRoom.template.mask.slice();
+            for (const unusedDoor of unusedDoors) {
+                for (let step = 0; step < unusedDoor.length; step++) {
+                    let x, y;
+                    if (unusedDoor.side === 'N') { x = unusedDoor.offset + step; y = 0; }
+                    else if (unusedDoor.side === 'S') { x = unusedDoor.offset + step; y = finalRoom.th - 1; }
+                    else if (unusedDoor.side === 'W') { x = 0; y = unusedDoor.offset + step; }
+                    else { x = finalRoom.tw - 1; y = unusedDoor.offset + step; }
+                    mask[y * finalRoom.tw + x] = 0;
+                }
+            }
+            finalRoom.template = { ...finalRoom.template, id: `${finalRoom.template.id}#0-0-sealed`, mask, doors: [linkedDoor] };
+            finalRoom.templateId = finalRoom.template.id;
+            finalRoom._usedTemplateDoors = [true];
+            finalEdge.doorB = 0;
+        }
+
+        const minX = Math.min(...this.rooms.map(room => room.tx));
+        const minY = Math.min(...this.rooms.map(room => room.ty));
+        const maxX = Math.max(...this.rooms.map(room => room.tx + room.tw));
+        const maxY = Math.max(...this.rooms.map(room => room.ty + room.th));
+        const shiftX = Math.floor((tileCountX - (maxX - minX)) / 2) - minX;
+        const shiftY = Math.floor((tileCountY - (maxY - minY)) / 2) - minY;
+        for (const room of this.rooms) { room.tx += shiftX; room.ty += shiftY; }
+
+        this.roomCount = this.rooms.length;
+        this.totalRooms = this.rooms.length;
+        this.roomsCleared = 0;
+        this.calculatePositions();
+        if (!this.ensureConnectivity()) throw new Error('La secuencia 0-0 no conservó sus puertas y conexiones.');
+        return this;
+    }
+
     /** Fixed-size safety fallback for an incomplete template catalog. */
     generateLegacy() {
         this.rooms = [];
@@ -713,7 +927,6 @@ class DungeonMap {
             }
         }
         if (!this.playerStart && startRoom) this.playerStart = this.findPointInRoom(startRoom, null, 0, 14, marker ? [marker] : []) || { x: startRoom.cx, y: startRoom.cy };
-        if (this.bossRoom) this.bossRoom.markerPoint = this.findPointInRoom(this.bossRoom, null, 0, 5) || { x: this.bossRoom.cx, y: this.bossRoom.cy };
         // Treasure rooms get a visible chest marker instead of looking like an
         // ordinary empty room.
         for (const room of this.rooms) {
@@ -881,8 +1094,8 @@ class DungeonMap {
             }
             enemies.push(createEnemy(type, x, y, ...args));
         };
-        // Past the ramp, rooms get steadily busier as well as tougher.
-        const extra = Math.floor(endgameFloors(floor) / ENDGAME.countEvery);
+        // Higher floors can add enemies to rooms; each enemy's stats stay fixed.
+        const extra = extraMinionsForFloor(floor);
 
         switch (room.type) {
             case 'entry':
@@ -916,7 +1129,7 @@ class DungeonMap {
                         if (corner) spawnCategorizedEnemy(type, corner.x, corner.y, room, corner.corner);
                         else {
                             // A blocked/door corner is not valid Cochinilla
-                            // space; use another eligible miniboss instead.
+                            // space; use the other eligible miniboss instead.
                             const point = this.findBossSpawn(room, avoid, minDist, 40);
                             if (point && this.canOccupy(point.x, point.y, 40)) {
                                 const alternative = randomMiniBossType(type);
@@ -969,6 +1182,7 @@ class DungeonMap {
      * The authored spawn block is exactly the 3x3 floor square that starts one
      * cell inside the corner of the template, i.e. cells (1,1)-(3,3) of that
      * corner quadrant. That is the green block of
+     * 00-sprites/enemigos/1_mini-jefes/cochinilla_esquinero/
      * cochinilla_esquinero_generacion en salas.aseprite and the magenta block
      * ("punto de aparición") of cochinilla_esquinero_ejemplo punto de
      * spawn.aseprite and of the four corner variants.
@@ -1412,13 +1626,6 @@ class DungeonMap {
             pixelRect(ctx, exit.x, exit.y, 54, 30, PALETTE.exit);
             pixelRect(ctx, exit.x, exit.y, 44, 20, '#0d2a12');
             pixelRect(ctx, exit.x, exit.y, 10, 14, PALETTE.exit);
-        }
-
-        if (this.bossRoom && !this.exit) {
-            const room = this.bossRoom;
-            const point = room.markerPoint || { x: room.cx, y: room.cy };
-            pixelFrame(ctx, point.x - 26, point.y - 26, 52, 52, 3, PALETTE.blood);
-            pixelRect(ctx, point.x, point.y, 16, 16, PALETTE.danger);
         }
 
         // Treasure chests: a warm gold landmark in an otherwise dark floor.

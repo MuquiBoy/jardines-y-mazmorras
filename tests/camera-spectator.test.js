@@ -76,9 +76,9 @@ test('returns no target when all players are down', () => {
 test('fixed camera and Tirador aim use integer pixel-perfect zooms', () => {
     const palette = fs.readFileSync(path.join(root, 'js/palette.js'), 'utf8');
     const game = fs.readFileSync(path.join(root, 'js/game.js'), 'utf8');
-    assert.match(palette, /const CAMERA_ZOOM = 3\\.0;/);
-    assert.match(palette, /const TIRADOR_AIM_ZOOM = 2\\.0;/);
-    assert.match(game, /this\\.player\\.sniperAiming \\? TIRADOR_AIM_ZOOM : CAMERA_ZOOM/);
+    assert.match(palette, /const CAMERA_ZOOM = 3\.0;/);
+    assert.match(palette, /const TIRADOR_AIM_ZOOM = 2\.0;/);
+    assert.match(game, /this\.player\.sniperAiming \? TIRADOR_AIM_ZOOM : CAMERA_ZOOM/);
     const zoomContext = vm.createContext({});
     vm.runInContext(palette, zoomContext);
     assert.equal(vm.runInContext('1920 / CAMERA_ZOOM', zoomContext), 640);

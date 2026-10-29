@@ -13,7 +13,7 @@ class BabosaPersecucion extends Enemy {
         super(x, y, 'babosa_persecucion');
         this.name = 'Babosa Persecución';
         this.health = this.maxHealth = 850;
-        this.speed = STANDARD_MOVEMENT_SPEED * BABOSA_PERSECUCION_SPEED_RATIO;
+        this.setMovementSpeedMultiplier(BABOSA_PERSECUCION_SPEED_RATIO);
         this.damage = BABOSA_PERSECUCION_CONTACT_DAMAGE;
         this.radius = BABOSA_PERSECUCION_SIZE / 2;
         this.color = '#a864bd';
@@ -22,10 +22,6 @@ class BabosaPersecucion extends Enemy {
         this.targetId = null;
         this._contactingPlayerIds = new Set();
     }
-
-    // Its authored values stay fixed on every floor; the general enemy ramp
-    // must not change the specified 850 HP or 0.70 universal-speed ratio.
-    applyDifficulty() {}
 
     moveBy(dx, dy, map) {
         if (!map) return super.moveBy(dx, dy, map);
@@ -69,8 +65,8 @@ class BabosaPersecucion extends Enemy {
         }
         this.targetId = nearest.id ?? null;
         this.angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
-        const moved = this.steerTo(nearest.x, nearest.y, map, STANDARD_MOVEMENT_SPEED * BABOSA_PERSECUCION_SPEED_RATIO);
-        if (!moved && map) this._dodge(map, STANDARD_MOVEMENT_SPEED * BABOSA_PERSECUCION_SPEED_RATIO);
+        const moved = this.steerTo(nearest.x, nearest.y, map, this.speed);
+        if (!moved && map) this._dodge(map, this.speed);
         return null;
     }
 
@@ -134,4 +130,3 @@ class BabosaPersecucion extends Enemy {
         this.drawHealth(ctx, s);
     }
 }
-

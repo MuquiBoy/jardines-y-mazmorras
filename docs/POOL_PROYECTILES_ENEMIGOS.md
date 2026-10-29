@@ -6,6 +6,8 @@
 - En una partida sin conexión se crea una pool para la simulación local. En cooperativo hay una pool compartida por la simulación autoritativa del servidor; los clientes reciben sus snapshots y no crean otra pool por jugador.
 - La capacidad inicial es de 512 objetos. Al agotarse, se amplía en bloques de 128 sin borrar objetos activos ni omitir disparos.
 - Cada activación vuelve a configurar posición, dirección, velocidad, daño, color, facción, propietario, recorrido, impactos y datos de rebote. Los valores de daño existentes se conservan: 6 HP para un proyectil normal y 12 HP para uno del jefe. La velocidad respeta la escala actual del enemigo.
+- Todos los enemigos que disparan proyectiles usan por defecto `10x10_proyectil enemigo.aseprite`: 10 × 10 px de tamaño visual, radio de hitbox 4 px y los 3 fotogramas de 100 ms de la animación (10 FPS). `cochinilla_esquinero` y `babosa_persecucion` no disparan proyectiles. Un enemigo que necesite otro visual declara `projectileVisualType` y registra su animación desde su propio código.
+- La animación se decodifica una sola vez y sus 3 lienzos se comparten en todos los disparos. La pool conserva 512 objetos iniciales y añade solo una referencia pequeña al tipo visual por proyectil; no asigna lienzos ni fotogramas a cada objeto. La selección de fotograma se calcula una vez por tipo visual y render, compartida por todos los proyectiles visibles.
 - Al impactar con una pared, un jugador o una invocación, salir del mapa o cambiar de piso, el proyectil vuelve a estar disponible. Los rebotes de Bastión siguen activos y el proyectil permanece en la lista mientras continúe en juego. Las transiciones entre salas conservan el comportamiento previo.
 - Los proyectiles inactivos se retiran de la lista de simulación antes del siguiente ciclo; por ello no se mueven, dibujan, colisionan ni se envían en snapshots.
 
@@ -21,13 +23,13 @@ Se ejecutaron ocho simulaciones con dos jugadores en el mismo `Simulation` autor
 
 | Nivel de estadísticas | Encuentro y composición generada | Pico activo | Disparos emitidos / devueltos | Ampliaciones |
 |---:|---|---:|---:|---:|
-| 1 | Difícil: Cochinilla Esquinero, Básico y 3 Tiradores | 8 | 37 / 34 | 0 |
+| 1 | Difícil: Cochinilla Esquinero, Básico y 3 moscas tiradoras | 8 | 37 / 34 | 0 |
 | 1 | Jefe: Jefe | 73 | 161 / 88 | 0 |
 | 5 | Difícil: Cochinilla Esquinero, 3 Espirales y Básico | 61 | 263 / 220 | 0 |
 | 5 | Jefe: Jefe | 78 | 199 / 130 | 0 |
-| 10 | Difícil: Cochinilla Esquinero, 3 Básicos, Espiral y Tirador | 29 | 189 / 167 | 0 |
+| 10 | Difícil: Cochinilla Esquinero, 3 Básicos, Espiral y Mosca Mosca Tirador | 29 | 189 / 167 | 0 |
 | 10 | Jefe: Jefe | 92 | 300 / 218 | 0 |
-| 15 | Difícil: Cochinilla Esquinero, Espiral y 4 Tiradores | 52 | 242 / 199 | 0 |
+| 15 | Difícil: Cochinilla Esquinero, Espiral y 4 moscas tiradoras | 52 | 242 / 199 | 0 |
 | 15 | Jefe: Jefe | 100 | 348 / 248 | 0 |
 
 En las ocho simulaciones se emitieron 1.739 proyectiles; 1.304 regresaron a la pool y 435 seguían activos al terminar sus respectivos encuentros. En cada tick se verificó que activos coincidiera con la lista de balas y que activos más disponibles coincidiera con la capacidad. No hubo solicitudes sin espacio, ampliaciones ni discrepancias.

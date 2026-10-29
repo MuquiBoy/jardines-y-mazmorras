@@ -1,58 +1,125 @@
-JARDINES Y MAZMORRAS — CÓDIGO DE COLORES DE PLANTILLAS
-Guía de lectura de los PNG de assets/plantillas-salas
+JARDINES Y MAZMORRAS — CÓDIGOS DE COLOR Y APARICIÓN EN PLANTILLAS
+Revisión de los assets y del código generador: 29/10/2026
 
-CÓMO LEE EL JUEGO CADA PLANTILLA
+RESUMEN DEL INVENTARIO ACTUAL
 
-Cada PNG es una cuadrícula de casillas de 40 × 40 píxeles. El lector toma el color RGB del píxel central de cada casilla y lo convierte en una máscara de suelo, puerta, obstáculo o muro. Por eso, utiliza colores planos y exactos, sin suavizado ni bordes antialias. Lo más seguro es rellenar toda la casilla con el color correspondiente. El formato debe ser PNG; no uses JPEG.
+Se revisaron las 22 plantillas PNG que están registradas en
+assets/plantillas-salas/manifest.json:
+- entry: 1
+- hub: 4
+- combat: 8
+- combat-hard: 6
+- treasure: 2
+- boss: 1
 
-CÓDIGOS RGB
+El lector toma el píxel central de cada loseta de 40 × 40 px. En las
+plantillas actuales se encontraron estos valores en esos píxeles centrales:
+- #00FF00 — suelo transitable.
+- #FFFF00 — puerta.
+- #0000FF — obstáculo o límite sólido.
+- Transparencia (alfa 0) — sólido; presente en algunas casillas de:
+  - combat/sala media_forma i_combat.png
+  - hub/pasillo l_hub.png
+  - hub/pasillo tuberia_hub.png
 
-COLOR RGB       CÓDIGO INTERNO  SIGNIFICADO Y EFECTO
-#00FF00         1               Suelo transitable.
-#FFFF00         2               Puerta transitable cuando está abierta.
-#0000FF         3 / 0           Obstáculo interior o muro exterior según conexión al borde.
-#00FFFF         1               Suelo y marcador de aparición del jugador.
-#FF00FF         1               Suelo y marcador preferido de aparición de enemigos.
-#FF0000         0               Muro/sólido no transitable.
-Otro RGB opaco  0               Muro/sólido no transitable.
-Transparente    0               Muro/sólido no transitable.
+Los marcadores #00FFFF y #FF00FF no aparecen en ninguna de las 22 plantillas
+actuales. #FF0000 tampoco aparece como color de casilla. Están descritos abajo
+porque el lector permite usarlos (o les aplica la regla general de sólido).
 
-DETALLE DE CADA COLOR
+TABLA DE CÓDIGOS QUE INTERPRETA EL LECTOR
+
+COLOR RGB   MÁSCARA   INTERPRETACIÓN
+#00FF00     1         Suelo normal, transitable.
+#FFFF00     2         Puerta transitable cuando está abierta.
+#0000FF     3 / 0     Obstáculo interior / muro conectado al borde exterior.
+#00FFFF     1         Suelo y marcador candidato de aparición del jugador.
+#FF00FF     1         Suelo y ubicación preferida para aparición de enemigos.
+Alfa 0      0         Sólido; no transitable.
+Otro RGB    0         Sólido; incluye #FF0000, sin tratamiento especial propio.
+
+QUÉ SIGNIFICA CADA CÓDIGO
 
 #00FF00 — SUELO
-La casilla queda abierta para caminar y sirve como suelo normal. El juego dibuja encima su propia textura de piso; el verde de autoría no aparece en la partida.
+La loseta es transitable. El verde es solo una instrucción de autoría: durante
+la partida el motor la dibuja con su textura de suelo, no como verde brillante.
 
 #FFFF00 — PUERTA
-La puerta se marca con exactamente dos casillas amarillas contiguas sobre uno de los cuatro bordes de la plantilla. El generador conecta salas solo si encuentra puertas enfrentadas, de dos casillas y alineadas tras la rotación de la plantilla. Durante un combate puede colocar una barrera sobre la puerta; al despejar la sala la abre. El amarillo se convierte visualmente en el suelo del juego. Una casilla de puerta no cuenta como suelo normal para validar el bloque de 3 × 3 de aparición de la Cochinilla Esquinero.
+Se detectan puertas amarillas en los bordes de la plantilla. Cada puerta debe
+ser un par de dos losetas contiguas. El generador solo conecta puertas
+enfrentadas, alineadas y con el mismo ancho después de rotar las salas. En una
+sala de combate, la puerta puede cerrarse temporalmente hasta despejar el
+encuentro. Una puerta no es suelo normal para validar la esquina de la
+Cochinilla Esquinero.
 
-#0000FF — OBSTÁCULO / LÍMITE EXTERIOR
-Las casillas azules no son transitables. Si un grupo azul está conectado por lados a un borde exterior del PNG, el lector lo convierte en muro/límite exterior. Si el azul está encerrado dentro del suelo, se conserva como obstáculo interior, por ejemplo una columna. Ambos bloquean el movimiento y los disparos. En pantalla se dibujan con el estilo visual del juego, no como azul.
+#0000FF — OBSTÁCULO / BORDE
+El azul nunca es transitable. Si la región azul está conectada por lados al
+borde exterior de la imagen, el lector la convierte en límite de la sala
+(máscara 0). Si queda encerrada dentro de la sala, la conserva como obstáculo
+interior (máscara 3). Ambos casos bloquean movimiento y proyectiles; el azul
+no se muestra como tal durante la partida.
 
-#00FFFF — APARICIÓN DEL JUGADOR
-Marca una casilla de suelo y señala la posición preferida de aparición del jugador. Se usa principalmente en la plantilla entry. Coloca solo un marcador para evitar ambigüedad; el juego conserva el último que encuentra si hay varios. El color no se muestra en la partida.
+#00FFFF — MARCADOR DEL JUGADOR (ADMITIDO, NO USADO ACTUALMENTE)
+Se convierte en suelo normal y se guarda como candidato de aparición del
+jugador. En la entrada, el marcador se mezcla con las demás losetas de suelo y
+se ordena por cercanía al centro de la sala; por ello no garantiza que el
+jugador aparezca exactamente allí. Si no hay marcador válido, se usa una
+loseta transitable segura cercana al centro.
 
-#FF00FF — APARICIÓN PREFERIDA DE ENEMIGOS
-Marca una casilla de suelo que el generador puede priorizar para colocar enemigos. Puedes poner varios puntos para repartir las posiciones. Son ubicaciones preferidas, no garantizadas: si un punto no permite colocar el cuerpo del enemigo o queda demasiado cerca del jugador, el generador busca otra casilla libre. El magenta no se muestra en la partida.
+#FF00FF — MARCADOR PREFERIDO DE ENEMIGOS (ADMITIDO, NO USADO ACTUALMENTE)
+Se convierte en suelo normal y añade una coordenada preferida a la lista de
+aparición de enemigos. Para enemigos comunes, el generador prueba primero esos
+puntos en orden aleatorio y luego cualquier loseta de suelo válida. Un punto
+se usa solo si el cuerpo cabe en la casilla y respeta la distancia mínima al
+jugador (normalmente 280 px, equivalentes a 7 losetas). Si ningún punto cumple,
+se busca otra loseta libre; el marcador no es una posición garantizada.
 
-#FF0000 Y CUALQUIER OTRO COLOR OPACO — MURO
-El rojo no es un código decorativo independiente: como cualquier RGB opaco que no coincida exactamente con los códigos anteriores, la casilla se interpreta como muro/sólido y no se puede atravesar. Puede usarse para dibujar el límite de la sala. El borde y el sombreado visibles se generan automáticamente en el juego; no se conserva el color rojo como textura.
+Los marcadores no se consumen ni reservan una loseta para un único enemigo.
+Si se desea repartir una oleada, conviene poner varios marcadores separados.
+Al rotar una plantilla, sus coordenadas de marcador también rotan.
+
+#FF0000 Y OTROS COLORES — SÓLIDO POR REGLA GENERAL
+No hay una condición especial para el rojo en el lector. Cualquier RGB opaco
+que no sea uno de los códigos específicos anteriores cae en la regla
+predeterminada de máscara 0 y queda sólido. Puede usarse para dibujar paredes,
+pero no se conserva como textura. No se detectó #FF0000 en las casillas
+centrales de las plantillas actuales.
 
 TRANSPARENCIA
+Si el píxel central de la loseta tiene alfa 0, se asigna máscara 0: es sólido,
+igual que una pared. No uses transparencia para indicar suelo.
 
-Una casilla cuyo píxel central tiene alfa 0 también se interpreta como muro/sólido. No uses transparencia para indicar suelo; utiliza #00FF00.
+DÓNDE APARECEN LOS ENEMIGOS SEGÚN EL MAPA
 
-REGLAS DE FORMATO Y VALIDACIÓN
+La plantilla determina las áreas transitables y puede sugerir puntos; el tipo
+de sala determina qué grupo de enemigos se genera:
+- entry e hub: salas seguras, sin enemigos.
+- combat: esbirros; sus puntos preferidos son #FF00FF y, si no hay, el suelo
+  transitable adecuado.
+- combat-hard: esbirros más un único mini-jefe. Los esbirros usan la misma
+  selección de posiciones que en combat.
+- treasure: sin enemigos.
+- boss: el jefe intenta aparecer en el centro de la sala; si no cabe, el motor
+  busca otra posición segura.
 
-- Cada casilla representa 40 × 40 px; el ancho y el alto del PNG deben ser múltiplos de 40.
-- La cuadrícula debe medir de 3 × 3 a 64 × 64 casillas.
-- Las puertas solo van en el borde y deben formar parejas de dos casillas contiguas.
-- El suelo interior y las puertas deben quedar conectados por una ruta transitable; no dejes islas separadas.
-- Los códigos se interpretan por el color RGB exacto del píxel central de cada casilla.
-- La carpeta determina el tipo de sala: entry, hub, combat, combat-hard, treasure o boss. El nombre del archivo no cambia su categoría.
-- El juego puede rotar una plantilla en pasos de 90 grados y la conexión entre salas depende de la posición y orientación de sus puertas.
+El mini-jefe Cochinilla Esquinero no usa los puntos #FF00FF para decidir su
+ubicación. Busca, en orden, una esquina con un bloque completo de 3 × 3
+losetas cuyo valor de máscara sea suelo normal (1). Una puerta, muro u
+obstáculo dentro del bloque invalida esa esquina. La Babosa Persecución usa
+una ubicación segura para su cuerpo grande, priorizando el centro de la sala.
 
-RESUMEN VISUAL
+FORMATO Y VALIDACIÓN
 
-Los colores del PNG son instrucciones para el generador, no la paleta artística final. El juego los convierte así: suelo y marcadores en suelo visual, puertas en suelo con una barrera temporal durante el combate, y azul interior, rojo, otros colores desconocidos o transparencia en superficies sólidas/no transitables con los bordes dibujados por el motor.
+- Una loseta equivale a 40 × 40 px en el PNG y en el mundo del juego.
+- Ancho y alto deben ser múltiplos de 40 px; cada lado debe medir entre 3 y 64
+  losetas.
+- Se muestrea exactamente el píxel central de cada loseta; usa colores planos
+  y RGB exactos, sin suavizado ni bordes antialias.
+- Las puertas deben ser pares contiguos de dos losetas sobre el borde.
+- Las zonas de suelo y las puertas deben estar conectadas entre sí.
+- La carpeta define el tipo de sala. El nombre del archivo no cambia el tipo.
+- Las plantillas se rotan en pasos de 90 grados; no se recortan ni se les
+  inventan puertas.
 
-Fuente de lectura: server/template-catalog.js y js/room-templates.js.
+FUENTE DEL COMPORTAMIENTO
+js/room-templates.js, js/map.js, server/template-catalog.js y
+assets/plantillas-salas/manifest.json.

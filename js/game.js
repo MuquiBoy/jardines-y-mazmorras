@@ -7,8 +7,8 @@
  *
  * The engine steps at a fixed logical rate rather than once per rendered frame.
  * Every gameplay value in this project is expressed in frames — movement per
- * tick, fireRate, invincibleTimer, shootCooldown, particle life, the floor
- * difficulty ramp — so a fixed step preserves all of them exactly while making
+ * tick, fireRate, invincibleTimer, shootCooldown and particle life — so a fixed
+ * step preserves all of them exactly while making
  * real elapsed time, not the display's refresh rate, decide how fast the game
  * runs. Rendering still happens once per animation frame, so a 144 Hz display
  * renders a 60 Hz simulation smoothly.
@@ -32,6 +32,12 @@ class Game {
         // and lets the engine run headless in tests.
         this.audio = audio || AudioSystem.silent();
         this.ctx = canvas.getContext('2d');
+        this.aimPointerSprite = null;
+        if (typeof Image !== 'undefined') {
+            this.aimPointerSprite = new Image();
+            this.aimPointerSprite.decoding = 'async';
+            this.aimPointerSprite.src = '00-sprites/puntero-jugador/puntero-jugador.png?v=aim-pointer-v1';
+        }
 
         // Game state
         this.state = 'START'; // START, PLAYING, LEVEL_UP, PAUSED, TRANSITIONING, GAME_OVER
@@ -67,6 +73,8 @@ class Game {
         // Impact feedback: frames of screen shake and of red damage flash left.
         this.shake = 0;
         this.damageFlash = 0;
+        this.renderShakeX = 0;
+        this.renderShakeY = 0;
 
         // Entities
         this.player = null;
@@ -87,7 +95,7 @@ class Game {
         this.enemiesKilled = 0;
         this.roomsCleared = 0;
 
-        // Current floor, 1-based. Drives the early-game difficulty ramp.
+        // Current floor, 1-based. Used for map generation and encounter composition.
         this.floor = 1;
 
         // Room transition
@@ -145,9 +153,85 @@ class Game {
     updatePointerWorld() {
         if (this.pointerClientX === undefined) return;
         const rect = this.canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
         const scale = (this.canvas.width / rect.width) * PIXEL_SIZE / this.cameraZoom;
         this.input.mouseX = (this.pointerClientX - rect.left) * scale;
         this.input.mouseY = (this.pointerClientY - rect.top) * scale;
+    }
+
+    /** Return render-only pointer direction and radius, measured from the visible sprite center. */
+    getAimPointerForRender(player) {
+        let fallbackX = player?.renderAimX ?? player?.aimX ?? 0;
+        let fallbackY = player?.renderAimY ?? player?.aimY ?? -1;
+        let fallbackLength = Math.hypot(fallbackX, fallbackY);
+        if (fallbackLength <= 0.001) {
+            fallbackX = 0;
+            fallbackY = -1;
+            fallbackLength = 1;
+        }
+        const fallback = {
+            x: fallbackX / fallbackLength,
+            y: fallbackY / fallbackLength,
+            distance: clampAimPointerDistance(player?.renderAimPointerDistance ?? AIM_POINTER_DEFAULT_DISTANCE)
+        };
+        if (!player) return fallback;
+
+        if (player === this.player && this.input.aimActive) {
+            const length = Math.hypot(this.input.aimX, this.input.aimY);
+            if (length > 0) {
+                const direction = { x: this.input.aimX / length, y: this.input.aimY / length };
+                player._lastAimPointerDirection = direction;
+                return { ...direction, distance: fallback.distance };
+            }
+        }
+        if (player !== this.player || this.pointerClientX === undefined || this.pointerClientY === undefined) {
+            return fallback;
+        }
+
+        const rect = this.canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return fallback;
+        const scale = this.cameraZoom / PIXEL_SIZE;
+        const size = 24 * (player.visualScale || 1);
+        const renderedSize = Math.round(size);
+        const anchorX = snap((player.renderX ?? player.x) - size / 2) + renderedSize / 2;
+        const anchorY = snap((player.renderY ?? player.y) - size / 2) + renderedSize / 2;
+        const playerScreenX = anchorX * scale - Math.round(this.camera.x * scale) + (this.renderShakeX ?? 0) * scale;
+        const playerScreenY = anchorY * scale - Math.round(this.camera.y * scale) + (this.renderShakeY ?? 0) * scale;
+        const mouseScreenX = (this.pointerClientX - rect.left) * (this.canvas.width / rect.width);
+        const mouseScreenY = (this.pointerClientY - rect.top) * (this.canvas.height / rect.height);
+        const dx = mouseScreenX - playerScreenX;
+        const dy = mouseScreenY - playerScreenY;
+        const distanceInWorldPixels = Math.hypot(dx, dy) / scale;
+        const length = Math.hypot(dx, dy);
+        let direction = player._lastAimPointerDirection || fallback;
+        // Keep the last heading through the tiny center dead zone so a cursor
+        // crossing the sprite center cannot flip the pointer by 180 degrees.
+        if (distanceInWorldPixels > 1) {
+            direction = { x: dx / length, y: dy / length };
+            player._lastAimPointerDirection = direction;
+        } else if (!player._lastAimPointerDirection) {
+            player._lastAimPointerDirection = direction;
+        }
+        return {
+            x: direction.x,
+            y: direction.y,
+            distance: clampAimPointerDistance(distanceInWorldPixels)
+        };
+    }
+
+    /** Follow a player on the rendered pixel grid, including interpolated co-op positions. */
+    updateCamera(target = this.player, useRenderPosition = false) {
+        if (!target) return;
+        const targetX = useRenderPosition ? (target.renderX ?? target.x) : target.x;
+        const targetY = useRenderPosition ? (target.renderY ?? target.y) : target.y;
+        const spriteSize = 24 * (target.visualScale || 1);
+        const scale = this.cameraZoom / PIXEL_SIZE;
+        const cameraPixelX = Math.round(cameraOffsetForPixelAnchor(targetX, this.canvas.width, spriteSize, scale) * scale);
+        const cameraPixelY = Math.round(cameraOffsetForPixelAnchor(targetY, this.canvas.height, spriteSize, scale) * scale);
+        const maxPixelX = this.map ? Math.floor(Math.max(0, this.map.width - this.viewWidth) * scale) : Infinity;
+        const maxPixelY = this.map ? Math.floor(Math.max(0, this.map.height - this.viewHeight) * scale) : Infinity;
+        this.camera.x = Math.max(0, Math.min(cameraPixelX, maxPixelX)) / scale;
+        this.camera.y = Math.max(0, Math.min(cameraPixelY, maxPixelY)) / scale;
     }
 
     /** Kick the camera and flash the screen — called on player damage. */
@@ -169,7 +253,7 @@ class Game {
             this.input.keys[e.code] = false;
         });
 
-        window.addEventListener('mousemove', (e) => {
+        this.canvas.addEventListener('mousemove', (e) => {
             this.pointerClientX = e.clientX; this.pointerClientY = e.clientY;
             this.updatePointerWorld();
         });
@@ -190,8 +274,7 @@ class Game {
         window.addEventListener('blur', () => {
             this.input.keys = {};
             this.input.mouseDown = false;
-            this.input.mousePressed = false; this.input.mouseReleased = false; this.input.cancelAim = true;
-            this.player?.cancelSniperAim?.();
+            this.input.mousePressed = false; this.input.mouseReleased = false; this.input.cancelAim = true; this.player?.cancelSniperAim?.();
             this.input.moveX = 0;
             this.input.moveY = 0;
             this.input.aimActive = false;
@@ -206,14 +289,15 @@ class Game {
     start(characterId = 'pistolero', testRoom = false) {
         this.prepareForNewRun();
         this.testRoom = testRoom;
+        this.characterId = characterId;
         this.enemiesKilled = 0;
         this.roomsCleared = 0;
-        this.floor = 1;
+        this.floor = testRoom ? 0 : 1;
 
         // Create player at map center
         this.player = new Player(0, 0);
         this.player.setCharacter(characterId);
-        if (this.testRoom) this.generateTestRoom();
+        if (this.testRoom) this.generateTestMap();
         else this.generateMap();
 
         // Do not carry inputs pressed during the loading cover into frame one.
@@ -254,17 +338,6 @@ class Game {
         else this.enemyBullets.length = 0;
     }
 
-    /**
-     * Ease freshly spawned enemies to the current floor's difficulty.
-     * Applied at the two places enemies enter the world so no spawn path
-     * can bypass the ramp.
-     */
-    scaleToFloor(enemies) {
-        const t = difficultyForFloor(this.floor);
-        for (const enemy of enemies) enemy.applyDifficulty(t, this.floor);
-        return enemies;
-    }
-
     /** Generate a new map and populate it. */
     generateMap() {
         this.map = new DungeonMap(14000, 14000);
@@ -278,8 +351,7 @@ class Game {
         this.enemies = [];
         this.currentRoom = null; // Reset room tracking for new map
         const startRoom = this.map.rooms[0];
-        const enemies = this.scaleToFloor(
-            this.map.getEnemiesForRoom(startRoom, null, 280, this.floor));
+        const enemies = this.map.getEnemiesForRoom(startRoom, null, 280, this.floor);
         this.enemies.push(...enemies);
 
         // Clear other entities
@@ -290,50 +362,20 @@ class Game {
         this.summons = [];
     }
 
-    /** Build a deterministic isolated arena for enemy behavior checks. */
-    generateTestRoom() {
-        this.map = new DungeonMap(2400, 1800);
-        this.map.roomCount = 1;
-        this.map.rooms = [{ tx: 5, ty: 5, tw: 64, th: 48, type: 'empty', parent: null, cleared: true, spawned: true }];
-        this.map.corridors = [];
-        this.map.calculatePositions();
-        this.map.totalRooms = 1;
+    /** Generate the private five-room 0-0 route and start at its entry. */
+    generateTestMap() {
+        this.map = new DungeonMap(14000, 14000);
+        this.map.generateTestFloor();
         this.player.x = this.map.playerStart.x;
-        this.player.y = this.map.playerStart.y + 420;
+        this.player.y = this.map.playerStart.y;
         this.currentRoom = this.map.rooms[0];
-        const room = this.map.rooms[0], enemies = [];
-        for (const wall of ['top', 'right', 'bottom', 'left']) {
-            for (const t of [1 / 3, 2 / 3]) {
-                const x = wall === 'left' ? room.x + 8 : wall === 'right' ? room.x + room.w - 8 : room.x + room.w * t;
-                const y = wall === 'top' ? room.y + 8 : wall === 'bottom' ? room.y + room.h - 8 : room.y + room.h * t;
-                const enemy = new CochinillaPerforamuros(x, y, room, wall);
-                enemies.push(enemy);
-            }
-        }
-        // One corner cochinilla per corner, on the exact 3x3 spawn block taken
-        // from the art (block centre = 2.5 cells from the corner). Handy to
-        // check all four mirrored poses and their laser origins at once.
-        const ts = this.map.tileSize;
-        const corners = [
-            { corner: 'top-left', bx: 1, by: 1 },
-            { corner: 'top-right', bx: room.tw - 4, by: 1 },
-            { corner: 'bottom-left', bx: 1, by: room.th - 4 },
-            { corner: 'bottom-right', bx: room.tw - 4, by: room.th - 4 }
-        ];
-        for (const spot of corners) {
-            const x = room.x + (spot.bx + 1.5) * ts;
-            const y = room.y + (spot.by + 1.5) * ts;
-            enemies.push(new CochinillaEsquinero(x, y, room, spot.corner));
-        }
-        this.enemies = enemies;
+        this.enemies = [];
         this.bullets = []; this.clearEnemyProjectiles(); this.xpOrbs = []; this.particles = []; this.summons = [];
     }
     /** Spawn enemies for a new room. */
     spawnRoomEnemies(room) {
-        if (this.testRoom) return;
         // Keep spawns clear of the doorway the player just walked through.
-        const enemies = this.scaleToFloor(
-            this.map.getEnemiesForRoom(room, this.player, 280, this.floor));
+        const enemies = this.map.getEnemiesForRoom(room, this.player, 280, this.floor);
         const roomIndex = this.map.rooms.indexOf(room);
         for (const enemy of enemies) enemy.roomIndex = roomIndex;
         this.enemies.push(...enemies);
@@ -407,27 +449,26 @@ class Game {
     /** Advance the simulation by exactly one fixed step. */
     update() {
         // Update camera to follow player (must be before player.update for correct aim)
-        this.camera.x = this.player.x - this.viewWidth / 2;
-        this.camera.y = this.player.y - this.viewHeight / 2;
-
-        // Clamp camera to map bounds
-        this.camera.x = Math.max(0, Math.min(this.camera.x, this.map.width - this.viewWidth));
-        this.camera.y = Math.max(0, Math.min(this.camera.y, this.map.height - this.viewHeight));
+        this.updateCamera(this.player);
+        // Re-map a stationary cursor after camera movement so aim and the reticle
+        // continue to refer to the same visible point while the player walks.
+        this.updatePointerWorld();
 
         // Update player (includes its own bounds clamping).
         const wasAiming = this.player.sniperAiming;
         const shouldShoot = this.player.update(this.input, this.camera, this.map);
         this.input.mousePressed = false; this.input.mouseReleased = false; this.input.cancelAim = false;
         if (wasAiming !== this.player.sniperAiming) {
+            // Tirador changes zoom when aiming; anchor the new view before
+            // mapping the cursor back into the world.
+            this.updateCamera(this.player);
             this.updatePointerWorld();
-            this.camera.x = Math.max(0, Math.min(this.player.x - this.viewWidth / 2, this.map.width - this.viewWidth));
-            this.camera.y = Math.max(0, Math.min(this.player.y - this.viewHeight / 2, this.map.height - this.viewHeight));
             if (!wasAiming && this.player.sniperAiming && this.pointerClientX !== undefined) {
                 const ax = this.camera.x + this.input.mouseX - this.player.x;
                 const ay = this.camera.y + this.input.mouseY - this.player.y;
                 const length = Math.hypot(ax, ay) || 1; this.player.aimX = ax / length; this.player.aimY = ay / length;
             }
-        }
+        } else this.updateCamera(this.player);
 
         // Role attack: invocations are world units; other roles fire projectiles.
         if (shouldShoot) {
@@ -947,8 +988,7 @@ class Game {
     }
 
     drawSniperAim(ctx) {
-        const aimingPlayers = [this.player, ...(this.remotePlayers || [])]
-            .filter(p => p?.health > 0 && p.character === 'tirador' && p.sniperAiming);
+        const aimingPlayers = [this.player, ...(this.remotePlayers || [])].filter(p => p?.health > 0 && p.character === 'tirador' && p.sniperAiming);
         for (const player of aimingPlayers) {
             const maxRange = Math.min(player.range || 960, 960);
             let endX = player.x + player.aimX * maxRange;
@@ -972,7 +1012,6 @@ class Game {
             ctx.restore();
         }
     }
-
     /** Render the game. */
     render() {
         const ctx = this.ctx;
@@ -994,13 +1033,20 @@ class Game {
             sx = Math.round((Math.random() - 0.5) * mag * 2);
             sy = Math.round((Math.random() - 0.5) * mag * 2);
         }
+        this.renderShakeX = sx;
+        this.renderShakeY = sy;
+
+        const cameraFocus = this.spectatorTarget || this.player;
+        if (cameraFocus) this.updateCamera(cameraFocus, true);
 
         // Enter world space: 1 unit = 1 world pixel, drawn onto the small
-        // backing store at the camera zoom, so everything is multiplied by
-        // CAMERA_ZOOM / PIXEL_SIZE. The integer factor keeps the art crisp.
+        // backing store at the camera zoom. The camera offset is aligned so
+        // this sprite edge and every source pixel land on whole canvas pixels.
         ctx.save();
-        ctx.scale(this.cameraZoom / PIXEL_SIZE, this.cameraZoom / PIXEL_SIZE);
-        ctx.translate(-Math.round(this.camera.x) + sx, -Math.round(this.camera.y) + sy);
+        const renderScale = this.cameraZoom / PIXEL_SIZE;
+        ctx.scale(renderScale, renderScale);
+        ctx.translate(-Math.round(this.camera.x * renderScale) / renderScale + sx,
+                      -Math.round(this.camera.y * renderScale) / renderScale + sy);
 
         if (this.map) this.map.draw(ctx, this.camera, this.viewWidth, this.viewHeight);
         this.drawSniperAim(ctx);
@@ -1040,40 +1086,22 @@ class Game {
             pixelRect(ctx, b.x, b.y, b.radius, b.radius, PALETTE.bone);
         }
 
-        // Enemy bullets — hotter, with a bright core so they read against floor
+        // Animated enemy projectile sprites use their authored frame durations.
+        const projectileRenderTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
         for (const b of this.enemyBullets) {
-            pixelRect(ctx, b.x, b.y, b.radius * 2.4, b.radius * 2.4, PALETTE.blood);
-            pixelRect(ctx, b.x, b.y, b.radius * 1.5, b.radius * 1.5, PALETTE.enemyShot);
-            pixelRect(ctx, b.x, b.y, b.radius * 0.7, b.radius * 0.7, PALETTE.hud);
+            EnemyProjectilePool.draw(ctx, b, projectileRenderTime);
         }
 
-        if (this.player && this.player.health > 0) this.player.draw(ctx);
+        if (this.player && this.player.health > 0) {
+            this.player.draw(ctx, this.aimPointerSprite, this.getAimPointerForRender(this.player));
+        }
         for (const player of this.remotePlayers || []) {
-            if (player.health > 0) player.draw(ctx);
-        }
-
-        // During co-op spectating, contextual markers follow the camera target.
-        const cameraFocus = this.spectatorTarget || this.player;
-        // Objective chevron. Without an exit to head for, a player would be
-        // hunting a boss room blind across a 7000px map, so the marker points
-        // at the boss first and the exit only once it has opened.
-        if (this.map && cameraFocus) {
-            const target = this.map.exit ||
-                (this.map.bossRoom ? { x: this.map.bossRoom.cx, y: this.map.bossRoom.cy } : null);
-            if (target) {
-                const dx = target.x - cameraFocus.x;
-                const dy = target.y - cameraFocus.y;
-                if (Math.hypot(dx, dy) > 140) {
-                    const a = Math.atan2(dy, dx);
-                    const px = cameraFocus.x + Math.cos(a) * 46;
-                    const py = cameraFocus.y + Math.sin(a) * 46;
-                    const col = this.map.exit ? PALETTE.exit : PALETTE.danger;
-                    pixelRect(ctx, px, py, 9, 9, col);
-                    pixelRect(ctx, px, py, 4, 4, PALETTE.void);
-                }
+            if (player.health > 0) {
+                player.draw(ctx, this.aimPointerSprite, this.getAimPointerForRender(player));
             }
         }
 
+        // In co-op spectating, the minimap follows the living camera target.
         ctx.restore();
 
         // ---- screen-space passes, in canvas pixels ----

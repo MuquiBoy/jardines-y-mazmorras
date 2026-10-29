@@ -144,14 +144,14 @@ debugging path is part of the record, not noise.
 - **Status:** ✅ Fixed.
 
 ### 8. Every enemy fired on its first frame 🟡
-- **File:** `js/enemy.js` — `Enemy` constructor / `applyDifficulty()`
+- **File:** `js/enemy.js` — enemy constructors
 - **Symptom:** Walking into a room drew an instant volley from every enemy in
   it, with no time to read the layout.
 - **Cause:** `shootTimer` was initialised to `0`, so the first `shootTimer--`
   in `update()` put it below the fire threshold immediately — and identically
   for every enemy, so their shots were synchronised rather than staggered.
-- **Fix:** `applyDifficulty()` seeds `shootTimer` to a randomised fraction
-  (0.6–1.2×) of the cooldown.
+- **Fix:** each shooter seeds `shootTimer` to a randomised fraction
+  (0.6–1.2×) of its configured cooldown. This delay is independent of floor.
 - **Status:** ✅ Fixed.
 
 ### 9. Enemy bullets passed through walls 🟢
@@ -172,8 +172,8 @@ debugging path is part of the record, not noise.
 ### 10. Game speed was tied to the display's refresh rate 🔴
 - **File:** `js/game.js` — `loop()` / `update()`
 - **Symptom:** The game ran faster on higher-refresh displays. Everything
-  scaled together — movement, fire rate, bullet speed, invincibility windows,
-  the difficulty ramp — so it read as "the pacing is too fast" rather than as
+  scaled together — movement, fire rate, bullet speed and invincibility windows
+  — so it read as "the pacing is too fast" rather than as
   a bug.
 - **Cause:** `loop()` computed `dt` and passed it to `update(dt)`, which never
   used it. Every value was applied per rendered frame, so the simulation rate
@@ -232,7 +232,7 @@ debugging path is part of the record, not noise.
   room, always adjacent to a corridor — so no floor can softlock.
 - **Status:** ✅ Fixed.
 
-### 14. Levelling capped at 10 while enemy scaling continued forever 🔴
+### 14. Levelling capped at 10 🔴
 - **File:** `js/player.js` — `xpToNext()`
 - **Symptom:** the HUD read `Lv 10 — 907 / 0`. Past level 10 XP orbs did
   nothing, no further upgrades were offered, and a run met steadily harder
@@ -241,14 +241,11 @@ debugging path is part of the record, not noise.
   returned 0 as "max level", which both capped progression *and* was off by
   one — the table's final entry (2400) was unreachable. The zero then surfaced
   in the HUD as a `/ 0` denominator.
-- **Impact:** the endgame scaling added earlier made this decisive rather than
-  cosmetic. Enemy health grows without limit, so a capped player is guaranteed
-  to hit a wall they cannot build against. Reported from a real run: floor 14,
-  level 10, 907 XP banked into nothing.
+- **Impact:** reported from a real run: floor 14, level 10, 907 XP banked into
+  nothing.
 - **Fix:** past the authored table the requirement continues geometrically at
   `XP_GROWTH`, so there is no cap. 1.20 rather than the table's own ≈1.30,
-  which compounds too hard against XP income that only grows about 10% per
-  floor.
+  which compounds too hard against the available XP.
 - **Verified:** levels 1–10 unchanged; level 11 reachable; the curve settles at
   roughly one level every 4–6 floors, stretching to 7 by level 22.
 - **Status:** ✅ Fixed.

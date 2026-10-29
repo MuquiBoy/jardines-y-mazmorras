@@ -34,7 +34,7 @@ for (const file of [
 ]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, difficultyForFloor, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 // Co-op room-clear revive tuning. The server remains authoritative.
@@ -137,7 +137,6 @@ function spawnEnemiesForRoom(run, room, player) {
     const roomIndex = run.map.rooms.indexOf(room);
     const enemies = run.map.getEnemiesForRoom(room, player, 280, run.floor);
     for (const enemy of enemies) {
-        enemy.applyDifficulty(Engine.difficultyForFloor(run.floor), run.floor);
         enemy.id = crypto.randomUUID();
         enemy.roomIndex = roomIndex;
         run.enemies.push(enemy);
@@ -249,10 +248,12 @@ function stepRun(run, inputs) {
     for (const player of players) {
         if (player.health <= 0) { player.cancelSniperAim?.(); continue; }
         const input = inputs.get(player.id) || { moveX: 0, moveY: 0, aimX: player.aimX, aimY: player.aimY, fire: false, reload: false };
+        // Presentation-only reticle radius; never consulted by combat or shooting.
+        player.aimPointerDistance = Math.max(40, Math.min(120,
+            Number.isFinite(input.aimPointerDistance) ? input.aimPointerDistance : (player.aimPointerDistance ?? 80)));
         const gameInput = { keys: { KeyR: input.reload }, moveX: input.moveX, moveY: input.moveY,
-            aimX: input.aimX, aimY: input.aimY, aimActive: true, mouseDown: input.fire,
-            mousePressed: !!input.firePressed, mouseReleased: !!input.fireReleased,
-            cancelAim: !!input.cancelAim, reload: input.reload };
+            aimX: input.aimX, aimY: input.aimY, aimActive: true, mouseDown: input.fire, mousePressed: !!input.firePressed,
+            mouseReleased: !!input.fireReleased, cancelAim: !!input.cancelAim, reload: input.reload };
         const shouldShoot = player.update(gameInput, null, run.map);
         input.firePressed = false; input.fireReleased = false; input.cancelAim = false;
         if (shouldShoot) {
@@ -418,14 +419,14 @@ function mapState(map) {
 }
 
 function playerState(player) {
-    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','sniperAiming','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
+    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','aimPointerDistance','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','sniperAiming','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
 }
 function enemyState(enemy) {
-    const base = ['id','type','roomIndex','x','y','health','maxHealth','speed','damage','radius','color','xpValue','shootCooldown','shootTimer','bulletSpeedScale','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse','corner','anchorX','anchorY','beamEndX','beamEndY','targetId'];
+    const base = ['id','type','roomIndex','x','y','health','maxHealth','speed','movementSpeedMultiplier','damage','radius','color','xpValue','shootCooldown','shootTimer','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse','corner','anchorX','anchorY','beamEndX','beamEndY','targetId'];
     return Object.fromEntries(base.filter(key => enemy[key] !== undefined).map(key => [key, enemy[key]]));
 }
 function bulletState(bullet) {
-    return Object.fromEntries(['x','y','vx','vy','damage','pierce','hits','radius','color','ownerId','range','travelled','burn','ignorePlayerId','ignoreFrames'].filter(key => bullet[key] !== undefined).map(key => [key, bullet[key]]));
+    return Object.fromEntries(['x','y','vx','vy','damage','pierce','hits','radius','color','ownerId','range','travelled','burn','visualType','ignorePlayerId','ignoreFrames'].filter(key => bullet[key] !== undefined).map(key => [key, bullet[key]]));
 }
 function summonState(summon) { return Object.fromEntries(['id','ownerId','x','y','health','maxHealth','speed','damage','attackRate','attackTimer','lifetime','radius','color','alive'].map(key => [key, summon[key]])); }
 function snapshot(run) {

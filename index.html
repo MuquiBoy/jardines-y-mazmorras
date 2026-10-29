@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bungee&family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=cover-screen-v2">
+    <link rel="stylesheet" href="css/styles.css?v=fullscreen-aim-pointer-v2">
 </head>
 <body>
     <canvas id="game"></canvas>
@@ -49,6 +49,7 @@
                 <p><strong>Clic</strong> — Disparar</p>
                 <p><strong>R</strong> — Recargar</p>
                 <p><strong>Espacio</strong> — Pausar</p>
+                <p><strong>Esc</strong> — Pantalla completa</p>
                 <p><strong>M</strong> — Silenciar</p>
             </div>
         </section>
@@ -65,9 +66,7 @@
         <div class="hud-left">
             <div class="bar-container">
                 <div class="bar-label">HP</div>
-                <div class="bar-track">
-                    <div id="hp-bar" class="bar bar-health"></div>
-                </div>
+                <div id="hp-hearts" class="hp-hearts" role="img" aria-label="Vida"></div>
                 <span id="hp-text" class="bar-text">100 / 100</span>
             </div>
             <div class="bar-container">
@@ -131,28 +130,28 @@
         <p class="rotate-sub">Landscape only</p>
     </div>
 
-    <script src="js/palette.js?v=bootfix-pixel-size-v1"></script>
+    <script src="js/palette.js?v=aim-pointer-radial-v1"></script>
     <script src="js/camera.js?v=spectator-camera-v1"></script>
     <script src="js/audio.js?v=music-gesture-v1"></script>
-    <script src="js/characters/roles.js?v=role-balance-v4"></script>
-    <script src="js/player.js?v=damage-immunity-60f-v1"></script>
+    <script src="js/characters/roles.js?v=player-damage-mask-v2"></script>
+    <script src="js/player.js?v=aim-pointer-radial-v1"></script>
     <script src="js/bullet.js?v=map-collision-v1"></script>
-    <script src="js/enemy-projectile-pool.js?v=enemy-projectile-pool-v1"></script>
-    <script src="js/enemy.js?v=enemy-projectile-pool-v1"></script>
-    <script src="js/enemies/esbirros/basic-enemy.js?v=enemy-projectile-pool-v1"></script>
-    <script src="js/enemies/esbirros/mosca-tirador.js?v=mosca-tirador-rename-v1"></script>
-    <script src="js/enemies/esbirros/spiral-enemy.js?v=enemy-projectile-pool-v1"></script>
-    <script src="js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js?v=esquinero-full-cycle-vulnerability-v1"></script>
-    <script src="js/enemies/mini-jefes/babosa_persecucion/babosa_persecucion.js?v=babosa-persecucion-v1"></script>
+    <script src="js/enemy-projectile-pool.js?v=enemy-projectile-animation-v1"></script>
+    <script src="js/enemy.js?v=enemy-projectile-animation-v1"></script>
+    <script src="js/enemies/esbirros/basic-enemy.js?v=fixed-enemy-stats-v1"></script>
+    <script src="js/enemies/esbirros/mosca-tirador.js?v=mosca-tirador-animation-folder-v1"></script>
+    <script src="js/enemies/esbirros/spiral-enemy.js?v=fixed-enemy-stats-v1"></script>
+    <script src="js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js?v=miniboss-assets-folder-v1"></script>
+    <script src="js/enemies/mini-jefes/babosa_persecucion/babosa_persecucion.js?v=fixed-enemy-stats-v1"></script>
     <script src="js/enemies/catalog.js?v=miniboss-pool-30-70-v1"></script>
     <script src="js/room-templates.js?v=startup-timeout-v1"></script>
-    <script src="js/map.js?v=miniboss-pool-30-70-v1"></script>
-    <script src="js/ui.js?v=hearts-half-hp-v1"></script>
+    <script src="js/map.js?v=test-floor-0-0-v1"></script>
+    <script src="js/ui.js?v=minimap-content-zoom-2x-v1"></script>
     <script src="js/upgrades.js?v=shared-upgrades-v1"></script>
-    <script src="js/game.js?v=babosa-contact-immunity-v1"></script>
+    <script src="js/game.js?v=aim-pointer-radial-v1"></script>
     <script src="js/touch.js?v=abyss-v2"></script>
-    <script src="js/coop-game.js?v=tirador-sniper-release-v1"></script>
+    <script src="js/coop-game.js?v=aim-pointer-radial-v1"></script>
     <script src="js/coop-lobby.js?v=cover-screen-v1"></script>
-    <script src="js/main.js?v=startup-timeout-v1"></script>
+    <script src="js/main.js?v=fullscreen-esc-keyup-v2"></script>
 </body>
 </html>

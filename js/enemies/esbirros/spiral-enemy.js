@@ -5,12 +5,13 @@ class SpiralEnemy extends Enemy {
         super(x, y, 'spiral');
         this.health = 50;
         this.maxHealth = 50;
-        this.speed = 0.6;
+        this.setMovementSpeedMultiplier(0.50);
         this.damage = 8;
         this.radius = 16;
         this.color = '#ff8800';
         this.xpValue = 20;
-        this.shootCooldown = 45;
+        this.shootCooldown = 300;
+        this.shootTimer = initialEnemyShotDelay(this.shootCooldown);
         this.spiralAngle = 0;
     }
 

@@ -126,8 +126,7 @@ class TouchControls {
             this.input.moveY = 0;
         } else {
             this.input.aimActive = false;
-            this.input.mouseDown = false;
-        this.input.mousePressed = false; this.input.mouseReleased = false; this.input.cancelAim = true; this.input.mouseReleased = true;
+            this.input.mouseDown = false; this.input.mouseReleased = true;
         }
         this.reparkStick(p.kind);
         e.preventDefault();

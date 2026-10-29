@@ -5,12 +5,13 @@ class BasicEnemy extends Enemy {
         super(x, y, 'basic');
         this.health = 30;
         this.maxHealth = 30;
-        this.speed = 1.1;
+        this.setMovementSpeedMultiplier(0.70);
         this.damage = 10;
         this.radius = 14;
         this.color = '#ff4444';
         this.xpValue = 10;
-        this.shootCooldown = 90;
+        this.shootCooldown = 180;
+        this.shootTimer = initialEnemyShotDelay(this.shootCooldown);
     }
 
     draw(ctx) {

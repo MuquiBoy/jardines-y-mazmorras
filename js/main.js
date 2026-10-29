@@ -36,6 +36,54 @@
     window.abyssGame = game;
     let retryLoadingAction = null;
 
+    // Escape toggles browser fullscreen. Entering on keyup prevents the
+    // browser from treating the same Escape keydown as an immediate exit.
+    // The requested action is captured on keydown so fullscreenchange during
+    // that key press cannot turn an intended exit into a re-entry.
+    const fullscreenRoot = document.documentElement;
+    let escapeActionOnKeyup = null;
+    function isGameFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+    function syncFullscreenCursor() {
+        fullscreenRoot.classList.toggle('game-fullscreen', isGameFullscreen());
+    }
+    document.addEventListener('fullscreenchange', syncFullscreenCursor);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenCursor);
+    syncFullscreenCursor();
+
+    window.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape' || event.repeat) return;
+        event.preventDefault();
+        escapeActionOnKeyup = isGameFullscreen() ? 'exit' : 'enter';
+    }, true);
+
+    window.addEventListener('keyup', (event) => {
+        if (event.code !== 'Escape' || !escapeActionOnKeyup) return;
+        event.preventDefault();
+        const requestedAction = escapeActionOnKeyup;
+        escapeActionOnKeyup = null;
+        const active = isGameFullscreen();
+        if ((requestedAction === 'enter' && active) ||
+            (requestedAction === 'exit' && !active)) return;
+        const action = requestedAction === 'exit'
+            ? (document.exitFullscreen || document.webkitExitFullscreen)
+            : (fullscreenRoot.requestFullscreen || fullscreenRoot.webkitRequestFullscreen);
+        if (!action) return;
+        try {
+            const result = requestedAction === 'exit'
+                ? action.call(document)
+                : action.call(fullscreenRoot);
+            if (result && typeof result.then === 'function') {
+                result.then(syncFullscreenCursor, syncFullscreenCursor);
+            } else {
+                syncFullscreenCursor();
+            }
+        } catch (_) {
+            // Fullscreen can be unavailable in embedded browsers; gameplay is unaffected.
+        }
+    }, true);
+
     // Music tracks are optional: drop files in audio/ and they play, otherwise
     // the game runs with effects only.
     audio.setTracks([
@@ -59,8 +107,8 @@
         retryLoadingAction = () => startGame(characterId, testRoom);
         ui.showLoading();
         try {
-            // Let the browser paint the cover before allocating the pool or
-            // waiting for room templates to finish loading.
+            // Yield a task so the cover paints. requestAnimationFrame can be
+            // paused indefinitely by a backgrounded or throttled tab.
             await new Promise(resolve => setTimeout(resolve, 0));
             await Promise.all([
                 RoomTemplateLibrary.load(),
@@ -103,7 +151,7 @@
             game.ui.showLoading();
             window.coopClient.send({ type: 'restart' });
         }
-        else startGame();
+        else startGame(game.characterId || 'pistolero', game.testRoom);
     });
 
     document.getElementById('resume-btn').addEventListener('click', (e) => {

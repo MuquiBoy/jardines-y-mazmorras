@@ -73,4 +73,3 @@ test('los demás roles mantienen el disparo sostenido existente', () => {
   assert.equal(player.ammo, 9);
   assert.equal(player.sniperAiming, false);
 });
-

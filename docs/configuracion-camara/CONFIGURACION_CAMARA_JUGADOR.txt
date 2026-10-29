@@ -40,10 +40,12 @@ Ejemplos con PIXEL_SIZE = 1:
 5. Píxeles CSS y físicos
 Las dimensiones anteriores son píxeles CSS. Con devicePixelRatio 1, un píxel original ocupa 3 × 3 píxeles físicos en zoom normal y 2 × 2 al apuntar. Con devicePixelRatio 2, ocupa respectivamente 6 × 6 y 4 × 4 píxeles físicos. El zoom del navegador o del sistema puede alterar la dimensión física final.
 
+6. Seguimiento sin temblor
+El jugador y la cámara comparten el mismo anclaje de píxel. El borde del sprite se ajusta con `floor` y el desplazamiento de cámara se calcula para que ese borde caiga en un píxel entero del canvas, incluso con velocidades fraccionarias como 2,5 px/frame. La cámara local se actualiza después de cada paso de movimiento. En cooperativo usa la posición interpolada del snapshot y el mismo cálculo. Esto evita que el uso distinto de `round` y `floor` alterne la posición visible del sprite.
+
 FUENTES EN EL CÓDIGO
 - js/palette.js: PIXEL_SIZE, CAMERA_ZOOM y TIRADOR_AIM_ZOOM.
 - js/main.js: tamaño del canvas y su tamaño CSS.
 - js/game.js: escala del render, área visible, apuntado y límites de cámara.
 - js/coop-game.js y server/simulation.js: cámaras y estado autoritativo en cooperativo.
 - js/player.js y js/characters/roles.js: dimensiones y escalas de personajes.
-

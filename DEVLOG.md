@@ -123,3 +123,26 @@
 - Verificación automatizada: velocidades exactas, balas detenidas en 360 celdas sólidas y 367 abiertas, XP multinivel, mejora aplicada en solitario y online, sala treasure con curación/XP/aviso, arranque de música sin duplicar la descarga. Siguen pasando las pruebas de jefe, colores, tamaños, sprites y texturas.
 - `index.html` actualizó las versiones de `audio.js`, `roles.js`, `player.js`, `bullet.js`, `enemy.js`, `map.js`, `ui.js`, `game.js`, `coop-game.js` y `main.js`, y añadió `js/upgrades.js`.
 - Cambios locales verificados en `http://localhost:8123` y `http://localhost:8124`; se publican en `main` para que Render actualice la demo.
+
+## 2026-10-29 — Corrección del temblor del jugador al moverse
+
+- La cámara se redondeaba con `Math.round()` mientras los sprites usan `snap()` (`Math.floor()`). Con movimientos fraccionarios de 2,5 px/frame, sus bordes caían alternativamente en distintas posiciones de pantalla. En solitario, además, la cámara quedaba un paso de simulación detrás del jugador.
+- La cámara ahora se calcula desde el mismo borde de sprite ya ajustado a píxel y se cuantiza a un píxel de canvas según el zoom activo. En solitario se vuelve a anclar después del movimiento; en cooperativo sigue la posición interpolada del jugador o espectador con el mismo cálculo. No se modificaron zoom, hitboxes ni velocidades.
+- Se añadió una prueba de regresión que reproduce la alternancia anterior y comprueba el anclaje estable en los zooms 3.0 y 2.0, con tamaños de sprite estándar y grandes. También verifica la cámara espectadora: sigue al compañero vivo, cambia al morir el objetivo y vuelve al jugador al revivir. Pasan los 25 tests y las comprobaciones de sintaxis.
+- `index.html` actualizó las versiones de caché de `palette.js`, `game.js` y `coop-game.js`. La configuración de cámara quedó documentada en `docs/configuracion-camara/CONFIGURACION_CAMARA_JUGADOR.txt`.
+- Corrección aplicada y verificada localmente; GitHub/Render siguen pendientes de sincronización por divergencia del repositorio remoto.
+
+## 2026-10-29 — Sala de pruebas 0-0 con ruta aislada
+
+- La sala de pruebas dejó de crear una arena única con enemigos colocados manualmente. Su nuevo generador privado construye exactamente `entry → hub → combat → hub → combat-hard`, seleccionando y conectando plantillas compatibles al azar.
+- Las salas `combat` y `combat-hard` ahora usan el catálogo de esbirros y las reglas actuales de mini-jefes, lo que permite observar la composición y validar sus estadísticas. La sala difícil conserva un único mini-jefe y el resto de esbirros. Las puertas sobrantes de la sala final se sellan para que el recorrido termine allí.
+- Si las plantillas actuales no permiten formar esa secuencia, 0-0 usa máscaras de sala integradas de respaldo; no llama ni modifica el generador procedural de expediciones.
+- El modo de pruebas se muestra como piso 0, no añade esbirros por progresión de pisos y conserva el rol elegido al reiniciar.
+- Verificación: 50 mapas de prueba conservaron la secuencia y conectividad; una generación normal aparte siguió conectada y sin activar el fallback. En 100 simulaciones de aparición no hubo salas con cantidades inválidas: `combat` tuvo 2–4 esbirros y `combat-hard` 4–6 más un mini-jefe. La selección base del mini-jefe es 50/50, pero la muestra dio 30 Cochinillas y 70 Babosas porque la Cochinilla necesita una esquina válida y el juego recurre a Babosa cuando no la encuentra.
+- Auditoría adicional de 1000 rutas: 633 salas difíciles permitieron la esquina 3 × 3 de la Cochinilla; las plantillas Palazzo 3 y 4 no ofrecieron ninguna. Por eso, con el fallback actual, la aparición efectiva esperada queda cerca de 31.6% Cochinilla y 68.4% Babosa aunque el sorteo base sea 50/50.
+
+## 2026-10-29 — Puntero de apuntado y pantalla completa
+
+- El marcador de apuntado usa `00-sprites/puntero-jugador/puntero-jugador.png`, dibujado con nearest-neighbor a dos losetas del jugador (80 px de mundo, considerando losetas de 40 × 40). Si el PNG tarda en cargar o falta, queda un marcador de color como respaldo.
+- Se conserva el vector de apuntado existente para disparos y mensajes cooperativos; el retículo es solo visual y también se dibuja para los compañeros vivos que aparecen en pantalla.
+- `Esc` alterna pantalla completa en el cliente. En pantalla completa se oculta el cursor del sistema y permanece visible el puntero del juego; al salir, el navegador vuelve a mostrar el cursor. El cambio no envía comandos ni modifica el estado de red o de espectador.

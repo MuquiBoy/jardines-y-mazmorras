@@ -2,59 +2,10 @@
  * Enemy classes — base class and 3 enemy types + boss.
  */
 
-/**
- * Difficulty ramp.
- *
- * Enemy stats are authored at full strength and scaled DOWN early, so floor 10
- * and beyond plays exactly as the tuned values read in each constructor. Only
- * the first floors are eased.
- */
-const DIFFICULTY_RAMP_FLOORS = 10;
-
-/** Multipliers applied on floor 1, interpolated to 1.0 by DIFFICULTY_RAMP_FLOORS. */
-const EARLY_GAME = {
-    speed: 0.55,        // slower movement
-    shootCooldown: 1.9, // longer gap between shots (higher = slower fire)
-    bulletSpeed: 0.60   // slower, more readable bullets
-};
-
-/**
- * Ramp position for a floor: 0 on floor 1, 1 on floor 10 and after.
- * @param {number} floor - 1-based
- */
-function difficultyForFloor(floor) {
-    const t = (floor - 1) / (DIFFICULTY_RAMP_FLOORS - 1);
-    return Math.max(0, Math.min(1, t));
+/** Random opening delay so a room does not volley on the same first frame. */
+function initialEnemyShotDelay(cooldownFrames) {
+    return Math.round(cooldownFrames * (0.6 + Math.random() * 0.6));
 }
-
-/**
- * Floors completed beyond the end of the ramp. 0 up to floor 10, then 1, 2, …
- *
- * The ramp only eases the opening; past it every floor used to be identical,
- * so a run had no upper curve at all. This drives the growth that keeps going.
- */
-function endgameFloors(floor) {
-    return Math.max(0, floor - DIFFICULTY_RAMP_FLOORS);
-}
-
-/**
- * Endgame growth per stat, as multipliers.
- *
- * Health carries most of the curve because it is the safest lever: it lengthens
- * fights without making them less readable. Speed and fire rate are capped
- * hard — an enemy faster than the player, or firing continuously, stops being
- * a challenge and starts being unfair.
- */
-const ENDGAME = {
-    healthPerFloor:   0.16,   // uncapped: the main pressure
-    damagePerFloor:   0.05,
-    damageCap:        2.2,
-    speedPerFloor:    0.020,
-    speedCap:         1.30,
-    cooldownPerFloor: 0.028,
-    cooldownFloor:    0.60,   // never fire faster than this fraction of base
-    countEvery:       4       // +1 enemy per room every N floors past the ramp
-};
 
 
 // ===== Base Enemy Class =====
@@ -63,16 +14,18 @@ class Enemy {
         this.x = x;
         this.y = y;
         this.type = type;
+        // Override in a specific enemy class only when it needs another sprite.
+        this.projectileVisualType = 'enemy-standard';
         this.health = 30;
         this.maxHealth = 30;
-        this.speed = 0.75;
+        this.movementSpeedMultiplier = 0.30;
+        this.speed = movementSpeedFromMultiplier(this.movementSpeedMultiplier);
         this.damage = 10;
         this.radius = 14;
         this.color = '#ff4444';
         this.xpValue = 10;
         this.shootCooldown = 90;
         this.shootTimer = 0;
-        this.bulletSpeedScale = 1;
         this.alive = true;
         this.deathTimer = 0;
         this.angle = 0; // for rotation animations
@@ -95,6 +48,15 @@ class Enemy {
 
     update(player, enemies, map) {
         // Override in subclass
+    }
+
+    /** Set authored movement relative to the universal player speed of 1.00. */
+    setMovementSpeedMultiplier(multiplier) {
+        if (!Number.isFinite(multiplier) || multiplier < 0) {
+            throw new RangeError('Enemy movement speed multiplier must be a non-negative number.');
+        }
+        this.movementSpeedMultiplier = multiplier;
+        this.speed = movementSpeedFromMultiplier(multiplier);
     }
 
     /**
@@ -280,7 +242,7 @@ class Enemy {
     }
 
     shootTowardPlayer(angle, speed = 1.5, projectilePool = null) {
-        const v = speed * this.bulletSpeedScale;
+        const v = speed;
         // Universal projectile rules:
         // - standard enemy projectile: 6 HP
         // - boss special projectile: 12 HP (marked via bullet.type === 'boss-special')
@@ -294,56 +256,16 @@ class Enemy {
             vx: Math.cos(angle) * v,
             vy: Math.sin(angle) * v,
             damage: dmg,
-            radius: 6,
+            radius: EnemyProjectilePool.HITBOX_RADIUS,
             color: this.color,
             speed: v,
             projectileType: (this.type === 'boss') ? 'boss-special' : 'standard',
+            visualType: this.projectileVisualType || 'enemy-standard',
             faction: 'enemy',
             ownerId: this.id ?? null,
             enemyId: this.id ?? null,
             active: true
         };
-    }
-
-    /**
-     * Ease this enemy's stats for an early floor.
-     *
-     * Called once, right after construction, so it scales whatever the subclass
-     * set rather than the base defaults. At t = 1 every multiplier is 1.0 and
-     * the enemy is left exactly as authored.
-     *
-     * @param {number} t - ramp position from difficultyForFloor()
-     */
-    applyDifficulty(t, floor = 1) {
-        const ease = (early) => early + (1 - early) * t;
-
-        this.speed *= ease(EARLY_GAME.speed);
-        this.bulletSpeedScale = ease(EARLY_GAME.bulletSpeed);
-        this.shootCooldown = Math.round(this.shootCooldown * ease(EARLY_GAME.shootCooldown));
-
-        // Endgame growth, applied on top once the ramp is finished.
-        const e = endgameFloors(floor);
-        if (e > 0) {
-            const hp = 1 + ENDGAME.healthPerFloor * e;
-            this.maxHealth = Math.round(this.maxHealth * hp);
-            this.health = this.maxHealth;
-
-            this.damage = Math.round(this.damage *
-                Math.min(ENDGAME.damageCap, 1 + ENDGAME.damagePerFloor * e));
-            this.speed *= Math.min(ENDGAME.speedCap, 1 + ENDGAME.speedPerFloor * e);
-            this.shootCooldown = Math.max(
-                Math.round(this.shootCooldown * ENDGAME.cooldownFloor),
-                Math.round(this.shootCooldown * (1 - ENDGAME.cooldownPerFloor * e)));
-
-            // Deeper enemies are worth more, so levelling keeps pace a little.
-            this.xpValue = Math.round(this.xpValue * (1 + 0.10 * e));
-        }
-
-        // shootTimer starts at 0, which makes every enemy fire on its first
-        // frame — the whole room volleys the instant the player walks in.
-        // Start it partway through a randomised cooldown instead, so shots are
-        // staggered and the player gets a moment to read the room.
-        this.shootTimer = Math.round(this.shootCooldown * (0.6 + Math.random() * 0.6));
     }
 
     applyBurn(burn) {
@@ -423,7 +345,7 @@ class CochinillaPerforamuros extends Enemy {
     constructor(x, y, room, wall = 'left') {
         super(x, y, 'cochinilla-perforamuros');
         this.name = 'Cochinilla Perforamuros'; this.health = this.maxHealth = 36;
-        this.radius = 7; this.speed = 0.55; this.color = '#d9c6a1'; this.xpValue = 0;
+        this.radius = 7; this.setMovementSpeedMultiplier(0.22); this.color = '#d9c6a1'; this.xpValue = 0;
         this.room = room; this.wall = wall; this.phase = 'move';
         this.phaseTimer = 180 + Math.floor(Math.random() * 241);
         this.moveSign = Math.random() < 0.5 ? -1 : 1; this.lockedX = x; this.lockedY = y;
@@ -596,12 +518,13 @@ class BossEnemy extends Enemy {
         super(x, y, 'boss');
         this.health = 500;
         this.maxHealth = 500;
-        this.speed = 0.4;
+        this.setMovementSpeedMultiplier(0.16);
         this.damage = 20;
         this.radius = 40;
         this.color = '#8b0000';
         this.xpValue = 200;
         this.shootCooldown = 30;
+        this.shootTimer = initialEnemyShotDelay(this.shootCooldown);
         this.phase = 0;
         this.phaseTimer = 0;
         this.phaseDuration = 100; // frames per phase

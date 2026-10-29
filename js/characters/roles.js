@@ -2,7 +2,12 @@
  * El cuerpo visible mide 24 px por visualScale; con sprite, ese tamaño incluye
  * el contorno dibujado por el autor. `sprite` es el nombre de la carpeta y del
  * PNG en 00-sprites/jugador/<sprite>/<sprite>_sticker.png. */
-const STANDARD_MOVEMENT_SPEED = 2.5; // world px per fixed 60 Hz frame; 1.00 role speed = 2.5 px/frame (150 px/s).
+const UNIVERSAL_MOVEMENT_SPEED_PX_PER_FRAME = 2.5; // 1.00 movement = 2.5 px/frame (150 px/s) at 60 Hz.
+
+/** Convert any authored movement multiplier through the one universal reference. */
+function movementSpeedFromMultiplier(multiplier) {
+    return UNIVERSAL_MOVEMENT_SPEED_PX_PER_FRAME * multiplier;
+}
 
 class CharacterRole {
     constructor(config) {
@@ -12,7 +17,7 @@ class CharacterRole {
     apply(player) {
         player.character = this.id;
         player.maxHealth = player.health = this.health;
-        player.speed = (this.movementSpeed ?? 1.00) * STANDARD_MOVEMENT_SPEED;
+        player.speed = movementSpeedFromMultiplier(this.movementSpeed ?? 1.00);
         player.damage = this.damage;
         player.fireRate = this.fireRate;
         player.bulletSpeed = this.bulletSpeed;
@@ -40,9 +45,13 @@ class CharacterRole {
 
 const CHARACTER_ROLES = Object.freeze({
     // Player movement speed uses the universal multiplier scale:
-    // 1.00 equals 2.5 world px/frame (150 px/s) at 60 Hz.
-    pistolero: new CharacterRole({ id: 'pistolero', name: 'Pistolero', color: '#55d64b', health: 36, movementSpeed: 1.00, damage: 7, fireRate: 18, bulletSpeed: 4.5, magazine: 10, reloadFrames: 72, range: 320, spread: 0.035, collisionRadius: 12, visualScale: 1, weaponKind: 'gun', sprite: 'pistolero' }),
-    tirador: new CharacterRole({ id: 'tirador', name: 'Tirador', color: '#48a9ff', health: 24, movementSpeed: 1.00, damage: 28, fireRate: 72, bulletSpeed: 7.5, magazine: 3, reloadFrames: 198, range: 960, spread: 0.006, collisionRadius: 12, visualScale: 1, weaponKind: 'gun', sprite: 'tirador' }),
+    // 1.00 equals UNIVERSAL_MOVEMENT_SPEED_PX_PER_FRAME (150 px/s) at 60 Hz.
+    // The invisible 24x24 pistolero_hitbox.png mask has a 20x23px occupied
+    // silhouette; approximate it with an 11px circle for the current physics.
+    pistolero: new CharacterRole({ id: 'pistolero', name: 'Pistolero', color: '#55d64b', health: 36, movementSpeed: 1.00, damage: 7, fireRate: 18, bulletSpeed: 4.5, magazine: 10, reloadFrames: 72, range: 320, spread: 0.035, collisionRadius: 11, visualScale: 1, weaponKind: 'gun', sprite: 'pistolero', damageMask: 'pistolero_take damage.aseprite', damageMaskLayer: 'mask' }),
+    // The invisible 24x24 tirador_hitbox.png mask has the same 20x23px
+    // occupied silhouette as Pistolero, so its circle-physics radius is 11px.
+    tirador: new CharacterRole({ id: 'tirador', name: 'Tirador', color: '#48a9ff', health: 24, movementSpeed: 1.00, damage: 28, fireRate: 72, bulletSpeed: 7.5, magazine: 3, reloadFrames: 198, range: 960, spread: 0.006, collisionRadius: 11, visualScale: 1, weaponKind: 'gun', sprite: 'tirador', damageMask: 'tirador_take damage.aseprite', damageMaskLayer: 'mask' }),
     perdigonero: new CharacterRole({ id: 'perdigonero', name: 'Perdigonero', color: '#f044b5', health: 36, movementSpeed: 1.00, damage: 6, fireRate: 66, bulletSpeed: 3.5, magazine: 5, reloadFrames: 128, range: 270, spread: 0.58, pelletCount: 5, collisionRadius: 12, visualScale: 1, weaponKind: 'shotgun', sprite: 'perdigonero' }),
     invocador: new CharacterRole({ id: 'invocador', name: 'Invocador', color: '#ae64e8', health: 36, movementSpeed: 1.00, damage: 2, fireRate: 32, bulletSpeed: 0, magazine: 6, reloadFrames: 272, range: 0, spread: 0, collisionRadius: 12, visualScale: 32 / 24, weaponKind: 'summoner', sprite: 'invocador', summon: { health: 28, speed: 1.9, damage: 2, attackRate: 32, lifetime: 900, radius: 9, maxActive: 6, color: '#ae64e8' } }),
     piromano: new CharacterRole({ id: 'piromano', name: 'Piromano', color: '#ff453a', health: 24, movementSpeed: 1.00, damage: 6, fireRate: 72, bulletSpeed: 3.5, magazine: 7, reloadFrames: 142, range: 235, spread: 0.07, collisionRadius: 12, visualScale: 1, weaponKind: 'fire', sprite: 'piromano', burn: { damage: 2, interval: 24, duration: 144 } }),

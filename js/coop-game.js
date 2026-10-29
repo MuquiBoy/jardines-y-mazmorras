@@ -40,6 +40,28 @@
 
     function playerObject(state, existing) {
         const player = existing || new Player(state.x, state.y);
+        const targetAimX = Number.isFinite(state.aimX) ? state.aimX : 0;
+        const targetAimY = Number.isFinite(state.aimY) ? state.aimY : -1;
+        const previousAim = !existing
+            ? { x: targetAimX, y: targetAimY }
+            : player._drawAimState
+            ? { x: player._drawAimState.toX, y: player._drawAimState.toY }
+            : { x: player.aimX ?? targetAimX, y: player.aimY ?? targetAimY };
+        const previousAimLength = Math.hypot(previousAim.x, previousAim.y) || 1;
+        const targetAimLength = Math.hypot(targetAimX, targetAimY) || 1;
+        player._drawAimState = {
+            fromX: previousAim.x / previousAimLength,
+            fromY: previousAim.y / previousAimLength,
+            toX: targetAimX / targetAimLength,
+            toY: targetAimY / targetAimLength
+        };
+        const targetPointerDistance = clampAimPointerDistance(
+            Number.isFinite(state.aimPointerDistance) ? state.aimPointerDistance : AIM_POINTER_DEFAULT_DISTANCE
+        );
+        const previousPointerDistance = !existing
+            ? targetPointerDistance
+            : player._drawAimDistanceState?.to ?? player.aimPointerDistance ?? targetPointerDistance;
+        player._drawAimDistanceState = { from: previousPointerDistance, to: targetPointerDistance };
         if (!player._drawState) player._drawState = { x: state.x, y: state.y, fromX: state.x, fromY: state.y, time: performance.now() };
         else {
             const distance = Math.hypot(state.x - player._drawState.x, state.y - player._drawState.y);
@@ -196,7 +218,8 @@
             aimX /= aimLength; aimY /= aimLength;
         }
         const message = { type: 'input', moveX, moveY, aimX, aimY, fire: input.mouseDown, reload: !!input.keys.KeyR,
-            firePressed: input.mousePressed, fireReleased: input.mouseReleased, cancelAim: input.cancelAim };
+            firePressed: input.mousePressed, fireReleased: input.mouseReleased, cancelAim: input.cancelAim,
+            aimPointerDistance: game.getAimPointerForRender?.(game.player)?.distance ?? AIM_POINTER_DEFAULT_DISTANCE };
         input.mousePressed = false; input.mouseReleased = false; input.cancelAim = false;
         return message;
     }
@@ -210,6 +233,12 @@
             const draw = player._drawState;
             player.renderX = draw.fromX + (draw.x - draw.fromX) * alpha;
             player.renderY = draw.fromY + (draw.y - draw.fromY) * alpha;
+            const aim = player._drawAimState;
+            const renderAim = interpolateDirection(aim.fromX, aim.fromY, aim.toX, aim.toY, alpha);
+            player.renderAimX = renderAim.x;
+            player.renderAimY = renderAim.y;
+            const aimDistance = player._drawAimDistanceState;
+            player.renderAimPointerDistance = interpolateAimPointerDistance(aimDistance.from, aimDistance.to, alpha);
         }
         const viewer = playersById.get(window.coopClient.playerId) || game.player;
         const cameraSelection = resolveSpectatorCameraTarget(
@@ -218,12 +247,7 @@
         spectatorTargetId = cameraSelection.targetId;
         game.spectatorTarget = cameraSelection.spectating ? cameraSelection.target : null;
         const focus = cameraSelection.target || viewer;
-        if (focus && focus.health > 0) {
-            const px = focus.renderX ?? focus.x;
-            const py = focus.renderY ?? focus.y;
-            game.camera.x = Math.max(0, Math.min(px - game.viewWidth / 2, game.map.width - game.viewWidth));
-            game.camera.y = Math.max(0, Math.min(py - game.viewHeight / 2, game.map.height - game.viewHeight));
-        }
+        if (focus && focus.health > 0) game.updateCamera(focus, true);
         game.frameCount++;
         game.render();
         requestAnimationFrame(renderFrame);

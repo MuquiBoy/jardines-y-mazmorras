@@ -8,23 +8,24 @@ class MoscaTirador extends Enemy {
     constructor(x, y) {
         super(x, y, 'mosca_tirador');
         this.name = 'Mosca Tirador';
-        this.health = 20;
-        this.maxHealth = 20;
-        this.speed = 0.75;
+        this.health = 28;
+        this.maxHealth = 28;
+        this.setMovementSpeedMultiplier(0.70);
         this.damage = 15;
         this.radius = 12;
         this.color = '#aa44ff';
         this.xpValue = 15;
         this.shootCooldown = 60;
+        this.shootTimer = initialEnemyShotDelay(this.shootCooldown);
         this.animationStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
         this.loadAnimation();
     }
 
     loadAnimation() {
         if (MoscaTirador.animation) return;
-        if (MoscaTirador.animationPromise || typeof decodeAsepriteWalk !== 'function') return;
-        const url = '00-sprites/enemigos/mosca_tirador/mosca_tirador.aseprite?v=mosca-tirador-idle-walk-v2';
-        MoscaTirador.animationPromise = decodeAsepriteWalk(url)
+        if (MoscaTirador.animationPromise || typeof decodeAsepriteAnimation !== 'function') return;
+        const url = '00-sprites/enemigos/2_esbirros/mosca_tirador/mosca_tirador.aseprite?v=mosca-tirador-animation-folder-v1';
+        MoscaTirador.animationPromise = decodeAsepriteAnimation(url)
             .then(animation => {
                 if (animation) MoscaTirador.animation = animation;
                 return animation;
@@ -87,4 +88,3 @@ class MoscaTirador extends Enemy {
         return [];
     }
 }
-

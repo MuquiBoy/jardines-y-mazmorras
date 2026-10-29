@@ -1,31 +1,33 @@
-﻿JARDINES Y MAZMORRAS
-ESTADÍSTICAS DE ENEMIGOS — PRIMER PISO
+JARDINES Y MAZMORRAS
+ESTADÍSTICAS FIJAS DE ENEMIGOS — TODOS LOS PISOS
 
-Referencia: estadísticas efectivas tras aplicar la dificultad del piso 1.
-Velocidad expresada en píxeles del mundo por frame de juego.
-Cadencia expresada en frames entre salvas; equivalencia en segundos a 60 frames por segundo.
-La salud corresponde a los puntos de salud máximos.
+La velocidad se configura como multiplicador de la velocidad universal del jugador: 1,00 = 2,5 px/frame de simulación (150 px/s). Entre paréntesis figura la velocidad resultante en el mundo. La cadencia es el intervalo repetido entre ataques a 60 frames por segundo.
 
-ENEMIGO       VELOCIDAD       CADENCIA                   DAÑO POR PROYECTIL   VIDA
-Básico        1,21 px/frame   171 frames (2,85 s)        10                  30
-Tirador       0,825 px/frame  114 frames (1,90 s)        15                  20
-Espiral       0,66 px/frame   86 frames (1,43 s)         8                   50
-Jefe          0,44 px/frame* 57 frames (0,95 s)          20                  500
+ESBIRROS
+Enemigo       Vida     Velocidad                 Cadencia fija
+Básico        30 HP    0,70 (1,75 px/frame)      180 frames (3 s)
+Mosca Tirador 28 HP    0,70 (1,75 px/frame)       60 frames (1 s)
+Espiral       50 HP    0,50 (1,25 px/frame)      300 frames (5 s)
 
-PATRONES Y VELOCIDAD DE LOS PROYECTILES EN EL PISO 1
-- Básico: una bala por salva; proyectil a 1,8 px/frame.
-- Tirador: una bala por salva; proyectil a 3 px/frame.
-- Espiral: cinco balas por salva; proyectiles a 1,5 px/frame.
-- Jefe: cambia de patrón cada 100 frames (1,67 s). Dispara cada 57 frames:
-  - Espiral: 8 proyectiles a 1,5 px/frame.
-  - Ráfaga dirigida: 3 proyectiles a 3 px/frame.
-  - Anillo: 12 proyectiles a 1,2 px/frame.
+Mini-jefe             Vida     Velocidad                 Ataque
+Cochinilla Esquinero  100 HP   0,00 (0 px/frame)         Espera 180 f; aviso 120 f; rayo 300 f; recuperación 300 f.
+Babosa Persecución    850 HP   0,70 (1,75 px/frame)      Contacto: 12 HP por choque nuevo.
 
-CÓMO SE CALCULAN LOS VALORES DEL PISO 1
-- La velocidad configurada se multiplica por 0,55.
-- El intervalo entre salvas se multiplica por 1,9 y se redondea al frame entero más cercano.
-- La velocidad de los proyectiles se multiplica por 0,60.
-- La vida y el daño por proyectil conservan sus valores base en el piso 1.
-- El tiempo hasta la primera salva se aleatoriza al aparecer; la cadencia de la tabla es el intervalo normal entre salvas.
+OTROS ENEMIGOS
+Enemigo                  Vida     Velocidad                 Cadencia/patrón
+Cochinilla Perforamuros  36 HP    0,22 (0,55 px/frame)      Espera aleatoria 180–420 f; aviso 54 f; rayo 180 f; recuperación 120 f.
+Jefe                     500 HP   0,16 (0,40 px/frame)      Un ataque cada 30 f; cambia de patrón cada 100 f.
 
-* El jefe tiene velocidad nominal de 0,44 px/frame tras el ajuste del piso 1, pero su movimiento real sigue una órbita fija alrededor del centro de la sala y no utiliza directamente ese valor.
+PROYECTILES Y DAÑO
+- Los proyectiles estándar de los esbirros causan 6 HP por impacto.
+- Velocidad de proyectiles: Básico 1,50 px/frame; Mosca Tirador 2,50 px/frame; Espiral 1,25 px/frame.
+- El jefe dispara proyectiles especiales de 12 HP, con velocidades de 1,25, 2,50 y 1,00 px/frame según el patrón.
+- Cochinilla Esquinero causa 6 HP por tick mientras el jugador toca el rayo activo. Babosa Persecución causa 12 HP por contacto nuevo.
+- El campo interno `damage` de algunas clases no equivale al daño que aplica un proyectil estándar; el valor efectivo se establece al crear el proyectil.
+
+REGLAS ENTRE PISOS
+- Los multiplicadores de movimiento, la vida, el daño, las cadencias y las velocidades de proyectil provienen de la configuración del enemigo y permanecen iguales al avanzar de piso.
+- El primer disparo de las unidades con cadencia recibe un retraso aleatorio entre 0,6 y 1,2 veces su intervalo; los ataques siguientes mantienen el intervalo de la tabla.
+- La dificultad de pisos superiores puede cambiar la cantidad y composición de enemigos. No se aplican modificadores de piso a las estadísticas individuales.
+
+Fuentes: `js/enemy.js`, `js/enemies/`, `js/enemy-projectile-pool.js`, `js/map.js` y `server/simulation.js`.

@@ -27,7 +27,7 @@ the run ends.
 | **Procedural maps** | 6–9 rooms grown outward from a start room, spacing-checked, then typed (combat, hard combat, treasure, empty, exit) and connected by corridors you walk down |
 | **Roguelite upgrades** | 10 upgrades drafted 3-at-a-time on level-up — health, damage, speed, multi-shot, pierce, fire rate, bullet speed, pickup magnet |
 | **Enemy variety** | Basic chasers, the kiting Mosca Tirador, and spiral emitters, each with its own movement and firing pattern |
-| **Difficulty ramp** | Enemy movement, fire rate and bullet speed ease in over the first 10 floors, then health, damage and room population keep climbing indefinitely |
+| **Floor composition** | Encounter types and group sizes can vary by floor; each enemy keeps its authored statistics |
 | **Boss gate** | Each floor's exit is locked behind a multi-phase boss, and opens where you kill it |
 | **Sound** | Effects synthesized live via Web Audio — no samples to download — over a three-track soundtrack that advances each floor |
 | **Feel** | Screen shake and damage flash on hit, low-health pulse, invincibility blink, particle bursts, magnet-pull on XP orbs, live minimap with threats |
@@ -193,7 +193,7 @@ display shows a 60 Hz simulation smoothly.
 
 A fixed step rather than a `dt` multiplier is deliberate. Every gameplay value
 here is expressed in frames — movement per tick, `fireRate`, `invincibleTimer`,
-`shootCooldown`, particle `life`, the floor difficulty ramp — so a fixed step
+`shootCooldown`, particle `life` — so a fixed step
 preserves all of them exactly, where scaling by `dt` would mean correctly
 rescaling each one and silently changing the tuning.
 
@@ -226,20 +226,20 @@ comfortably exceed twice the standoff. Rooms are 640–1024 px for that reason;
 at the original 128–256 px those enemies were pushed through the walls the
 moment the player walked in.
 
-### Difficulty ramp
+### Enemy statistics and floor composition
 
-Enemy stats are authored at full strength in each constructor and scaled *down*
-on early floors, so floor 10 and beyond plays exactly as those values read —
-only the opening is eased. `difficultyForFloor()` returns 0 on floor 1 and 1
-from floor 10, and `Enemy.applyDifficulty()` interpolates movement speed, fire
-rate and bullet speed between `EARLY_GAME` and unmodified.
+Each enemy keeps the movement multiplier, health, damage, cadence, and
+projectile speeds authored in its own configuration on every floor. Enemy
+movement uses the player's universal reference: `1.00` equals `2.5` world
+pixels per simulation frame (150 px/s); an enemy multiplier of `0.70` therefore
+moves at `1.75` px/frame. Floor number does not modify those statistics.
 
-It is applied once per enemy immediately after construction, at the two points
-where enemies enter the world, so no spawn path can bypass it.
-
-`shootTimer` also starts partway through a randomised cooldown rather than at
-zero. Left at zero every enemy fires on its first update, so an entire room
-volleys the instant the player walks in.
+Room composition can still make later encounters denser. The map generator can
+add one minion per room every four floors after floor 10, and it retains its
+procedural encounter and miniboss rules. These changes affect how many enemies
+appear, not the stats of an individual enemy. The first shot also starts after
+a randomized fraction (0.6–1.2×) of the configured cooldown; later shots use
+the exact fixed interval.
 
 ### Sound
 
@@ -271,21 +271,6 @@ Because there is nothing to walk toward early on, the on-screen chevron points
 at the boss room (red) until the exit exists, then at the exit (green). The
 minimap does the same.
 
-### Difficulty past the ramp
-
-The ramp only eases floors 1–10. `endgameFloors()` counts floors beyond it and
-`ENDGAME` drives growth from there: health climbs uncapped as the main pressure,
-while damage, speed and fire rate are capped hard — an enemy faster than the
-player, or firing continuously, stops being a challenge and becomes unfair.
-Room population grows by one enemy every four floors, and XP values rise so
-levelling keeps some pace.
-
-| Floor | Chaser HP | Damage | Speed | Cooldown | Extra/room |
-|---|---|---|---|---|---|
-| 10 | 30 | 10 | 2.20 | 90 | +0 |
-| 20 | 78 | 15 | 2.64 | 65 | +2 |
-| 50 | 222 | 22 (cap) | 2.86 (cap) | 54 (floor) | +10 |
-
 ### Bullets and walls
 
 Enemy bullets pop on room and corridor walls, which stops enemies shooting the
@@ -295,9 +280,8 @@ do not — the asymmetry is in the player's favour.
 ### Level-ups
 
 There is no level cap. The authored `xpTable` covers the early curve and the
-requirement continues geometrically past it at `Player.XP_GROWTH`. That is not
-a flourish: enemy scaling never stops, so capping the player guarantees every
-long run ends against a wall they cannot build against.
+requirement continues geometrically past it at `Player.XP_GROWTH`. The encounter
+mix can grow on deeper floors, while each enemy retains its configured stats.
 
 
 

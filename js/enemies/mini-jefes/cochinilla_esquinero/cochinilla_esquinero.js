@@ -2,7 +2,7 @@
  * Cochinilla Esquinero — corner-mounted enemy with a tracking laser.
  *
  * Everything in this file is derived from the art in
- * 00-sprites/enemigos/cochinilla_esquinero/:
+ * 00-sprites/enemigos/1_mini-jefes/cochinilla_esquinero/:
  *
  * - cochinilla_esquinero.png (120x120 px) is the body: exactly 3x3 cells of
  *   40 px. It is never rescaled, only mirrored.
@@ -22,6 +22,7 @@
 
 /** Body size in world pixels: 3x3 cells of 40 px, as authored. */
 const COCHINILLA_ESQUINERO_SIZE = 120;
+const COCHINILLA_ESQUINERO_SPRITE_PATH = '00-sprites/enemigos/1_mini-jefes/cochinilla_esquinero/cochinilla_esquinero.png';
 
 /** Laser origin inside the sprite, as an offset from the sprite centre. */
 const COCHINILLA_ESQUINERO_EMITTER_X = -49;   // 11 - 60
@@ -53,7 +54,7 @@ class CochinillaEsquinero extends Enemy {
         this.name = 'Cochinilla de esquina';
         this.health = this.maxHealth = 100;
         this.radius = 40;
-        this.speed = 0;
+        this.setMovementSpeedMultiplier(0);
         this.color = '#c9b7a3';
         this.xpValue = 0;
 
@@ -89,7 +90,7 @@ class CochinillaEsquinero extends Enemy {
     loadSprite() {
         if (CochinillaEsquinero.sprite || typeof Image === 'undefined') return;
         const image = new Image();
-        image.src = '00-sprites/enemigos/cochinilla_esquinero/cochinilla_esquinero.png';
+        image.src = COCHINILLA_ESQUINERO_SPRITE_PATH + '?v=miniboss-assets-folder-v1';
         CochinillaEsquinero.sprite = image;
     }
 

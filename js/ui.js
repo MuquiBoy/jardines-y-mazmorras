@@ -71,34 +71,32 @@ class UI {
         ctx.fillStyle = '#0a0709';
         ctx.fillRect(0, 0, width, height);
 
-        const scale = Math.min(width / map.width, height / map.height);
+        // Keep the minimap frame fixed, but show its contents at 2x scale.
+        // Center the view on the followed player so zooming does not clip the
+        // active area into a corner. In co-op `player` is the spectator target.
+        const contentZoom = 2;
+        const scale = Math.min(width / map.width, height / map.height) * contentZoom;
+        const toMapX = worldX => Math.floor(width / 2 + (worldX - player.x) * scale);
+        const toMapY = worldY => Math.floor(height / 2 + (worldY - player.y) * scale);
+        const mapLength = worldLength => Math.max(1, Math.floor(worldLength * scale));
 
         // Corridors under the rooms
         ctx.fillStyle = '#2a211d';
         for (const r of map.corridorRects || []) {
-            ctx.fillRect(Math.floor(r.x * scale), Math.floor(r.y * scale),
-                         Math.max(1, Math.floor(r.w * scale)),
-                         Math.max(1, Math.floor(r.h * scale)));
+            ctx.fillRect(toMapX(r.x), toMapY(r.y), mapLength(r.w), mapLength(r.h));
         }
 
         for (const room of map.rooms) {
             ctx.fillStyle = room.type === 'treasure'
                 ? (room.cleared ? '#8a6a1a' : '#ffb000')
                 : (room.cleared ? '#3a2e28' : '#5c4638');
-            ctx.fillRect(Math.floor(room.x * scale), Math.floor(room.y * scale),
-                         Math.max(1, Math.floor(room.w * scale)),
-                         Math.max(1, Math.floor(room.h * scale)));
+            ctx.fillRect(toMapX(room.x), toMapY(room.y), mapLength(room.w), mapLength(room.h));
         }
 
-        // Boss room until it is cleared, then the exit that replaces it.
-        if (map.bossRoom && !map.exit) {
-            ctx.fillStyle = PALETTE.danger;
-            ctx.fillRect(Math.floor(map.bossRoom.cx * scale) - 2,
-                         Math.floor(map.bossRoom.cy * scale) - 2, 5, 5);
-        }
+        // The minimap does not reveal or point out the boss room.
         if (map.exit) {
             ctx.fillStyle = PALETTE.exit;
-            ctx.fillRect(Math.floor(map.exit.x * scale) - 2, Math.floor(map.exit.y * scale) - 2, 5, 5);
+            ctx.fillRect(toMapX(map.exit.x) - 5, toMapY(map.exit.y) - 5, 10, 10);
         }
 
         // Enemies — previously a TODO, so the minimap never showed threats
@@ -106,12 +104,12 @@ class UI {
             ctx.fillStyle = PALETTE.danger;
             for (const e of this.enemies) {
                 if (!e.alive) continue;
-                ctx.fillRect(Math.floor(e.x * scale) - 1, Math.floor(e.y * scale) - 1, 2, 2);
+                ctx.fillRect(toMapX(e.x) - 2, toMapY(e.y) - 2, 4, 4);
             }
         }
 
         ctx.fillStyle = PALETTE.hud;
-        ctx.fillRect(Math.floor(player.x * scale) - 2, Math.floor(player.y * scale) - 2, 4, 4);
+        ctx.fillRect(width / 2 - 4, height / 2 - 4, 8, 8);
     }
 
     /** Show level-up screen with upgrade cards. */

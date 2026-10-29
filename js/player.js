@@ -4,13 +4,15 @@ const PLAYER_DAMAGE_INVULNERABILITY_FRAMES = 60;
 const PLAYER_SPRITE_ROOT = '00-sprites/jugador/';
 const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
-const PLAYER_WALK_VERSION = 'role-walk-v1';
+const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
+const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
+const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;
 
 /**
- * Decode the simple RGBA Aseprite files used for the six role walk cycles.
- * The authored files contain one full-frame compressed cel per frame.
+ * Decode simple RGBA Aseprite animations whose frames contain full-frame
+ * compressed cels. Frame durations come directly from the Aseprite timeline.
  */
-async function decodeAsepriteWalk(url) {
+async function decodeAsepriteAnimation(url) {
     if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
         typeof document === 'undefined') return null;
 
@@ -90,11 +92,103 @@ async function decodeAsepriteWalk(url) {
     return { frames, durations, totalDuration: durations.reduce((sum, ms) => sum + ms, 0) };
 }
 
+/** Decode one authored Aseprite layer as a transparent canvas overlay. */
+async function decodeAsepriteLayer(url, targetLayerName) {
+    if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
+        typeof document === 'undefined') return null;
+
+    const response = await fetch(url, { cache: 'force-cache' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const bytes = await response.arrayBuffer();
+    const data = new DataView(bytes);
+    if (data.byteLength < 144 || data.getUint16(4, true) !== 0xA5E0 ||
+        data.getUint16(12, true) !== 32) {
+        throw new Error('Formato Aseprite RGBA no compatible');
+    }
+
+    const width = data.getUint16(8, true);
+    const height = data.getUint16(10, true);
+    const frameCount = data.getUint16(6, true);
+    const layers = [];
+    const overlay = document.createElement('canvas');
+    overlay.width = width;
+    overlay.height = height;
+    const context = overlay.getContext('2d');
+    let drewLayer = false;
+    let frameOffset = 128;
+
+    for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+        const frameBytes = data.getUint32(frameOffset, true);
+        const chunkCount = data.getUint16(frameOffset + 6, true);
+        const frameEnd = frameOffset + frameBytes;
+        if (frameEnd > data.byteLength || frameBytes < 16) {
+            throw new Error('Fotograma Aseprite incompleto');
+        }
+
+        let chunkOffset = frameOffset + 16;
+        for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
+            if (chunkOffset + 6 > frameEnd) throw new Error('Bloque Aseprite incompleto');
+            const chunkSize = data.getUint32(chunkOffset, true);
+            const chunkType = data.getUint16(chunkOffset + 4, true);
+            if (chunkSize < 6 || chunkOffset + chunkSize > frameEnd) {
+                throw new Error('Tamaño de bloque Aseprite inválido');
+            }
+
+            const chunk = chunkOffset + 6;
+            if (chunkType === 0x2004 && chunkSize >= 24) {
+                const nameLength = data.getUint16(chunk + 16, true);
+                const nameEnd = chunk + 18 + nameLength;
+                if (nameEnd <= chunkOffset + chunkSize) {
+                    layers.push({
+                        name: new TextDecoder().decode(new Uint8Array(bytes, chunk + 18, nameLength)),
+                        visible: !!(data.getUint16(chunk, true) & 1),
+                        opacity: data.getUint8(chunk + 12)
+                    });
+                } else {
+                    layers.push(null);
+                }
+            } else if (chunkType === 0x2005 && chunkSize >= 26 &&
+                data.getUint16(chunk + 7, true) === 2) {
+                const layer = layers[data.getUint16(chunk, true)];
+                if (layer?.name === targetLayerName && layer.visible) {
+                    const x = data.getInt16(chunk + 2, true);
+                    const y = data.getInt16(chunk + 4, true);
+                    const celOpacity = data.getUint8(chunk + 6) / 255;
+                    const celWidth = data.getUint16(chunk + 16, true);
+                    const celHeight = data.getUint16(chunk + 18, true);
+                    const compressedStart = chunk + 20;
+                    const compressedEnd = chunkOffset + chunkSize;
+                    const compressed = new Uint8Array(bytes, compressedStart, compressedEnd - compressedStart);
+                    const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate'));
+                    const rgba = new Uint8ClampedArray(await new Response(stream).arrayBuffer());
+                    if (rgba.length !== celWidth * celHeight * 4) {
+                        throw new Error('Datos de píxel Aseprite incompletos');
+                    }
+                    const opacity = celOpacity * (layer.opacity / 255);
+                    if (opacity < 1) {
+                        for (let i = 3; i < rgba.length; i += 4) {
+                            rgba[i] = Math.round(rgba[i] * opacity);
+                        }
+                    }
+                    context.putImageData(new ImageData(rgba, celWidth, celHeight), x, y);
+                    drewLayer = true;
+                }
+            }
+            chunkOffset += chunkSize;
+        }
+        frameOffset = frameEnd;
+    }
+
+    return drewLayer ? overlay : null;
+}
+
 class Player {
     static XP_GROWTH = 1.20;
     static sprites = null;
     static animations = Object.create(null);
     static animationPromises = Object.create(null);
+    static damageMasks = Object.create(null);
+    static damageMaskPromises = Object.create(null);
 
     /** Fetch all authored role loops once. Stickers remain visible as fallback. */
     static loadAnimations() {
@@ -103,11 +197,28 @@ class Player {
         for (const role of Object.values(CHARACTER_ROLES)) {
             if (Player.animations[role.id] || Player.animationPromises[role.id]) continue;
             const url = PLAYER_SPRITE_ROOT + role.id + '/' + role.id + '_walk.aseprite?v=' + PLAYER_WALK_VERSION;
-            Player.animationPromises[role.id] = decodeAsepriteWalk(url)
+            Player.animationPromises[role.id] = decodeAsepriteAnimation(url)
                 .then(animation => { if (animation) Player.animations[role.id] = animation; })
                 .catch(error => {
                     delete Player.animationPromises[role.id];
                     console.warn('No se pudo cargar la animación walk de ' + role.name + '.', error);
+                });
+        }
+    }
+
+    /** Load optional role damage overlays from the named Aseprite layer. */
+    static loadDamageMasks() {
+        if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
+            typeof document === 'undefined') return;
+        for (const role of Object.values(CHARACTER_ROLES)) {
+            if (!role.damageMask || Player.damageMasks[role.id] || Player.damageMaskPromises[role.id]) continue;
+            const filename = encodeURIComponent(role.damageMask);
+            const url = PLAYER_SPRITE_ROOT + role.id + '/' + filename + '?v=' + PLAYER_DAMAGE_MASK_VERSION;
+            Player.damageMaskPromises[role.id] = decodeAsepriteLayer(url, role.damageMaskLayer || 'mask')
+                .then(mask => { if (mask) Player.damageMasks[role.id] = mask; })
+                .catch(error => {
+                    delete Player.damageMaskPromises[role.id];
+                    console.warn('No se pudo cargar la máscara de daño de ' + role.name + '.', error);
                 });
         }
     }
@@ -270,7 +381,7 @@ class Player {
         if (this.fireTimer > 0) this.fireTimer--;
         if (this.invincibleTimer > 0) this.invincibleTimer--;
 
-        if (this.character === "tirador") {
+        if (this.character === 'tirador') {
             if (input.cancelAim || this.health <= 0 || this.reloadTimer > 0) this.sniperAiming = false;
             const pressed = !!input.mousePressed;
             const released = !!input.mouseReleased;
@@ -326,25 +437,22 @@ class Player {
         return bullets;
     }
 
-    draw(ctx) {
+    draw(ctx, aimPointer = null, aimPointerState = null) {
         const size = 24 * (this.visualScale || 1);
         const px = this.renderX ?? this.x, py = this.renderY ?? this.y;
         const invulnerable = this.invincibleTimer > 0;
-        const redFlash = invulnerable && Math.floor(this.invincibleTimer / 6) % 2 === 0;
+        const elapsedInvulnerability = PLAYER_DAMAGE_INVULNERABILITY_FRAMES - this.invincibleTimer;
+        const redFlash = invulnerable &&
+            Math.floor(elapsedInvulnerability / PLAYER_DAMAGE_FLASH_PHASE_FRAMES) % 2 === 0;
         const walkFrame = Player.walkFrameFor(this.character);
         const sprite = Player.spriteFor(this.character);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
-        if (redFlash) {
-            ctx.save();
-            ctx.globalAlpha = 0.30;
-            pixelRect(ctx, px, py, size + 8, size + 8, '#ff3445');
-            ctx.restore();
-        }
+        const damageMask = redFlash ? Player.damageMasks[this.character] : null;
+
         ctx.save();
-        if (invulnerable) {
-            ctx.globalAlpha = redFlash ? 0.88 : 0.96;
-            if (redFlash) ctx.filter = 'sepia(1) saturate(5) hue-rotate(315deg)';
-        }
+        if (invulnerable) ctx.globalAlpha = redFlash ? 0.88 : 0.96;
+        ctx.save();
+        if (redFlash && !damageMask) ctx.filter = 'sepia(1) saturate(5) hue-rotate(315deg)';
         if (walkFrame || spriteReady) {
             // Preserve nearest-neighbor pixels and the role's authored 24/32/40 px footprint.
             ctx.imageSmoothingEnabled = false;
@@ -354,7 +462,33 @@ class Player {
             pixelRect(ctx, px, py, size, size, this.color || PALETTE.player);
             pixelRect(ctx, px, py, size * 0.52, size * 0.52, PALETTE.bone);
         }
-        pixelRect(ctx, px + this.aimX * (size / 2 + 5), py + this.aimY * (size / 2 + 5), Math.max(5, size * 0.22), Math.max(5, size * 0.22), this.color || PALETTE.playerCore);
+        if (damageMask) {
+            // source-atop clips the authored red overlay to the current walk
+            // frame's alpha, so transparent pixels stay completely invisible.
+            ctx.filter = 'none';
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.drawImage(damageMask, snap(px - size / 2), snap(py - size / 2), Math.round(size), Math.round(size));
+        }
+        ctx.restore();
+        const directionX = aimPointerState?.x ?? this.renderAimX ?? this.aimX;
+        const directionY = aimPointerState?.y ?? this.renderAimY ?? this.aimY;
+        const distance = aimPointerState?.distance ?? this.renderAimPointerDistance ?? AIM_POINTER_DEFAULT_DISTANCE;
+        const pointerPosition = aimPointerPosition(px, py, size, directionX, directionY, distance);
+        const pointerX = pointerPosition.x;
+        const pointerY = pointerPosition.y;
+        if (aimPointer?.complete && aimPointer.naturalWidth > 0) {
+            const pointerWidth = aimPointer.naturalWidth;
+            const pointerHeight = aimPointer.naturalHeight;
+            ctx.save();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(aimPointer,
+                snap(pointerX - pointerWidth / 2), snap(pointerY - pointerHeight / 2),
+                pointerWidth, pointerHeight);
+            ctx.restore();
+        } else {
+            // Keep aiming visible if the image is still loading or unavailable.
+            pixelRect(ctx, pointerX, pointerY, Math.max(5, size * 0.22), Math.max(5, size * 0.22), this.color || PALETTE.playerCore);
+        }
         if (this.turretActive) pixelRect(ctx, px, py - size * 0.65, size * 0.75, 3, this.color);
         if (this.reloadTimer > 0) {
             const badgeY = py - size * 0.72 - 10;
@@ -385,3 +519,4 @@ class Player {
 // Start fetching role artwork during page load instead of on first draw.
 Player.loadSprites();
 Player.loadAnimations();
+Player.loadDamageMasks();

@@ -167,8 +167,12 @@ function handle(socket, message) {
         const aimY = clampNumber(message.aimY, -1, 1);
         const aimLength = Math.hypot(aimX, aimY) || 1;
         const previousInput = player.input || neutralInput();
+        const aimPointerDistance = message.aimPointerDistance === undefined
+            ? (previousInput.aimPointerDistance ?? 80)
+            : clampNumber(message.aimPointerDistance, 40, 120);
         player.input = { moveX: moveLength > 1 ? moveX / moveLength : moveX, moveY: moveLength > 1 ? moveY / moveLength : moveY,
             aimX: aimX / aimLength, aimY: aimY / aimLength, fire: message.fire === true, reload: message.reload === true,
+            aimPointerDistance,
             firePressed: previousInput.firePressed || message.firePressed === true,
             fireReleased: previousInput.fireReleased || message.fireReleased === true,
             cancelAim: previousInput.cancelAim || message.cancelAim === true };
@@ -200,7 +204,7 @@ function clampNumber(value, min, max) {
     const number = Number(value);
     return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : 0;
 }
-function neutralInput() { return { moveX: 0, moveY: 0, aimX: 0, aimY: -1, fire: false, reload: false, firePressed: false, fireReleased: false, cancelAim: false }; }
+function neutralInput() { return { moveX: 0, moveY: 0, aimX: 0, aimY: -1, aimPointerDistance: 80, fire: false, reload: false, firePressed: false, fireReleased: false, cancelAim: false }; }
 function detach(socket) {
     sockets.delete(socket);
     const room = rooms.get(socket._room);
