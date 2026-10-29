@@ -80,11 +80,11 @@ function hardEnemyType() {
 }
 
 function randomMiniBossType(excludeType = null) {
-    // Per-room weighted roll: 30% Cochinilla Esquinero, 70% Babosa Persecución.
+    // Per-room weighted roll: 50% Cochinilla Esquinero, 50% Babosa Persecución.
     if (excludeType) {
         const alternatives = (ENEMY_TYPES_BY_CATEGORY[ENEMY_CATEGORY.MINI_BOSSES] || [])
             .filter(type => type !== excludeType);
         return alternatives.length ? chooseEnemyType(alternatives) : null;
     }
-    return Math.random() < 0.30 ? 'cochinilla-esquinero' : 'babosa_persecucion';
+    return Math.random() < 0.50 ? 'cochinilla-esquinero' : 'babosa_persecucion';
 }

@@ -1,7 +1,7 @@
 BABOSA PERSECUCIÓN — FICHA DE IMPLEMENTACIÓN
 
 Categoría: mini-jefe; aparece únicamente en salas combat-hard.
-Probabilidad base en el sorteo de mini-jefe: 70% (Cochinilla Esquinero: 30%).
+Probabilidad base en el sorteo de mini-jefe: 50% (Cochinilla Esquinero: 50%).
 Máximo: una clase de mini-jefe por sala.
 
 Estadísticas

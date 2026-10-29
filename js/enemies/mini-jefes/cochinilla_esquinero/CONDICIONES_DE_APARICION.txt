@@ -11,7 +11,7 @@ Salas donde puede aparecer
 
 Cantidad y probabilidad
 - Máximo: 1 mini-jefe total por sala «combat-hard».
-- Probabilidad base del sorteo: 30% Cochinilla Esquinero y 70% Babosa Persecución.
+- Probabilidad base del sorteo: 50% Cochinilla Esquinero y 50% Babosa Persecución.
 - Si la tirada elige a la Cochinilla y no hay esquina válida, se intenta generar otro mini-jefe elegible en un espacio válido de 2 × 2 casillas. Así no se coloca la Cochinilla sobre puertas u obstáculos.
 - La selección de la esquina tampoco es aleatoria: se revisan en este orden: superior izquierda, superior derecha, inferior izquierda, inferior derecha, y se usa la primera válida.
 
@@ -27,6 +27,6 @@ Condiciones de esquina válida
 Resumen del flujo
 1. El generador crea una sala «combat-hard».
 2. Comprueba las esquinas en el orden indicado buscando un bloque libre de 3 × 3 compuesto únicamente por suelo normal; las casillas amarillas de puerta (#FFFF00) no son válidas.
-3. Genera como máximo un mini-jefe según el sorteo 30/70; la Cochinilla requiere además una esquina válida de 3 × 3.
+3. Genera como máximo un mini-jefe según el sorteo 50/50; la Cochinilla requiere además una esquina válida de 3 × 3.
 4. Genera también la cantidad convencional de esbirros de la sala difícil.
 5. Si no existe una ubicación válida para el mini-jefe elegido o su alternativa, conserva los esbirros y no lo coloca sobre obstáculos.
