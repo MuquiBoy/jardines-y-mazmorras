@@ -2,6 +2,9 @@
  * Pixel-perfect camera scales: both the fixed view and Tirador aim use
  * whole-number zoom factors, so each authored pixel stays a uniform square.
  */
+// Canvas backing scale; 1 means one canvas pixel per authored world pixel.
+const PIXEL_SIZE = 1;
+
 const CAMERA_ZOOM = 3.0;
 const TIRADOR_AIM_ZOOM = 2.0;
 
