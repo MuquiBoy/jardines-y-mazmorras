@@ -38,9 +38,11 @@ ESTADÍSTICAS ACTUALES
 - Si una pared bloquea la dirección directa, el impulso prueba direcciones
   seguras dentro del semiplano que se aleja de la Babosa y redirige el
   desplazamiento alrededor del obstáculo. Nunca atraviesa paredes. Si el
-  jugador está completamente encerrado y no existe una salida transitable que
-  aumente la separación, el empuje se detiene de forma segura; la geometría no
-  permite garantizar 80 px en ese caso.
+  recorrido no permite alcanzar los 80 px, reduce el objetivo a 40 px de
+  separación radial y vuelve a intentarlo. Si el jugador está completamente
+  encerrado y no existe una salida transitable ni siquiera para ese recorrido,
+  el empuje se detiene de forma segura; ninguna física puede garantizar
+  desplazamiento a través de una pared.
 - Experiencia al morir: 0 XP.
 - Daño a distancia y proyectiles: ninguno.
 - Cadencia/enfriamiento de ataque: no aplica; el ataque depende de iniciar un

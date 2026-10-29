@@ -323,7 +323,10 @@ class Player {
         this.knockbackImpulse = {
             sourceX,
             sourceY,
+            startingDistance: currentDistance,
             targetDistance: currentDistance + Math.max(0, separationGain),
+            fallbackDistance: currentDistance + Math.min(40, Math.max(0, separationGain)),
+            fallbackApplied: false,
             directionX: dx,
             directionY: dy,
             frames: 0,
@@ -438,9 +441,23 @@ class Player {
         const sourceDx = this.x - impulse.sourceX;
         const sourceDy = this.y - impulse.sourceY;
         const distance = Math.hypot(sourceDx, sourceDy);
-        if (distance >= impulse.targetDistance - 0.5 || impulse.frames >= 30 || impulse.travelled >= 220) {
+        if (distance >= impulse.targetDistance - 0.5) {
             this.knockbackImpulse = null;
             return;
+        }
+        if (impulse.frames >= 30 || impulse.travelled >= 220) {
+            if (!impulse.fallbackApplied && distance < impulse.fallbackDistance - 0.5) {
+                // A tight room may make the full two-tile displacement
+                // impossible. Keep the same outward/collision-safe behavior
+                // with a one-tile minimum separation gain instead.
+                impulse.targetDistance = impulse.fallbackDistance;
+                impulse.fallbackApplied = true;
+                impulse.frames = 0;
+                impulse.travelled = 0;
+            } else {
+                this.knockbackImpulse = null;
+                return;
+            }
         }
 
         const outwardX = distance > 0.001 ? sourceDx / distance : impulse.directionX;
@@ -482,10 +499,9 @@ class Player {
 
         if (!best || bestScore < -0.01) {
             // No safe outward step exists in this geometry; do not tunnel or
-            // force the player through a wall. A later frame can retry as the
-            // player or enemy moves.
-            impulse.frames++;
-            if (impulse.frames >= 30) this.knockbackImpulse = null;
+            // force the player through a wall. If the player is pinned with no
+            // outward route, even the shorter fallback cannot be achieved.
+            this.knockbackImpulse = null;
             return;
         }
 
