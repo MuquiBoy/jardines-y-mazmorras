@@ -153,7 +153,7 @@ class EnemyProjectilePool {
         const ownerId = enemy.id ?? enemy._poolProjectileOwnerId;
 
         // Fully overwrite all mutable state so reuse cannot retain a previous
-        // hit, ricochet target, owner, status effect or visual property.
+        // hit target, owner, status effect or visual property.
         projectile._poolActive = true;
         projectile.active = true;
         projectile.x = enemy.x;
