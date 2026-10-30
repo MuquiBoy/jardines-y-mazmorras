@@ -82,6 +82,7 @@
         }
         Object.assign(player, state, { className: characterNames[state.character] || state.character });
         // The server sends gray HP and form, not the static pixel mask data.
+        // Re-select the matching local mask for either Bastion form.
         if (player.character === 'bastion') player.updateBastionForm();
         return player;
     }
@@ -276,7 +277,7 @@
             // the page-wide gesture listener is what actually resumes the
             // context when the browser requires a user gesture.
             game.audio.unlock();
-            return RoomTemplateLibrary.load().then(() => {
+            return Promise.all([RoomTemplateLibrary.load(), loadEnemyArtwork()]).then(() => {
                 templatesReady = true;
                 game.clearEnemyProjectiles(); // only clears any old local run before remote snapshots take over
                 game.input.keys = {};

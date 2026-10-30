@@ -1,9 +1,6 @@
-
 /* Esbirro: clon de Mosca Tirador para ajustar su identidad y balance por separado. */
 // ===== EsbirroTirador — Sniper (keeps distance) =====
 class EsbirroTirador extends Enemy {
-    static animation = null;
-    static animationPromise = null;
     static DRAW_SIZE = 28;
 
     constructor(x, y) {
@@ -19,32 +16,13 @@ class EsbirroTirador extends Enemy {
         this.shootCooldown = 60;
         this.shootTimer = initialEnemyShotDelay(this.shootCooldown);
         this.animationStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        this.loadAnimation();
-    }
-
-    loadAnimation() {
-        if (EsbirroTirador.animation) return;
-        if (EsbirroTirador.animationPromise || typeof decodeAsepriteAnimation !== 'function') return;
-        const url = '00-sprites/enemigos/2_esbirros/mosca_tirador/mosca_tirador.aseprite?v=mosca-tirador-animation-folder-v1';
-        EsbirroTirador.animationPromise = decodeAsepriteAnimation(url)
-            .then(animation => {
-                if (animation) EsbirroTirador.animation = animation;
-                return animation;
-            })
-            .catch(error => {
-                EsbirroTirador.animationPromise = null;
-                console.warn('No se pudo cargar la animación del Esbirro Tirador.', error);
-                return null;
-            });
+        // Both enemies currently use the same authored art; decode it only once.
+        MoscaTirador.loadAnimation();
     }
 
     draw(ctx) {
-        const animation = EsbirroTirador.animation;
-        if (!animation || animation.totalDuration <= 0) {
-            // Keep a readable placeholder until the authored frames have loaded.
-            this.drawBody(ctx, PALETTE.moscaTirador, PALETTE.moscaTiradorLit, EsbirroTirador.DRAW_SIZE);
-            return;
-        }
+        const animation = MoscaTirador.animation;
+        if (!animation || !animation.frames.length || animation.totalDuration <= 0) return;
 
         // This one cycle is shared by idle and movement; it loops continuously.
         const now = typeof performance !== 'undefined' ? performance.now() : Date.now();

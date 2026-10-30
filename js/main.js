@@ -36,6 +36,10 @@
     window.abyssGame = game;
     let retryLoadingAction = null;
 
+    // Begin fetching authored enemy art in the lobby; startGame and co-op
+    // await the same cached loads before any encounter can be shown.
+    loadEnemyArtwork().catch(() => {});
+
     function focusGameCanvas() {
         if (game.state !== 'PLAYING' && game.state !== 'PAUSED') return;
         try { canvas.focus({ preventScroll: true }); }
@@ -125,6 +129,7 @@
             await new Promise(resolve => setTimeout(resolve, 0));
             await Promise.all([
                 RoomTemplateLibrary.load(),
+                loadEnemyArtwork(),
                 Promise.resolve().then(() => game.prepareForNewRun())
             ]);
             audio.ensureMusic(0);

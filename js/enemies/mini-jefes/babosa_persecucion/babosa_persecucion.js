@@ -28,12 +28,13 @@ class BabosaPersecucion extends Enemy {
         this.targetId = null;
         this._contactingPlayerIds = new Set();
         this.animationStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        this.loadAnimation();
+        BabosaPersecucion.loadAnimation();
     }
 
-    loadAnimation() {
-        if (BabosaPersecucion.animation || BabosaPersecucion.animationPromise ||
-            typeof decodeAsepriteAnimation !== 'function') return;
+    static loadAnimation() {
+        if (BabosaPersecucion.animation) return BabosaPersecucion.animation;
+        if (BabosaPersecucion.animationPromise) return BabosaPersecucion.animationPromise;
+        if (typeof decodeAsepriteAnimation !== 'function') return null;
         const url = BABOSA_PERSECUCION_WALK_PATH + '?v=' + BABOSA_PERSECUCION_WALK_VERSION;
         BabosaPersecucion.animationPromise = decodeAsepriteAnimation(url)
             .then(animation => {
@@ -45,6 +46,7 @@ class BabosaPersecucion extends Enemy {
                 console.warn('No se pudo cargar la animación walk de la Babosa Persecución.', error);
                 return null;
             });
+        return BabosaPersecucion.animationPromise;
     }
 
     moveBy(dx, dy, map) {
@@ -163,37 +165,22 @@ class BabosaPersecucion extends Enemy {
     draw(ctx) {
         const s = BABOSA_PERSECUCION_SIZE;
         const animation = BabosaPersecucion.animation;
-        if (animation && animation.frames.length && animation.totalDuration > 0) {
-            // The authored walk cycle loops continuously while moving or idle.
-            const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-            let frameTime = (now - this.animationStartTime) % animation.totalDuration;
-            let frameIndex = 0;
-            while (frameIndex < animation.durations.length - 1 &&
-                   frameTime >= animation.durations[frameIndex]) {
-                frameTime -= animation.durations[frameIndex++];
-            }
-            const frame = animation.frames[frameIndex];
-            const width = frame.width || s;
-            const height = frame.height || s;
-            ctx.save();
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(frame, snap(this.x - width / 2), snap(this.y - height / 2), width, height);
-            ctx.restore();
-            this.drawHealth(ctx, Math.max(width, height));
-            return;
+        if (!animation || !animation.frames.length || animation.totalDuration <= 0) return;
+        // The authored walk cycle loops continuously while moving or idle.
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        let frameTime = (now - this.animationStartTime) % animation.totalDuration;
+        let frameIndex = 0;
+        while (frameIndex < animation.durations.length - 1 &&
+               frameTime >= animation.durations[frameIndex]) {
+            frameTime -= animation.durations[frameIndex++];
         }
-
-        // Keep the existing fallback visible until the animation has loaded.
-        pixelRect(ctx, this.x, this.y, s + 6, s + 6, PALETTE.void);
-        pixelRect(ctx, this.x, this.y, s, s, '#54375f');
-        pixelRect(ctx, this.x, this.y - 3, 68, 62, '#8d4eaa');
-        pixelRect(ctx, this.x - 16, this.y + 14, 14, 28, '#b66bca');
-        pixelRect(ctx, this.x + 16, this.y + 14, 14, 28, '#b66bca');
-        pixelRect(ctx, this.x - 13, this.y - 8, 7, 7, '#f7e8ff');
-        pixelRect(ctx, this.x + 13, this.y - 8, 7, 7, '#f7e8ff');
-        pixelRect(ctx, this.x - 13, this.y - 8, 3, 4, '#24142a');
-        pixelRect(ctx, this.x + 13, this.y - 8, 3, 4, '#24142a');
-        this.drawHealth(ctx, s);
+        const frame = animation.frames[frameIndex];
+        const width = frame.width || s;
+        const height = frame.height || s;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(frame, snap(this.x - width / 2), snap(this.y - height / 2), width, height);
+        ctx.restore();
+        this.drawHealth(ctx, Math.max(width, height));
     }
 }
-

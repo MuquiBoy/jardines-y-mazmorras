@@ -42,6 +42,7 @@ const COCHINILLA_ESQUINERO_MIRROR = {
 
 class CochinillaEsquinero extends Enemy {
     static sprite = null;
+    static spritePromise = null;
 
     /**
      * @param {number} x - world centre of the 3x3 spawn block
@@ -84,14 +85,27 @@ class CochinillaEsquinero extends Enemy {
         // tick the target is inside the beam.
         this.laserDamagePerTick = 6;
 
-        this.loadSprite();
+        CochinillaEsquinero.loadSprite();
     }
 
-    loadSprite() {
-        if (CochinillaEsquinero.sprite || typeof Image === 'undefined') return;
+    static loadSprite() {
+        if (CochinillaEsquinero.sprite) return CochinillaEsquinero.sprite;
+        if (CochinillaEsquinero.spritePromise) return CochinillaEsquinero.spritePromise;
+        if (typeof Image === 'undefined') return null;
         const image = new Image();
+        CochinillaEsquinero.spritePromise = new Promise(resolve => {
+            image.onload = () => {
+                CochinillaEsquinero.sprite = image;
+                resolve(image);
+            };
+            image.onerror = () => {
+                CochinillaEsquinero.spritePromise = null;
+                console.warn('No se pudo cargar la imagen de la Cochinilla Esquinero.');
+                resolve(null);
+            };
+        });
         image.src = COCHINILLA_ESQUINERO_SPRITE_PATH + '?v=miniboss-assets-folder-v1';
-        CochinillaEsquinero.sprite = image;
+        return CochinillaEsquinero.spritePromise;
     }
 
     /**
@@ -251,8 +265,10 @@ class CochinillaEsquinero extends Enemy {
         const length = Math.hypot(dx, dy);
         if (length < 1) return false;
         if (point.hitboxMask && typeof segmentIntersectsPixelHitbox === 'function') {
-            return segmentIntersectsPixelHitbox(emitter.x, emitter.y, this.beamEndX, this.beamEndY,
-                this.beamWidth / 2, point.x, point.y, point.hitboxMask);
+            return segmentIntersectsPixelHitbox(
+                emitter.x, emitter.y, this.beamEndX, this.beamEndY,
+                this.beamWidth / 2, point.x, point.y, point.hitboxMask
+            );
         }
         const t = ((point.x - emitter.x) * dx + (point.y - emitter.y) * dy) / (length * length);
         if (t < 0 || t > 1) return false;
@@ -263,6 +279,8 @@ class CochinillaEsquinero extends Enemy {
     }
 
     draw(ctx) {
+        const sprite = CochinillaEsquinero.sprite;
+        if (!sprite || !sprite.complete || !sprite.naturalWidth) return;
         const emitter = this._emitter();
         if (this.phase === 'warning') {
             ctx.save();
@@ -293,21 +311,15 @@ class CochinillaEsquinero extends Enemy {
             ctx.restore();
         }
 
-        const sprite = CochinillaEsquinero.sprite;
         const mirror = COCHINILLA_ESQUINERO_MIRROR[this.corner] || COCHINILLA_ESQUINERO_MIRROR['top-left'];
-        let drew = false;
-        if (sprite && sprite.complete !== false && (sprite.naturalWidth || sprite.width)) {
-            const half = COCHINILLA_ESQUINERO_SIZE / 2;
-            ctx.save();
-            ctx.translate(this.anchorX, this.anchorY);
-            // Mirrors keep the face pointing into the room; the body is never
-            // rotated or rescaled, so the pixel art stays crisp.
-            ctx.scale(mirror.x, mirror.y);
-            ctx.drawImage(sprite, -half, -half, COCHINILLA_ESQUINERO_SIZE, COCHINILLA_ESQUINERO_SIZE);
-            ctx.restore();
-            drew = true;
-        }
-        if (!drew) this.drawBody(ctx, '#7a6a58', '#c9b7a3', 80);
+        const half = COCHINILLA_ESQUINERO_SIZE / 2;
+        ctx.save();
+        ctx.translate(this.anchorX, this.anchorY);
+        // Mirrors keep the face pointing into the room; the body is never
+        // rotated or rescaled, so the pixel art stays crisp.
+        ctx.scale(mirror.x, mirror.y);
+        ctx.drawImage(sprite, -half, -half, COCHINILLA_ESQUINERO_SIZE, COCHINILLA_ESQUINERO_SIZE);
+        ctx.restore();
         this.drawHealth(ctx, 88);
     }
 }

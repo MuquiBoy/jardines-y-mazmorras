@@ -18,12 +18,13 @@ class MoscaTirador extends Enemy {
         this.shootCooldown = 60;
         this.shootTimer = initialEnemyShotDelay(this.shootCooldown);
         this.animationStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        this.loadAnimation();
+        MoscaTirador.loadAnimation();
     }
 
-    loadAnimation() {
-        if (MoscaTirador.animation) return;
-        if (MoscaTirador.animationPromise || typeof decodeAsepriteAnimation !== 'function') return;
+    static loadAnimation() {
+        if (MoscaTirador.animation) return MoscaTirador.animation;
+        if (MoscaTirador.animationPromise) return MoscaTirador.animationPromise;
+        if (typeof decodeAsepriteAnimation !== 'function') return null;
         const url = '00-sprites/enemigos/2_esbirros/mosca_tirador/mosca_tirador.aseprite?v=mosca-tirador-animation-folder-v1';
         MoscaTirador.animationPromise = decodeAsepriteAnimation(url)
             .then(animation => {
@@ -35,15 +36,12 @@ class MoscaTirador extends Enemy {
                 console.warn('No se pudo cargar la animación de la Mosca Tirador.', error);
                 return null;
             });
+        return MoscaTirador.animationPromise;
     }
 
     draw(ctx) {
         const animation = MoscaTirador.animation;
-        if (!animation || animation.totalDuration <= 0) {
-            // Keep a readable placeholder until the authored frames have loaded.
-            this.drawBody(ctx, PALETTE.moscaTirador, PALETTE.moscaTiradorLit, MoscaTirador.DRAW_SIZE);
-            return;
-        }
+        if (!animation || !animation.frames.length || animation.totalDuration <= 0) return;
 
         // This one cycle is shared by idle and movement; it loops continuously.
         const now = typeof performance !== 'undefined' ? performance.now() : Date.now();

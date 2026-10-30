@@ -41,4 +41,5 @@ APARICIÓN
 RECURSOS VISUALES
 - Usa temporalmente la animación de Mosca Tirador desde:
   `00-sprites/enemigos/2_esbirros/mosca_tirador/mosca_tirador.aseprite`.
-- El dibujo placeholder conserva la paleta de Mosca Tirador.
+- La animación se decodifica una sola vez y se comparte con Mosca Tirador.
+- No se dibuja un placeholder mientras carga el recurso.

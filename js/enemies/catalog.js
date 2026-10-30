@@ -34,6 +34,19 @@ const ENEMY_CLASSES = Object.freeze({
     babosa_persecucion: BabosaPersecucion
 });
 
+/** Load authored enemy art once before either solo or co-op gameplay is shown. */
+async function loadEnemyArtwork() {
+    // Esbirro Tirador shares Mosca Tirador's current animation and decoded frames.
+    const [mosca, babosa, cochinilla] = await Promise.all([
+        MoscaTirador.loadAnimation(),
+        BabosaPersecucion.loadAnimation(),
+        CochinillaEsquinero.loadSprite()
+    ]);
+    if (!mosca?.frames?.length || !babosa?.frames?.length || !cochinilla?.naturalWidth) {
+        throw new Error('No se pudieron cargar todas las texturas de los enemigos.');
+    }
+}
+
 const MINION_WEIGHTS = Object.freeze(['basic', 'basic', 'basic', 'mosca_tirador', 'esbirro_tirador', 'spiral']);
 const HARD_MINION_WEIGHTS = Object.freeze(['basic', 'mosca_tirador', 'spiral', 'esbirro_tirador', 'spiral']);
 
