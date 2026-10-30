@@ -286,7 +286,7 @@ class Player {
         this.ammoCapacity = 15; this.ammo = 15; this.reloadFrames = 54; this.reloadTimer = 0;
         this.pelletCount = 1; this.spread = 0.03; this.range = 500;
         this.weaponKind = 'gun'; this.color = '#55d64b'; this.burn = null; this.summon = null;
-        this.incomingDamageMultiplier = 1; this.enemyProjectileRicochetChance = 0; this.turretActive = false;
+        this.turretActive = false;
         this.level = 1; this.xp = 0;
         this.pendingLevelUps = 0;
         this.xpTable = [50, 120, 220, 350, 520, 750, 1050, 1400, 1850, 2400];
