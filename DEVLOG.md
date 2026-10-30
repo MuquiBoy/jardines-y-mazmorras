@@ -179,3 +179,11 @@ Bastión      10,8 HP/s
 - El cargador interpreta una casilla exacta #FF00FF como suelo y punto de aparición; el generador baraja esas marcas y escoge un esbirro al azar por cada marca en combat y combat-hard. Si una marca no admite la colisión, busca suelo libre cercano.
 - Como todavía no hay marcas, las salas continúan usando el conteo aleatorio heredado: 2–4 esbirros en combat y 4–6 en combat-hard, antes de los incrementos profundos. Por eso la selección por casilla ya está implementada, pero aún no controla la composición de las plantillas actuales.
 - El catálogo conserva 4 IDs de esbirro (3 patrones distintos porque Esbirro Tirador es un clon temporal); en la carpeta gráfica local solo encontré una carpeta de sprite de esbirro, la de Mosca Tirador. No se añadieron ubicaciones ni conceptos de enemigos.
+
+## 2026-10-30 — Formas de Bastión ligadas al corazón gris
+
+- Bastión conserva 36 HP rojos y empieza cada piso con 12 HP grises. En la forma Calabaza blindada se mueve a 0,85 × la velocidad universal; al agotarse los 12 HP grises pasa a `bastion-debil` y a 1,00 × la velocidad universal hasta terminar el piso.
+- La transformación usa la animación `bastion-debil_walk.aseprite` y muestra una ráfaga de 8 partículas naranjas sobre el personaje. En cooperativo, el servidor sincroniza la forma, el evento de transformación, la vida gris y la velocidad.
+- En la transición de piso se restaura el corazón gris y Bastión vuelve a Calabaza blindada. La vida roja no se cura ni se modifica por esta reposición.
+- Se retiraron del rol Bastión la reducción de daño y el rebote de proyectiles; sus ataques ahora aplican daño normal.
+- Se actualizó la ficha v4 para describir la velocidad y las reglas de ambas formas. No se ejecutaron pruebas ni se alteraron estadísticas de otros roles.
