@@ -14,12 +14,14 @@ VALORES BASE DE LOS ROLES
 La vida es HP inicial/máxima. El daño indicado es por proyectil o impacto, salvo donde se especifica.
 
 ROL          VIDA       VEL. ROL   MOVIMIENTO EFECTIVO       DAÑO
-Pistolero    36 HP      1,00       2,5 px/frame (150/s)      12 por bala
-Tirador      24 HP      1,00       2,5 px/frame (150/s)      32 por bala
+Pistolero    36 HP      1,00       2,5 px/frame (150/s)      7 por bala
+Tirador      24 HP      1,00       2,5 px/frame (150/s)      28 por bala
 Perdigonero  36 HP      1,00       2,5 px/frame (150/s)      6 por perdigón
 Invocador    36 HP      1,00       2,5 px/frame (150/s)      2 por golpe de invocación
 Piromano     24 HP      1,00       2,5 px/frame (150/s)      6 por proyectil + quemadura
 Bastión      48 HP      1,00       2,5 px/frame (150/s)      2 por proyectil
+
+Pistolero y Tirador reflejan el daño aprobado en VALORES_ROLES Y EQUIPO v4 (28-10-26).
 
 DETALLES DEL DAÑO
 
