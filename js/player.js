@@ -6,6 +6,7 @@ const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
 const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
 const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v4';
+const PLAYER_TIRADOR_DIRECTION_VERSION = 'tirador-directional-walk-v1';
 const PLAYER_BASTION_FORM_VERSION = 'bastion-directional-forms-v2';
 const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
 const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;
@@ -211,6 +212,12 @@ class Player {
                     { key: 'pistolero:front', filename: 'pistolero_walk-front.aseprite', version: PLAYER_PISTOLERO_DIRECTION_VERSION }
                 );
             }
+            if (role.id === 'tirador') {
+                sources.push(
+                    { key: 'tirador:back', filename: 'tirador_walk-back.aseprite', version: PLAYER_TIRADOR_DIRECTION_VERSION },
+                    { key: 'tirador:front', filename: 'tirador_walk-front.aseprite', version: PLAYER_TIRADOR_DIRECTION_VERSION }
+                );
+            }
             if (role.depletedSprite) {
                 if (role.id === 'bastion') {
                     sources.push(
@@ -257,6 +264,8 @@ class Player {
         let animationKey = character;
         if (character === 'pistolero' && (facing === 'back' || facing === 'front')) {
             animationKey = 'pistolero:' + facing;
+        } else if (character === 'tirador' && (facing === 'back' || facing === 'front')) {
+            animationKey = 'tirador:' + facing;
         } else if (character === 'bastion' && (facing === 'back' || facing === 'front')) {
             animationKey = form === 'bastion-debil'
                 ? 'bastion:debil:' + facing
@@ -324,6 +333,7 @@ class Player {
         this.knockbackImpulse = null;
         this.aimX = 0; this.aimY = -1; this.angle = 0; this.character = 'pistolero';
         this.pistoleroFacing = 'front';
+        this.tiradorFacing = 'front';
         this.bastionFacing = 'front';
     }
 
@@ -693,11 +703,19 @@ class Player {
             if (pointerY <= py - 1) this.bastionFacing = 'back';
             else if (pointerY >= py + 1) this.bastionFacing = 'front';
         }
+        else if (this.character === 'tirador') {
+            if (!this.tiradorFacing) this.tiradorFacing = 'front';
+            // Keep the last vertical orientation while the pointer is within 1px of center.
+            if (pointerY <= py - 1) this.tiradorFacing = 'back';
+            else if (pointerY >= py + 1) this.tiradorFacing = 'front';
+        }
         const invulnerable = this.invincibleTimer > 0;
         const elapsedInvulnerability = PLAYER_DAMAGE_INVULNERABILITY_FRAMES - this.invincibleTimer;
         const redFlash = invulnerable &&
             Math.floor(elapsedInvulnerability / PLAYER_DAMAGE_FLASH_PHASE_FRAMES) % 2 === 0;
-        const facing = this.character === 'bastion' ? this.bastionFacing : this.pistoleroFacing;
+        const facing = this.character === 'bastion' ? this.bastionFacing
+            : this.character === 'tirador' ? this.tiradorFacing
+                : this.pistoleroFacing;
         const walkFrame = Player.walkFrameFor(this.character, undefined, this.bastionForm, facing);
         const sprite = Player.spriteFor(this.character, this.bastionForm);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
