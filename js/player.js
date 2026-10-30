@@ -6,7 +6,7 @@ const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
 const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
 const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v4';
-const PLAYER_BASTION_FORM_VERSION = 'bastion-debil-form-v1';
+const PLAYER_BASTION_FORM_VERSION = 'bastion-front-forms-v2';
 const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
 const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;
 
@@ -197,7 +197,12 @@ class Player {
         if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
             typeof document === 'undefined') return;
         for (const role of Object.values(CHARACTER_ROLES)) {
-            const sources = [{ key: role.id, name: role.sprite, version: PLAYER_WALK_VERSION }];
+            const sources = [{
+                key: role.id,
+                name: role.sprite,
+                filename: role.id === 'bastion' ? 'bastion_walk-front.aseprite' : undefined,
+                version: role.id === 'bastion' ? PLAYER_BASTION_FORM_VERSION : PLAYER_WALK_VERSION
+            }];
             if (role.id === 'pistolero') {
                 sources.push(
                     { key: 'pistolero:back', filename: 'pistolero_walk-back.aseprite', version: PLAYER_PISTOLERO_DIRECTION_VERSION },
@@ -205,7 +210,12 @@ class Player {
                 );
             }
             if (role.depletedSprite) {
-                sources.push({ key: `${role.id}:debil`, name: role.depletedSprite, version: PLAYER_BASTION_FORM_VERSION });
+                sources.push({
+                    key: `${role.id}:debil`,
+                    name: role.depletedSprite,
+                    filename: role.id === 'bastion' ? 'bastion-debil_walk-front.aseprite' : undefined,
+                    version: PLAYER_BASTION_FORM_VERSION
+                });
             }
             for (const source of sources) {
                 if ((!source.name && !source.filename) || Player.animations[source.key] || Player.animationPromises[source.key]) continue;
@@ -339,12 +349,12 @@ class Player {
     }
 
     /** Keep Bastion's form and movement tied to the temporary gray heart. */
-    updateBastionForm(resetForFloor = false) {
+    updateBastionForm() {
         if (this.character !== 'bastion') return false;
         const previousForm = this.bastionForm;
-        if (resetForFloor) this.bastionForm = 'calabaza-blindada';
-        else if ((this.grayHealth || 0) <= 0) this.bastionForm = 'bastion-debil';
-        else if (this.bastionForm !== 'bastion-debil') this.bastionForm = 'calabaza-blindada';
+        this.bastionForm = (this.grayHealth || 0) > 0
+            ? 'calabaza-blindada'
+            : 'bastion-debil';
 
         const role = CHARACTER_ROLES.bastion;
         const multiplier = this.bastionForm === 'bastion-debil'
@@ -360,7 +370,7 @@ class Player {
         const redHealth = this.permanentHealth;
         this.grayHealth = this.maxGrayHealth;
         this.health = redHealth + this.grayHealth;
-        this.updateBastionForm(true);
+        this.updateBastionForm();
         return true;
     }
 

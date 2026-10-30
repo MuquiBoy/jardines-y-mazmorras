@@ -118,8 +118,7 @@ class EnemyProjectilePool {
             projectileType: null, faction: null, ownerId: null,
             enemyId: null, range: 0, travelled: 0,
             pierce: 0, hits: 0, burn: null,
-            visualType: null,
-            ignorePlayerId: null, ignoreFrames: 0
+            visualType: null
         };
     }
 
@@ -174,8 +173,6 @@ class EnemyProjectilePool {
         projectile.pierce = 0;
         projectile.hits = 0;
         projectile.burn = null;
-        projectile.ignorePlayerId = null;
-        projectile.ignoreFrames = 0;
 
         this.activeCount++;
         this.shotsIssued++;
@@ -206,8 +203,6 @@ class EnemyProjectilePool {
         projectile.pierce = 0;
         projectile.hits = 0;
         projectile.burn = null;
-        projectile.ignorePlayerId = null;
-        projectile.ignoreFrames = 0;
         this.activeCount = Math.max(0, this.activeCount - 1);
         this.released++;
         this.free.push(projectile);

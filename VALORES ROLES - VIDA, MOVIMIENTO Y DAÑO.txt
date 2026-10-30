@@ -40,8 +40,9 @@ Piromano
 - Los impactos sucesivos renuevan la duración de la quemadura; no multiplican su daño por acumulación de efectos.
 
 Bastión
-- Recibe el 75 % del daño de proyectiles enemigos (25 % menos daño).
-- Tiene un 50 % de probabilidad de hacer rebotar proyectiles enemigos al impactarlo.
+- Recibe el daño completo de los proyectiles enemigos: 6 HP por disparo normal o 12 HP por disparo de jefe, igual que Pistolero.
+- Cada proyectil enemigo se consume al impactarlo. Conserva la inmunidad universal de 1 segundo tras recibir daño.
+- Tiene 36 HP rojos y un solo corazón gris adicional de 12 HP. El daño agota primero el corazón gris; al llegar a 0, desaparece del HUD y Bastión cambia a su forma débil. El corazón gris se repone solo al avanzar al siguiente piso.
 
 EXPERIENCIA DE ENEMIGOS
 - Los enemigos no otorgan experiencia ni dejan orbes de experiencia al morir.

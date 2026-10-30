@@ -10,8 +10,8 @@ Bastion         2,13 px/frame (0.85)    0,15 s (x frames)        2 por proyectil
 Bastion-debil   2,5 px/frame (1.00)     0,15 s (x frames)        2 por proyectil     36 HP (3 corazones rojos; gris agotado)               10 casillas (400 px)
 
 FORMAS DE BASTIÓN
-- Calabaza blindada: empieza cada piso con 36 HP rojos y 1 corazón gris de 12 HP. Se mueve a 0,85 × la velocidad universal (2,125 px/frame).
-- Bastion-debil: aparece automáticamente al perder los 12 HP del corazón gris. Se mueve a 1,00 × la velocidad universal (2,5 px/frame) y permanece así hasta el siguiente piso.
+- Calabaza blindada: empieza cada piso con 36 HP rojos y 1 corazón gris de 12 HP como máximo. Usa `bastion_walk-front.aseprite` y se mueve a 0,85 × la velocidad universal (2,125 px/frame).
+- Bastion-debil: aparece automáticamente al agotar el corazón gris, que desaparece del HUD. Usa `bastion-debil_walk-front.aseprite`, se mueve a 1,00 × la velocidad universal (2,5 px/frame) y permanece así hasta el siguiente piso.
 - Al completar un piso, solo se repone el corazón gris y Bastión vuelve a la forma Calabaza blindada. Los HP rojos se conservan.
 - Bastión recibe el daño normal de los ataques y ya no tiene reducción de daño ni rebote de proyectiles.
 

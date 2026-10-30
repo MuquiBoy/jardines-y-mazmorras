@@ -48,7 +48,7 @@ class CharacterRole {
         player.summon = this.summon || null;
         player.turretActive = false;
         player.bastionForm = this.id === 'bastion' ? 'armored' : null;
-        if (this.id === 'bastion') player.updateBastionForm(true);
+        if (this.id === 'bastion') player.updateBastionForm();
     }
 }
 

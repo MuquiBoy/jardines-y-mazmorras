@@ -460,7 +460,7 @@ function enemyState(enemy) {
     return Object.fromEntries(base.filter(key => enemy[key] !== undefined).map(key => [key, enemy[key]]));
 }
 function bulletState(bullet) {
-    return Object.fromEntries(['x','y','vx','vy','damage','pierce','hits','radius','color','ownerId','range','travelled','burn','visualType','ignorePlayerId','ignoreFrames'].filter(key => bullet[key] !== undefined).map(key => [key, bullet[key]]));
+    return Object.fromEntries(['x','y','vx','vy','damage','pierce','hits','radius','color','ownerId','range','travelled','burn','visualType'].filter(key => bullet[key] !== undefined).map(key => [key, bullet[key]]));
 }
 function summonState(summon) { return Object.fromEntries(['id','ownerId','x','y','health','maxHealth','speed','damage','attackRate','attackTimer','lifetime','radius','color','alive'].map(key => [key, summon[key]])); }
 function snapshot(run) {

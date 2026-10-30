@@ -1,7 +1,7 @@
 JARDINES Y MAZMORRAS
 VALORES DE ROLES Y EQUIPO — VERSIÓN 3
 
-Estos son los valores actuales de balance de la demo jugable. Las conversiones usan 60 frames por segundo. Los frames son los valores que utiliza el juego; los segundos se incluyen para facilitar la lectura.
+Archivo histórico de balance. Los valores vigentes se encuentran en VALORES_ROLES Y EQUIPO v4.txt. Las conversiones usan 60 frames por segundo.
 
 ROL          VELOCIDAD      CADENCIA                         DAÑO                     VIDA
 Pistolero    5,0 px/frame   18 frames (0,30 s)              12 por proyectil         36 HP
@@ -33,8 +33,6 @@ Límite: el Invocador solo puede desplegar 6 unidades por cargador y tener hasta
 MECÁNICAS Y PASIVAS
 - Perdigonero: dispara 5 perdigones por cartucho; cada perdigón causa 6 de daño.
 - Piromano: cada impacto causa 6 de daño y aplica quemadura de 2 de daño cada 24 frames (0,40 s), durante 144 frames (2,40 s).
-- Bastión — Aguante: recibe el 75 % del daño de los proyectiles enemigos (25 % de reducción).
-- Bastión — Rebote: cada proyectil enemigo que lo impacta tiene un 50 % de probabilidad de rebotar. El proyectil sigue siendo hostil y puede herir a otros jugadores.
 - Bastión — Torreta: mientras mantiene el disparo, queda inmóvil; puede moverse al dejar de disparar.
 - Invocador — Despliegues limitados: solo tiene 6 invocaciones por cargador y un máximo de 6 unidades activas; si el límite activo está ocupado, el despliegue nuevo sustituye a la unidad más antigua.
 

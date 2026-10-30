@@ -5,10 +5,10 @@
 - La pool contiene únicamente proyectiles físicos disparados por enemigos. Los disparos de jugadores conservan su sistema actual; los láseres, avisos, partículas y demás efectos no se incluyen.
 - En una partida sin conexión se crea una pool para la simulación local. En cooperativo hay una pool compartida por la simulación autoritativa del servidor; los clientes reciben sus snapshots y no crean otra pool por jugador.
 - La capacidad inicial es de 512 objetos. Al agotarse, se amplía en bloques de 128 sin borrar objetos activos ni omitir disparos.
-- Cada activación vuelve a configurar posición, dirección, velocidad, daño, color, facción, propietario, recorrido, impactos y datos de rebote. Los valores de daño existentes se conservan: 6 HP para un proyectil normal y 12 HP para uno del jefe. La velocidad respeta la escala actual del enemigo.
+- Cada activación vuelve a configurar posición, dirección, velocidad, daño, color, facción, propietario, recorrido e impactos. Los valores de daño existentes se conservan: 6 HP para un proyectil normal y 12 HP para uno del jefe. La velocidad respeta la escala actual del enemigo.
 - Todos los enemigos que disparan proyectiles usan por defecto `10x10_proyectil enemigo.aseprite`: 10 × 10 px de tamaño visual, radio de hitbox 4 px y los 3 fotogramas de 100 ms de la animación (10 FPS). `cochinilla_esquinero` y `babosa_persecucion` no disparan proyectiles. Un enemigo que necesite otro visual declara `projectileVisualType` y registra su animación desde su propio código.
 - La animación se decodifica una sola vez y sus 3 lienzos se comparten en todos los disparos. La pool conserva 512 objetos iniciales y añade solo una referencia pequeña al tipo visual por proyectil; no asigna lienzos ni fotogramas a cada objeto. La selección de fotograma se calcula una vez por tipo visual y render, compartida por todos los proyectiles visibles.
-- Al impactar con una pared, un jugador o una invocación, salir del mapa o cambiar de piso, el proyectil vuelve a estar disponible. Los rebotes de Bastión siguen activos y el proyectil permanece en la lista mientras continúe en juego. Las transiciones entre salas conservan el comportamiento previo.
+- Al impactar con una pared, un jugador o una invocación, salir del mapa o cambiar de piso, el proyectil vuelve a estar disponible. Un impacto contra Bastión consume el proyectil y aplica el daño completo, igual que contra Pistolero. La inmunidad universal posterior al daño se aplica a ambos roles.
 - Los proyectiles inactivos se retiran de la lista de simulación antes del siguiente ciclo; por ello no se mueven, dibujan, colisionan ni se envían en snapshots.
 
 Las métricas están disponibles con `Game.getEnemyProjectilePoolStats()` en modo local y `Simulation.getProjectilePoolStats(run)` en el simulador del servidor. Incluyen capacidad, activos, disponibles, pico, ampliaciones, solicitudes sin espacio, disparos emitidos y objetos devueltos.
@@ -19,7 +19,7 @@ Al iniciar una expedición local se muestra «Jardines y Mazmorras — Preparand
 
 ## Validación de capacidad
 
-Se ejecutaron ocho simulaciones con dos jugadores en el mismo `Simulation` autoritativo usado por el cooperativo: Pistolero y Bastión, para incluir el rebote enemigo de Bastión. Cada simulación avanzó 1.200 ticks. Se usaron salas `combat-hard` y de jefe en niveles de estadísticas 1, 5, 10 y 15; el mapa de prueba se generó proceduralmente y los modificadores de nivel se aplicaron a los encuentros para estresar los patrones sin depender de una partida manual.
+Se ejecutaron ocho simulaciones con dos jugadores en el mismo `Simulation` autoritativo usado por el cooperativo: Pistolero y Bastión. Cada simulación avanzó 1.200 ticks. Se usaron salas `combat-hard` y de jefe en niveles de estadísticas 1, 5, 10 y 15. Estos registros son históricos y se conservan como referencia de capacidad; no representan el balance actual de los roles.
 
 | Nivel de estadísticas | Encuentro y composición generada | Pico activo | Disparos emitidos / devueltos | Ampliaciones |
 |---:|---|---:|---:|---:|
@@ -34,7 +34,7 @@ Se ejecutaron ocho simulaciones con dos jugadores en el mismo `Simulation` autor
 
 En las ocho simulaciones se emitieron 1.739 proyectiles; 1.304 regresaron a la pool y 435 seguían activos al terminar sus respectivos encuentros. En cada tick se verificó que activos coincidiera con la lista de balas y que activos más disponibles coincidiera con la capacidad. No hubo solicitudes sin espacio, ampliaciones ni discrepancias.
 
-También se hizo una prueba de saturación con 700 proyectiles simultáneos: la capacidad pasó de 512 a 768 en dos bloques de 128. Se conservaron los 700 proyectiles, se devolvieron todos y se reutilizó un objeto primero con 6 HP y luego con 12 HP; daño, propietario, rebote e impactos anteriores no persistieron.
+También se hizo una prueba de saturación con 700 proyectiles simultáneos: la capacidad pasó de 512 a 768 en dos bloques de 128. Se conservaron los 700 proyectiles, se devolvieron todos y se reutilizó un objeto primero con 6 HP y luego con 12 HP; daño, propietario e impactos anteriores no persistieron.
 
 Se conectaron dos clientes WebSocket al servidor local: ambos recibieron `game_start` para la misma partida de dos jugadores y el snapshot autoritativo siguiente. La simulación de capacidad usa esa misma ruta autoritativa; no multiplica la pool según los clientes.
 
