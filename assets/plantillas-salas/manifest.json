@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "revision": "8cdaff1b1c955576",
+  "revision": "bf6801a58c1ed865",
   "cellWorldSize": 40,
   "sourcePixelsPerCell": 40,
   "templates": {
@@ -14,21 +14,17 @@
       "hub/pasillo tuberia_hub.png"
     ],
     "combat": [
-      "combat/sala grande_3 puertas y barricada_combat.png",
-      "combat/sala grande_forma s_combat.png",
-      "combat/sala grande_union por esquina_combat.png",
-      "combat/sala media_3 puertas y forma o_combat.png",
-      "combat/sala media_columna 1 cerrado_combat.png",
-      "combat/sala media_columna 1_combat.png",
-      "combat/sala media_columna 2_combat.png",
-      "combat/sala media_forma i_combat.png"
+      "combat/sala gigante_3 puertas_combat.png",
+      "combat/sala media_3 puertas_combat.png",
+      "combat/sala media_cerrado 1_combat.png",
+      "combat/sala pequena_columnas 1_combat.png",
+      "combat/sala pequena_columnas 2_combat.png",
+      "combat/sala pequena_columnas 3_combat.png"
     ],
     "combat-hard": [
-      "combat-hard/sala gigante_3 puertas_combat-hard.png",
       "combat-hard/sala gigante_palazzo-1_combat-hard.png",
       "combat-hard/sala gigante_palazzo-2_combat-hard.png",
       "combat-hard/sala gigante_palazzo-3_combat-hard.png",
-      "combat-hard/sala gigante_palazzo-4_combat-hard.png",
       "combat-hard/sala gigante_palazzo-5_combat-hard.png"
     ],
     "treasure": [
@@ -36,7 +32,7 @@
       "treasure/sala tesoro 2_treasure.png"
     ],
     "boss": [
-      "boss/sala gigante jefe_boss.png"
+      "boss/sala jefe_primer piso_boss.png"
     ]
   }
 }

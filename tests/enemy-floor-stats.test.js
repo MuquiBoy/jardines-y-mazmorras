@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const Simulation = require('../server/simulation');
 
 const expected = {
-    esbirro_miedoso: { health: 30, movementSpeedMultiplier: 0.70, speed: 1.75, shootCooldown: 180 },
+    esbirro_miedoso: { health: 35, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 120 },
     mosca_tirador: { health: 28, movementSpeedMultiplier: 0.70, speed: 1.75, shootCooldown: 60 },
     spiral: { health: 50, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 300 },
     'cochinilla-esquinero': { health: 100, movementSpeedMultiplier: 0, speed: 0 },
@@ -28,7 +28,7 @@ function statProfile(enemy) {
     };
 }
 
-test('enemy stats stay fixed across generated floors while room composition remains procedural', () => {
+test('enemy stats stay fixed across floors and named rooms keep their minion count', () => {
     const run = Simulation.createRun([{ id: 'floor-stats-probe', name: 'Probe', character: 'pistolero' }]);
     const roomTypes = ['combat', 'combat-hard', 'boss'];
     const rooms = roomTypes.map(type => run.map.rooms.find(room => room.type === type));
@@ -65,7 +65,7 @@ test('enemy stats stay fixed across generated floors while room composition rema
         assert.ok(seen.has(type), `expected to encounter ${type} during generated-room sampling`);
     }
     const average = floor => simpleRoomCounts.get(floor) / 40;
-    assert.ok(average(14) > average(1), 'deeper-floor pressure should remain in room composition');
+    assert.equal(average(14), average(1), 'authored room names fix the number of esbirros on every floor');
 });
 
 test('floor stat scaler and bullet-speed multiplier are absent from game and server code', () => {

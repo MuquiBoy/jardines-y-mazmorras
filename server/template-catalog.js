@@ -11,6 +11,16 @@ const TILE_PIXELS = 40;
 const CATEGORIES = ['entry', 'hub', 'combat', 'combat-hard', 'treasure', 'boss'];
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
+function minionCountFromName(type, relativePath) {
+    if (type !== 'combat' && type !== 'combat-hard') return null;
+    const name = path.basename(relativePath, '.png').normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const size = /^sala[\s_-]+(pequena|media|mediana|gigante)(?=[\s_-]|$)/.exec(name)?.[1];
+    const count = { pequena: 3, media: 4, mediana: 4, gigante: 5 }[size];
+    if (!count) throw new Error('nombre sin categoría: usa sala pequeña, mediana o gigante');
+    return count;
+}
+
 function listRoomTemplateFiles(root) {
     const templates = Object.fromEntries(CATEGORIES.map(type => [type, []]));
     const revisionParts = [];
@@ -120,6 +130,15 @@ function readTemplate(buffer, type, relativePath) {
     }
 
     floodExteriorBlue(mask, widthTiles, heightTiles);
+    const minionCount = minionCountFromName(type, relativePath);
+    // A marker on the outer border cannot safely host even the smallest
+    // minion while the room doors are sealed. All other marker centres have
+    // at least 20 px of their own floor tile around them (max minion radius 16).
+    const validEnemySpawns = enemySpawns.filter(cell => cell.x > 0 && cell.y > 0 &&
+        cell.x < widthTiles - 1 && cell.y < heightTiles - 1);
+    if (minionCount !== null && validEnemySpawns.length < minionCount) {
+        throw new Error(`requiere ${minionCount} casillas #FF00FF interiores; tiene ${validEnemySpawns.length} utilizables (${enemySpawns.length} detectadas)`);
+    }
     const doors = collectDoors(mask, widthTiles, heightTiles);
     for (const door of doors) if (door.length !== 2) throw new Error(`puerta ${door.side} de ${door.length} losas; cada puerta debe medir 2`);
     const walkableCells = [];
@@ -132,7 +151,7 @@ function readTemplate(buffer, type, relativePath) {
     for (const cell of mask) if (cell === 1 || cell === 2) totalWalkable++;
     if (reachable !== totalWalkable) throw new Error('contiene suelo o puertas aislados');
     return { id: relativePath, path: relativePath, type, widthTiles, heightTiles, mask, doors,
-        walkableCells, enemySpawns, playerSpawn };
+        walkableCells, enemySpawns: validEnemySpawns, minionCount, playerSpawn };
 }
 
 function unfilter(data, width, height, bpp, rowBytes) {
@@ -204,4 +223,4 @@ function countReachable(mask, width, height) {
     return tail;
 }
 
-module.exports = { CATEGORIES, listRoomTemplateFiles, loadTemplateCatalog };
+module.exports = { CATEGORIES, listRoomTemplateFiles, loadTemplateCatalog, readTemplate };

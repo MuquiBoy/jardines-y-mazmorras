@@ -48,8 +48,28 @@ async function loadEnemyArtwork() {
     }
 }
 
-const MINION_WEIGHTS = Object.freeze(['esbirro_miedoso', 'esbirro_miedoso', 'esbirro_miedoso', 'mosca_tirador', 'esbirro_tirador', 'spiral']);
-const HARD_MINION_WEIGHTS = Object.freeze(['esbirro_miedoso', 'mosca_tirador', 'spiral', 'esbirro_tirador', 'spiral']);
+// Weights are relative: the four current values total 75, so each roll is
+// normalized over the enabled types. Add a floor key to change its pool later.
+const MINION_WEIGHTS_BY_FLOOR = Object.freeze({
+    1: Object.freeze({ esbirro_miedoso: 25, mosca_tirador: 10,
+        esbirro_tirador: 20, spiral: 20 })
+});
+
+function minionWeightsForFloor(floor = 1) {
+    const selectedFloor = Object.keys(MINION_WEIGHTS_BY_FLOOR)
+        .map(Number).filter(value => value <= floor).sort((a, b) => b - a)[0] || 1;
+    const weights = MINION_WEIGHTS_BY_FLOOR[selectedFloor];
+    const allowed = ENEMY_TYPES_BY_CATEGORY[ENEMY_CATEGORY.MINIONS];
+    let total = 0;
+    for (const [type, weight] of Object.entries(weights)) {
+        if (!allowed.includes(type) || !Number.isFinite(weight) || weight < 0) {
+            throw new Error(`Peso de esbirro inválido en piso ${selectedFloor}: ${type}=${weight}`);
+        }
+        total += weight;
+    }
+    if (!(total > 0)) throw new Error(`El piso ${selectedFloor} no tiene esbirros habilitados.`);
+    return { weights, total };
+}
 
 function enemyCategoriesForRoom(roomType) {
     return ENEMY_CATEGORIES_BY_ROOM[roomType] || [];
@@ -83,15 +103,23 @@ function createEnemy(type, x, y, ...args) {
 }
 
 /** Weighted ordinary-room pool; never returns minibosses or the floor boss. */
-function randomEnemyType(category = ENEMY_CATEGORY.MINIONS) {
-    if (category === ENEMY_CATEGORY.MINIONS) return chooseEnemyType(MINION_WEIGHTS);
+function randomEnemyType(category = ENEMY_CATEGORY.MINIONS, floor = 1) {
+    if (category === ENEMY_CATEGORY.MINIONS) {
+        const { weights, total } = minionWeightsForFloor(floor);
+        let roll = Math.random() * total;
+        for (const [type, weight] of Object.entries(weights)) {
+            roll -= weight;
+            if (roll < 0) return type;
+        }
+        return Object.keys(weights).find(type => weights[type] > 0);
+    }
     const pool = ENEMY_TYPES_BY_CATEGORY[category] || [];
     return pool.length ? chooseEnemyType(pool) : null;
 }
 
-/** Hard rooms use a denser mix of the same esbirros, plus a miniboss spawn. */
-function hardEnemyType() {
-    return chooseEnemyType(HARD_MINION_WEIGHTS);
+/** Hard rooms use the same floor pool; their separate miniboss rule remains. */
+function hardEnemyType(floor = 1) {
+    return randomEnemyType(ENEMY_CATEGORY.MINIONS, floor);
 }
 
 function randomMiniBossType(excludeType = null) {

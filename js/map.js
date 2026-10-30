@@ -13,6 +13,14 @@
 const TEMPLATE_OPPOSITE_SIDE = { N: 'S', S: 'N', E: 'W', W: 'E' };
 const EXTRA_MINION_FLOOR_INTERVAL = 4;
 const EXTRA_MINION_FLOOR_ORIGIN = 10;
+const MINION_SPAWN_OFFSETS = (() => {
+    const offsets = [];
+    for (let y = -16; y <= 16; y += 4) for (let x = -16; x <= 16; x += 4) {
+        const distance = Math.hypot(x, y);
+        if (distance <= 16) offsets.push({ x, y, distance });
+    }
+    return offsets.sort((a, b) => a.distance - b.distance);
+})();
 
 /** Keep deeper-floor challenge in encounter composition, not enemy stats. */
 function extraMinionsForFloor(floor) {
@@ -1100,6 +1108,35 @@ class DungeonMap {
         return prepared;
     }
 
+    /** Keep the complete circular hitbox on authored floor, near its marker. */
+    findMarkedMinionSpawn(room, cell, radius, occupied) {
+        const ts = this.tileSize;
+        const originX = room.x + (cell.x + 0.5) * ts;
+        const originY = room.y + (cell.y + 0.5) * ts;
+        const fits = (x, y) => {
+            if (x - radius < room.x || x + radius > room.x + room.w ||
+                y - radius < room.y || y + radius > room.y + room.h) return false;
+            if (occupied.some(other => Math.hypot(x - other.x, y - other.y) < radius + other.radius + 2)) return false;
+            if (this.doorBlockers.some(blocker => circleOverlapsRect(x, y, radius, blocker))) return false;
+            const left = Math.floor((x - radius - room.x) / ts);
+            const right = Math.floor((x + radius - room.x) / ts);
+            const top = Math.floor((y - radius - room.y) / ts);
+            const bottom = Math.floor((y + radius - room.y) / ts);
+            for (let ty = top; ty <= bottom; ty++) for (let tx = left; tx <= right; tx++) {
+                const maskCell = room.template.mask[ty * room.tw + tx];
+                if (maskCell === 1) continue;
+                const rect = { x: room.x + tx * ts, y: room.y + ty * ts, w: ts, h: ts };
+                if (circleOverlapsRect(x, y, radius, rect)) return false;
+            }
+            return true;
+        };
+        for (const offset of MINION_SPAWN_OFFSETS) {
+            const x = originX + offset.x, y = originY + offset.y;
+            if (fits(x, y)) return { x, y };
+        }
+        return null;
+    }
+
     /**
      * Get enemies for a given room.
      * @param {Object} room
@@ -1117,32 +1154,36 @@ class DungeonMap {
             enemies.push(enemy);
             return enemy;
         };
-        // A marked cell represents one authored minion slot. Rooms without
-        // markers retain the legacy floor-scaled count until their templates
-        // are updated by the designer.
+        // Authored rooms use their name for the exact count and their magenta
+        // cells only as candidate positions. Legacy rooms keep their old count.
         const spawnMinionWave = (fallbackCount, chooseType) => {
-            const markedCells = room.template?.enemySpawns || [];
-            if (markedCells.length) {
+            if (room.template) {
+                const count = room.template.minionCount;
+                const available = shuffledCopy(room.template.enemySpawns || []);
                 const occupied = enemies.map(enemy => ({ x: enemy.x, y: enemy.y, radius: enemy.radius || 16 }));
-                for (const cell of shuffledCopy(markedCells)) {
-                    const targetX = room.x + (cell.x + 0.5) * this.tileSize;
-                    const targetY = room.y + (cell.y + 0.5) * this.tileSize;
-                    const clearOfEnemies = point => occupied.every(other =>
-                        Math.hypot(point.x - other.x, point.y - other.y) >= 16 + other.radius + 2);
-                    let point = null;
-                    if (this.canOccupy(targetX, targetY, 16)) {
-                        const target = { x: targetX, y: targetY };
-                        if (clearOfEnemies(target)) point = target;
+                if (!Number.isInteger(count) || available.length < count) {
+                    console.warn(`Plantilla ${room.template.path}: requiere ${count} casillas #FF00FF y tiene ${available.length}.`);
+                    return;
+                }
+                for (let slot = 0; slot < count; slot++) {
+                    const type = chooseType();
+                    if (!enemyTypeAllowedInRoom(type, room.type)) throw new Error(`Esbirro no permitido: ${type}`);
+                    const enemy = createEnemy(type, 0, 0);
+                    let chosen = -1, point = null;
+                    for (let i = 0; i < available.length; i++) {
+                        point = this.findMarkedMinionSpawn(room, available[i], enemy.radius, occupied);
+                        if (point) { chosen = i; break; }
                     }
-                    // Preserve one enemy per authored marker while moving an
-                    // invalid/overlapping marker to the nearest safe floor tile.
-                    if (!point) point = this.findFreeSpotNear(targetX, targetY, 16, occupied, 160, room);
-                    if (!point) {
-                        console.warn(`No se encontró espacio válido para un esbirro marcado en la sala ${room.type}.`);
-                        continue;
+                    if (chosen < 0) {
+                        console.warn(`Plantilla ${room.template.path}: solo ${slot} de ${count} esbirros caben sin colisión; revisa las casillas #FF00FF.`);
+                        break;
                     }
-                    const enemy = spawnCategorizedEnemy(chooseType(), point.x, point.y);
-                    occupied.push({ x: enemy.x, y: enemy.y, radius: enemy.radius || 16 });
+                    enemy.x = point.x;
+                    enemy.y = point.y;
+                    enemy.spawnMarker = available[chosen];
+                    available.splice(chosen, 1);
+                    enemies.push(enemy);
+                    occupied.push({ x: point.x, y: point.y, radius: enemy.radius });
                 }
                 return;
             }
@@ -1168,7 +1209,7 @@ class DungeonMap {
                 // existing weighted mix without admitting minibosses here.
                 if (enemyCategoriesForRoom(room.type).includes(ENEMY_CATEGORY.MINIONS)) {
                     const count = 2 + Math.floor(Math.random() * 3) + extra;
-                    spawnMinionWave(count, () => randomEnemyType(ENEMY_CATEGORY.MINIONS));
+                    spawnMinionWave(count, () => randomEnemyType(ENEMY_CATEGORY.MINIONS, floor));
                 }
                 break;
             }
@@ -1200,7 +1241,7 @@ class DungeonMap {
                 }
                 if (categories.includes(ENEMY_CATEGORY.MINIONS)) {
                     const hCount = 4 + Math.floor(Math.random() * 3) + extra;
-                    spawnMinionWave(hCount, hardEnemyType);
+                    spawnMinionWave(hCount, () => hardEnemyType(floor));
                 }
                 break;
             }

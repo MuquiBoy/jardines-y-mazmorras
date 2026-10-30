@@ -1,14 +1,14 @@
 JARDINES Y MAZMORRAS — CÓDIGOS DE COLOR Y APARICIÓN EN PLANTILLAS
-Revisión de los assets y del código generador: 29/10/2026
+Revisión de los assets y del código generador: 30/10/2026
 
 RESUMEN DEL INVENTARIO ACTUAL
 
-Se revisaron las 22 plantillas PNG que están registradas en
+Se revisaron las 18 plantillas PNG que están registradas en
 assets/plantillas-salas/manifest.json:
 - entry: 1
 - hub: 4
-- combat: 8
-- combat-hard: 6
+- combat: 6
+- combat-hard: 4
 - treasure: 2
 - boss: 1
 
@@ -17,14 +17,11 @@ plantillas actuales se encontraron estos valores en esos píxeles centrales:
 - #00FF00 — suelo transitable.
 - #FFFF00 — puerta.
 - #0000FF — obstáculo o límite sólido.
-- Transparencia (alfa 0) — sólido; presente en algunas casillas de:
-  - combat/sala media_forma i_combat.png
-  - hub/pasillo l_hub.png
-  - hub/pasillo tuberia_hub.png
+- #FF00FF — punto candidato de aparición de esbirro en las 10 salas de combate.
+- Transparencia (alfa 0) — sólido cuando aparece en una casilla.
 
-Los marcadores #00FFFF y #FF00FF no aparecen en ninguna de las 22 plantillas
-actuales. #FF0000 tampoco aparece como color de casilla. Están descritos abajo
-porque el lector permite usarlos (o les aplica la regla general de sólido).
+#00FFFF es un marcador opcional de aparición del jugador. #FF0000 y otros
+colores opacos no reconocidos se interpretan como sólido.
 
 TABLA DE CÓDIGOS QUE INTERPRETA EL LECTOR
 
@@ -33,7 +30,7 @@ COLOR RGB   MÁSCARA   INTERPRETACIÓN
 #FFFF00     2         Puerta transitable cuando está abierta.
 #0000FF     3 / 0     Obstáculo interior / muro conectado al borde exterior.
 #00FFFF     1         Suelo y marcador candidato de aparición del jugador.
-#FF00FF     1         Suelo y una casilla de aparición de esbirro.
+#FF00FF     1         Suelo y posición candidata de aparición de esbirro.
 Alfa 0      0         Sólido; no transitable.
 Otro RGB    0         Sólido; incluye #FF0000, sin tratamiento especial propio.
 
@@ -65,29 +62,32 @@ se ordena por cercanía al centro de la sala; por ello no garantiza que el
 jugador aparezca exactamente allí. Si no hay marcador válido, se usa una
 loseta transitable segura cercana al centro.
 
-#FF00FF — CASILLA DE APARICIÓN DE ESBIRRO
-Se convierte en suelo normal y marca un punto de aparición para un esbirro.
-Cada casilla magenta genera un esbirro; por lo tanto, el número de casillas
-determina la cantidad exacta de esbirros de esa sala. El tipo de cada uno se
-elige al azar del catálogo permitido para la sala. En `combat-hard`, los
-marcadores determinan solo los esbirros y se añade además el mini-jefe único.
+#FF00FF — POSICIÓN CANDIDATA DE APARICIÓN DE ESBIRRO
+Se convierte en suelo normal y se guarda como casilla candidata. El nombre de
+la plantilla, no el número de casillas magenta, fija la cantidad: sala pequeña
+= 3, sala mediana/media = 4 y sala gigante = 5. En particular,
+"sala gigante_3 puertas_combat.png" genera 5 esbirros. Cada esbirro elige una
+casilla disponible al azar; la casilla se retira y no puede alojar a otro.
+Las casillas sobrantes no producen enemigos. El tipo de esbirro se sortea de
+forma independiente según los pesos configurados para el piso. En combat-hard
+se añade además un único mini-jefe con sus propias reglas de ubicación.
 
-El centro de cada casilla es el punto de aparición. El juego verifica que el
-cuerpo pueda caber allí y no se superponga con otros enemigos. Si una marca no
-es segura por su cercanía a un muro u otro enemigo, ese esbirro se desplaza a la
-casilla transitable segura más cercana. Al rotar una plantilla, también rotan
-sus puntos marcados.
+El centro de la casilla es la posición preferida. Si su hitbox completa no
+cabe o se superpone con otro enemigo, se prueba un ajuste de hasta 16 px
+dentro de la misma casilla; después se intenta otra casilla sin usar. Una
+casilla no se duplica ni se sustituye por una posición lejana. Al rotar una
+plantilla, también rotan sus puntos marcados. Las marcas no se ven como color
+magenta durante la partida.
 
-Mientras una sala aún no tenga casillas magenta, conserva temporalmente la
-cantidad aleatoria anterior de esbirros (incluidos los ajustes por piso). En
-cuanto se añadan marcadores, estos reemplazan esa cantidad aleatoria: no se
-añaden oleadas extra sin marcar.
+Se exigen al menos 3, 4 o 5 casillas magenta interiores utilizables según el
+nombre. Una plantilla que no cumpla se omite con un diagnóstico que indica su
+nombre y la cantidad de casillas encontradas.
+
 #FF0000 Y OTROS COLORES — SÓLIDO POR REGLA GENERAL
 No hay una condición especial para el rojo en el lector. Cualquier RGB opaco
 que no sea uno de los códigos específicos anteriores cae en la regla
 predeterminada de máscara 0 y queda sólido. Puede usarse para dibujar paredes,
-pero no se conserva como textura. No se detectó #FF0000 en las casillas
-centrales de las plantillas actuales.
+pero no se conserva como textura.
 
 TRANSPARENCIA
 Si el píxel central de la loseta tiene alfa 0, se asigna máscara 0: es sólido,
@@ -95,13 +95,11 @@ igual que una pared. No uses transparencia para indicar suelo.
 
 DÓNDE APARECEN LOS ENEMIGOS SEGÚN EL MAPA
 
-La plantilla determina las áreas transitables y los puntos y cantidad de
-esbirros; el tipo de sala determina qué grupos pueden generarse:
+La plantilla determina las áreas transitables y los puntos candidatos; su
+nombre determina la cantidad de esbirros. El tipo de sala define los grupos:
 - entry e hub: salas seguras, sin enemigos.
-- combat: esbirros; cada casilla #FF00FF genera uno. Sin marcadores se conserva
-  temporalmente la generación aleatoria anterior.
-- combat-hard: esbirros más un único mini-jefe. Cada casilla #FF00FF genera un
-  esbirro; el mini-jefe se coloca usando sus propias reglas de espacio.
+- combat: esbirros elegidos en casillas #FF00FF sin repetir casilla.
+- combat-hard: esbirros con la misma regla más un único mini-jefe.
 - treasure: sin enemigos.
 - boss: el jefe intenta aparecer en el centro de la sala; si no cabe, el motor
   busca otra posición segura.
@@ -121,7 +119,11 @@ FORMATO Y VALIDACIÓN
   y RGB exactos, sin suavizado ni bordes antialias.
 - Las puertas deben ser pares contiguos de dos losetas sobre el borde.
 - Las zonas de suelo y las puertas deben estar conectadas entre sí.
-- La carpeta define el tipo de sala. El nombre del archivo no cambia el tipo.
+- La carpeta define el tipo de sala. El prefijo del nombre determina 3, 4 o 5
+  esbirros en combat/combat-hard; el número y sufijo posteriores no influyen.
+- Los enemigos se eligen y preparan durante la pantalla de carga de cada piso
+  junto con ambas pools de objetos. Permanecen inactivos hasta entrar por
+  primera vez en su sala, con 0,6 s de aviso antes del combate.
 - Las plantillas se rotan en pasos de 90 grados; no se recortan ni se les
   inventan puertas.
 

@@ -1,3 +1,13 @@
+function minionCountFromTemplateName(type, templatePath) {
+    if (type !== 'combat' && type !== 'combat-hard') return null;
+    const name = templatePath.split('/').pop().replace(/\.png$/i, '').normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const size = /^sala[\s_-]+(pequena|media|mediana|gigante)(?=[\s_-]|$)/.exec(name)?.[1];
+    const count = { pequena: 3, media: 4, mediana: 4, gigante: 5 }[size];
+    if (!count) throw new Error('nombre sin categoría: usa sala pequeña, mediana o gigante');
+    return count;
+}
+
 /**
  * Reads designer-authored room masks. The Node server discovers files from
  * their category folders, so adding/removing a PNG needs no code or manifest
@@ -158,6 +168,12 @@ class RoomTemplateLibrary {
             else mask[i] = 0;
         }
         markExteriorBlue(mask, width, height);
+        const minionCount = minionCountFromTemplateName(type, path);
+        const validEnemySpawns = enemySpawns.filter(cell => cell.x > 0 && cell.y > 0 &&
+            cell.x < width - 1 && cell.y < height - 1);
+        if (minionCount !== null && validEnemySpawns.length < minionCount) {
+            throw new Error(`requiere ${minionCount} casillas #FF00FF interiores; tiene ${validEnemySpawns.length} utilizables (${enemySpawns.length} detectadas)`);
+        }
         const doors = collectDoors(mask, width, height);
         validateDoorWidths(doors);
         const reachable = collectReachable(mask, width, height);
@@ -171,7 +187,7 @@ class RoomTemplateLibrary {
         const walkableTotal = mask.reduce((total, cell) => total + (cell === 1 || cell === 2 ? 1 : 0), 0);
         if (reachable !== walkableTotal) throw new Error('contiene suelo o puertas aislados');
         return { id: path, path, type, widthTiles: width, heightTiles: height, mask, doors,
-            walkableCells, enemySpawns, playerSpawn, doorCells };
+            walkableCells, enemySpawns: validEnemySpawns, minionCount, playerSpawn, doorCells };
     }
 
     static getById(id) {
