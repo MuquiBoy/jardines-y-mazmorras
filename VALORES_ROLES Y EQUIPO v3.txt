@@ -1,7 +1,7 @@
 JARDINES Y MAZMORRAS
 VALORES DE ROLES Y EQUIPO — VERSIÓN 3
 
-Archivo histórico de balance. Los valores vigentes se encuentran en VALORES_ROLES Y EQUIPO v4.txt. Las conversiones usan 60 frames por segundo.
+Archivo de balance con algunos valores históricos. Los valores vigentes se encuentran en VALORES_ROLES Y EQUIPO v5.txt. La ficha de Bastión se actualizó para quitar cifras obsoletas. Las conversiones usan 60 frames por segundo.
 
 ROL          VELOCIDAD      CADENCIA                         DAÑO                     VIDA
 Pistolero    5,0 px/frame   18 frames (0,30 s)              12 por proyectil         36 HP
@@ -9,7 +9,7 @@ Tirador      3,0 px/frame   126 frames (2,10 s)             32 por proyectil    
 Perdigonero  3,8 px/frame   66 frames (1,10 s)              6 por perdigón           38 HP
 Invocador    3,4 px/frame   32 frames (0,53 s)             2 por ataque invocado    38 HP
 Piromano     5,0 px/frame   72 frames (1,20 s)              6 por proyectil         32 HP
-Bastión      2,8 px/frame   7 frames (0,12 s)               4 por proyectil         150 HP
+Bastión      2,13 px/frame (0,85)  9 frames (0,15 s)        2 por proyectil         36 HP rojos + 12 HP grises
 
 MUNICIÓN Y RECARGA
 Las recargas se convierten de segundos a frames y se redondean al frame entero más cercano.
@@ -20,7 +20,7 @@ Tirador      3 proyectiles           198 frames (3,30 s)
 Perdigonero  5 cartuchos             128 frames (2,13 s)
 Invocador    6 despliegues           272 frames (4,53 s)
 Piromano     7 cartuchos             142 frames (2,37 s)
-Bastión      100 proyectiles         420 frames (7,00 s)
+Bastión      35 proyectiles          300 frames (5,00 s)
 
 UNIDAD INVOCADA DEL INVOCADOR
 Se documenta como unidad independiente porque tiene atributos propios de combate.
@@ -33,7 +33,7 @@ Límite: el Invocador solo puede desplegar 6 unidades por cargador y tener hasta
 MECÁNICAS Y PASIVAS
 - Perdigonero: dispara 5 perdigones por cartucho; cada perdigón causa 6 de daño.
 - Piromano: cada impacto causa 6 de daño y aplica quemadura de 2 de daño cada 24 frames (0,40 s), durante 144 frames (2,40 s).
-- Bastión — Torreta: mientras mantiene el disparo, queda inmóvil; puede moverse al dejar de disparar.
+- Bastión — Torreta: mientras mantiene el disparo, se mueve a 0,60 × la velocidad universal (1,5 px/frame). Al dejar de disparar recupera la velocidad correspondiente a su forma: 0,85 × con corazón gris y 1,00 × sin él.
 - Invocador — Despliegues limitados: solo tiene 6 invocaciones por cargador y un máximo de 6 unidades activas; si el límite activo está ocupado, el despliegue nuevo sustituye a la unidad más antigua.
 
 CONVERSIÓN
