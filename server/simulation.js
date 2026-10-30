@@ -35,7 +35,7 @@ for (const file of [
 ]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, EsbirroTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, EsbirroTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, circleCollision, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 // Co-op room-clear revive tuning. The server remains authoritative.
@@ -390,18 +390,13 @@ function stepRun(run, inputs) {
     for (let i = 0; i < run.enemyBullets.length; i++) {
         const bullet = run.enemyBullets[i];
         bullet.x += bullet.vx; bullet.y += bullet.vy;
-        if (bullet.ignoreFrames > 0) bullet.ignoreFrames--;
         let keep = run.map.isWalkable(bullet.x, bullet.y);
         if (keep) {
             const target = targets.find(p => p.alive !== false && p.health > 0 &&
-                !(p.id === bullet.ignorePlayerId && bullet.ignoreFrames > 0) &&
                 Engine.circleCollision(bullet.x, bullet.y, bullet.radius, p.x, p.y, p.radius));
             if (target) {
-                const ricochetChance = target.enemyProjectileRicochetChance ?? 0;
-                const damageMultiplier = target.incomingDamageMultiplier ?? 1;
-                target.takeDamage(bullet.damage * damageMultiplier);
-                keep = ricochetChance > 0 && Math.random() < ricochetChance;
-                if (keep) Engine.ricochetEnemyBulletTowardParty(bullet, target, players);
+                target.takeDamage(bullet.damage);
+                keep = false;
             }
         }
         keep = keep && bullet.x > -50 && bullet.x < run.map.width + 50 &&
@@ -458,7 +453,7 @@ function mapState(map) {
 }
 
 function playerState(player) {
-    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','maxGrayHealth','grayHealth','speed','bastionForm','bastionTransformEvent','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','aimPointerDistance','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','sniperAiming','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
+    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','maxGrayHealth','grayHealth','speed','bastionForm','bastionTransformEvent','damage','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','aimPointerDistance','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','sniperAiming','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
 }
 function enemyState(enemy) {
     const base = ['id','type','roomIndex','x','y','health','maxHealth','speed','movementSpeedMultiplier','damage','radius','color','xpValue','shootCooldown','shootTimer','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse','corner','anchorX','anchorY','beamEndX','beamEndY','targetId'];
