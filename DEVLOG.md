@@ -185,5 +185,5 @@ Bastión      10,8 HP/s
 - Bastión conserva 36 HP rojos y empieza cada piso con 12 HP grises. En la forma Calabaza blindada se mueve a 0,85 × la velocidad universal; al agotarse los 12 HP grises pasa a `bastion-debil` y a 1,00 × la velocidad universal hasta terminar el piso.
 - La transformación usa la animación `bastion-debil_walk.aseprite` y muestra una ráfaga de 8 partículas naranjas sobre el personaje. En cooperativo, el servidor sincroniza la forma, el evento de transformación, la vida gris y la velocidad.
 - En la transición de piso se restaura el corazón gris y Bastión vuelve a Calabaza blindada. La vida roja no se cura ni se modifica por esta reposición.
-- Se retiraron del rol Bastión la reducción de daño y el rebote de proyectiles; sus ataques ahora aplican daño normal.
+- Se retiró por completo la reducción de daño y el rebote: Bastión recibe el daño total, y los proyectiles enemigos se eliminan al impactar. También se quitó la lógica exclusiva del cliente/servidor y el helper antiguo de rebote.
 - Se actualizó la ficha v4 para describir la velocidad y las reglas de ambas formas. No se ejecutaron pruebas ni se alteraron estadísticas de otros roles.
