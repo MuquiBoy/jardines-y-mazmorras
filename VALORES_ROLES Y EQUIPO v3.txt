@@ -1,7 +1,7 @@
 JARDINES Y MAZMORRAS
 VALORES DE ROLES Y EQUIPO — VERSIÓN 3
 
-Archivo de balance con algunos valores históricos. Los valores vigentes se encuentran en VALORES_ROLES Y EQUIPO v5.txt. La ficha de Bastión se actualizó para quitar cifras obsoletas. Las conversiones usan 60 frames por segundo.
+Archivo con cifras históricas de balance. La fila y la pasiva de Bastión reflejan el ajuste vigente; los demás roles conservan los valores de la versión 3. Las conversiones usan 60 frames por segundo.
 
 ROL          VELOCIDAD      CADENCIA                         DAÑO                     VIDA
 Pistolero    5,0 px/frame   18 frames (0,30 s)              12 por proyectil         36 HP
