@@ -146,3 +146,12 @@
 - El marcador de apuntado usa `00-sprites/puntero-jugador/puntero-jugador.png`, dibujado con nearest-neighbor a dos losetas del jugador (80 px de mundo, considerando losetas de 40 × 40). Si el PNG tarda en cargar o falta, queda un marcador de color como respaldo.
 - Se conserva el vector de apuntado existente para disparos y mensajes cooperativos; el retículo es solo visual y también se dibuja para los compañeros vivos que aparecen en pantalla.
 - `Esc` alterna pantalla completa en el cliente. En pantalla completa se oculta el cursor del sistema y permanece visible el puntero del juego; al salir, el navegador vuelve a mostrar el cursor. El cambio no envía comandos ni modifica el estado de red o de espectador.
+
+## 2026-10-30 — Retirada de Cochinilla Perforamuros y criterio para esbirros
+
+- Se retiró la clase de prueba Cochinilla Perforamuros, sus hooks exclusivos, la fila de estadísticas obsoleta, la referencia en el test de constructores y sus tres sprites. Se mantuvo el audio compartido que todavía utiliza Cochinilla Esquinero.
+- La ficha de esbirros ahora establece que cada esbirro nuevo debe presionar mediante un patrón de movimiento reconocible y que sus ataques deben complementar ese movimiento.
+- Estado del catálogo: 4 IDs de esbirro registrados, pero Esbirro Tirador es un clon temporal de Mosca Tirador; son 3 patrones de conducta distintos. Faltan 6 diseños para llegar a 10. No se inventaron conceptos de enemigos.
+- El parser reconoce una casilla magenta exacta (#FF00FF) como un punto de aparición; en combat y combat-hard se selecciona al azar un esbirro por cada casilla marcada. Si el punto no cabe o se superpone, busca suelo libre cercano. Las plantillas sin casillas marcadas todavía usan las cantidades de respaldo heredadas.
+- El catálogo actual registra dos mini-jefes (Cochinilla Esquinero y Babosa Persecución); el encuentro boss sigue usando BossEnemy genérico. El roster jugable mantiene seis roles y requiere continuar su balance con pruebas de juego.
+- Verificación de esta limpieza: node --check pasó para js/enemy.js y js/game.js, y la búsqueda del nombre retirado no encontró referencias en el proyecto local. No se ejecutó una sesión de juego completa.
