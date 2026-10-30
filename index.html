@@ -1,3 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Jardines y Mazmorras — Roguelite cooperativo</title>
+    <meta name="description" content="Explora Jardines y Mazmorras, un roguelite cooperativo de fantasía y acción en pixel art.">
+    <meta name="theme-color" content="#091708">
+
+    <!-- Social preview -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Jardines y Mazmorras — Roguelite cooperativo">
+    <meta property="og:description" content="Explora una mazmorra viva, elige tu rol y sobrevive a una expedición cooperativa.">
+    <meta name="twitter:card" content="summary">
+
+    <!-- Inline SVG favicon: the player dot on the game's background -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23091708'/%3E%3Cpath d='M16 27C4 20 8 5 16 4c8 1 12 16 0 23Z' fill='%2373ff00' stroke='%23d6ff00' stroke-width='2'/%3E%3Cpath d='M16 7v17' stroke='%231b4d10' stroke-width='2'/%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bungee&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=keyboard-fullscreen-recovery-v1">
+</head>
+<body>
+    <canvas id="game" tabindex="-1" aria-label="Jardines y Mazmorras"></canvas>
+    <div id="net-game-status" class="net-game-status">Conectado</div>
+
+    <!-- Startup cover shown while templates and the enemy projectile pool are prepared. -->
+    <div id="loading-screen" class="loading-screen hidden" role="status" aria-live="polite" aria-busy="true">
+        <div class="loading-card">
+            <h1>JARDINES Y MAZMORRAS</h1>
+            <div class="loading-spinner" aria-hidden="true"><i></i><i></i><i></i></div>
+            <p id="loading-message">Preparando mazmorra…</p>
+            <p id="loading-error" class="loading-error hidden"></p>
+            <button id="loading-retry" class="btn hidden" type="button">Reintentar</button>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen active">
+        <section class="start-menu" aria-label="Menú de inicio">
+            <p class="subtitle">Una expedición de fantasía en 16 bits</p>
+            <button id="start-btn" class="btn">Iniciar expedición</button>
+            <p class="build-marker">DEMO COOPERATIVA · VERSIÓN DE PRUEBA</p>
+            <div class="controls-info">
+                <p><strong>WASD</strong> — Moverse</p>
+                <p><strong>Ratón</strong> — Apuntar</p>
+                <p><strong>Clic</strong> — Disparar</p>
+                <p><strong>R</strong> — Recargar</p>
+                <p><strong>Espacio</strong> — Pausar</p>
+                <p><strong>Esc</strong> — Pantalla completa</p>
+                <p><strong>M</strong> — Silenciar</p>
+            </div>
+        </section>
+        <figure class="start-cover">
+            <img src="00-sprites/portada/portada-retro-640x360.png" width="640" height="360" alt="" draggable="false">
+            <h1 class="cover-title" aria-label="Jardines y Mazmorras">
+                <span>JARDINES</span>
+                <span class="cover-title-second">Y MAZMORRAS</span>
+            </h1>
+        </figure>
+    </div>
+    <!-- HUD Overlay -->
+    <div id="hud" class="hud hidden">
+        <div class="hud-left">
+            <div class="bar-container">
+                <div class="bar-label">HP</div>
+                <div id="hp-hearts" class="hp-hearts" role="img" aria-label="Vida"></div>
+                <span id="hp-text" class="bar-text">100 / 100</span>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label">XP</div>
+                <div class="bar-track">
+                    <div id="xp-bar" class="bar bar-xp"></div>
+                </div>
+                <span id="xp-text" class="bar-text">Lv 1 — 0 / 50</span>
+            </div>
+            <div id="ammo-text" class="stats-display">CARGADOR 15 / 15</div>
+            <div id="stats-display" class="stats-display">
+                DMG: 10 | SPD: 3.0 | BULLETS: 1
+            </div>
+        </div>
+        <div class="hud-right">
+            <canvas id="minimap" width="150" height="150"></canvas>
+        </div>
+    </div>
+
+    <!-- Level Up Screen -->
+    <div id="levelup-screen" class="screen hidden">
+        <h2 class="levelup-title">LEVEL UP!</h2>
+        <p class="levelup-subtitle">Choose an upgrade</p>
+        <div id="upgrade-cards" class="upgrade-cards">
+            <!-- Cards injected by JS -->
+        </div>
+        <button id="confirm-upgrade" class="btn hidden">Confirm</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="screen hidden">
+        <h2 class="gameover-title">GAME OVER</h2>
+        <div class="gameover-stats">
+            <p>Floor Reached: <span id="go-floor">1</span></p>
+            <p>Level Reached: <span id="go-level">1</span></p>
+            <p>Rooms Cleared: <span id="go-rooms">0</span></p>
+            <p>Enemies Defeated: <span id="go-enemies">0</span></p>
+        </div>
+        <button id="restart-btn" class="btn">Restart</button>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pause-overlay" class="screen hidden">
+        <h2 class="pause-title">PAUSED</h2>
+        <button id="resume-btn" class="btn">Resume</button>
+    </div>
+
+    <!-- Touch layer: only shown on touch devices, see main.js -->
+    <div id="touch-layer" class="touch-layer hidden">
+        <div id="stick-move" class="stick"><div class="stick-knob"></div></div>
+        <div id="stick-aim" class="stick stick-fire"><div class="stick-knob"></div></div>
+    </div>
+    <button id="touch-pause" class="touch-pause hidden" aria-label="Pause">II</button>
+    <button id="touch-reload" class="touch-reload hidden" aria-label="Recargar">R</button>
+    <button id="mute-btn" class="mute-btn" type="button" aria-label="Silenciar sonido" aria-pressed="false">SND</button>
+
+    <!-- Portrait gate: twin-stick needs the width -->
+    <div id="rotate-gate" class="rotate-gate">
+        <div class="rotate-icon">◱</div>
+        <p class="rotate-text">Rotate your device</p>
+        <p class="rotate-sub">Landscape only</p>
+    </div>
+
+    <script src="js/palette.js?v=aim-pointer-radial-v1"></script>
+    <script src="js/camera.js?v=spectator-camera-v1"></script>
+    <script src="js/audio.js?v=music-ambience-volume-v2"></script>
+    <script src="js/characters/roles.js?v=gray-hearts-v1"></script>
+    <script src="js/player.js?v=gray-hearts-v1"></script>
     <script src="js/bullet.js?v=map-collision-v1"></script>
     <script src="js/enemy-projectile-pool.js?v=enemy-projectile-animation-v1"></script>
     <script src="js/enemy.js?v=enemy-projectile-animation-v1"></script>
@@ -14,3 +151,9 @@
     <script src="js/upgrades.js?v=gray-hearts-v1"></script>
     <script src="js/game.js?v=gray-hearts-v1"></script>
     <script src="js/touch.js?v=abyss-v2"></script>
+    <script src="js/coop-game.js?v=aim-pointer-radial-v1"></script>
+    <script src="js/coop-lobby.js?v=gray-hearts-v1"></script>
+    <script src="js/main.js?v=keyboard-fullscreen-recovery-v1"></script>
+</body>
+</html>
+
