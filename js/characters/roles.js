@@ -42,9 +42,9 @@ class CharacterRole {
         player.range = this.range;
         player.burn = this.burn || null;
         player.summon = this.summon || null;
-        player.incomingDamageMultiplier = this.incomingDamageMultiplier ?? 1;
-        player.enemyProjectileRicochetChance = this.enemyProjectileRicochetChance ?? 0;
         player.turretActive = false;
+        player.bastionForm = this.id === 'bastion' ? 'armored' : null;
+        if (this.id === 'bastion') player.updateBastionForm(true);
     }
 }
 
@@ -60,7 +60,7 @@ const CHARACTER_ROLES = Object.freeze({
     perdigonero: new CharacterRole({ id: 'perdigonero', name: 'Perdigonero', color: '#f044b5', health: 36, grayHearts: 0, movementSpeed: 1.00, damage: 6, fireRate: 66, bulletSpeed: 3.5, magazine: 5, reloadFrames: 128, range: 270, spread: 0.58, pelletCount: 5, collisionRadius: 12, visualScale: 1, weaponKind: 'shotgun', sprite: 'perdigonero' }),
     invocador: new CharacterRole({ id: 'invocador', name: 'Invocador', color: '#ae64e8', health: 36, grayHearts: 0, movementSpeed: 1.00, damage: 2, fireRate: 32, bulletSpeed: 0, magazine: 6, reloadFrames: 272, range: 0, spread: 0, collisionRadius: 12, visualScale: 32 / 24, weaponKind: 'summoner', sprite: 'invocador', summon: { health: 28, speed: 1.9, damage: 2, attackRate: 32, lifetime: 900, radius: 9, maxActive: 6, color: '#ae64e8' } }),
     piromano: new CharacterRole({ id: 'piromano', name: 'Piromano', color: '#ff453a', health: 24, grayHearts: 0, movementSpeed: 1.00, damage: 6, fireRate: 72, bulletSpeed: 3.5, magazine: 7, reloadFrames: 142, range: 235, spread: 0.07, collisionRadius: 12, visualScale: 1, weaponKind: 'fire', sprite: 'piromano', burn: { damage: 2, interval: 24, duration: 144 } }),
-    bastion: new CharacterRole({ id: 'bastion', name: 'Bastión', color: '#ff951f', health: 48, grayHearts: 0, movementSpeed: 1.00, damage: 2, fireRate: 7, bulletSpeed: 3.75, magazine: 100, reloadFrames: 420, range: 480, spread: 0.30, collisionRadius: 17, visualScale: 40 / 24, incomingDamageMultiplier: 0.75, enemyProjectileRicochetChance: 0.5, weaponKind: 'turret', sprite: 'bastion' })
+    bastion: new CharacterRole({ id: 'bastion', name: 'Bastión', color: '#ff951f', health: 36, grayHearts: 1, movementSpeed: 0.85, depletedMovementSpeed: 1.00, depletedSprite: 'bastion-debil', damage: 2, fireRate: 7, bulletSpeed: 3.75, magazine: 100, reloadFrames: 420, range: 480, spread: 0.30, collisionRadius: 17, visualScale: 40 / 24, weaponKind: 'turret', sprite: 'bastion' })
 });
 
 class SummonedUnit {
@@ -117,4 +117,3 @@ class SummonedUnit {
         return null;
     }
 }
-
