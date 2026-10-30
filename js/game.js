@@ -559,16 +559,8 @@ class Game {
             }
             const event = typeof updateResult === 'string' ? updateResult : null;
             const bullets = Array.isArray(updateResult) ? updateResult : null;
-            if (enemy instanceof CochinillaPerforamuros) {
-                if (event === 'warning') this.audio.cochinillaCharge();
-            }
             if (enemy instanceof CochinillaEsquinero) {
                 if (event === 'warning') this.audio.cochinillaCharge();
-            }
-            if (enemy instanceof CochinillaPerforamuros && enemy.touchesBeam && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
-                const dmg = enemy.laserDamagePerTick || 6;
-                this.player.takeDamage(dmg);
-                this.damageFlash = Math.max(this.damageFlash, 2);
             }
             if (enemy instanceof CochinillaEsquinero && enemy.touchesBeam && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
                 // Universal rule: a laser tick is 6 HP, once per simulation tick.
@@ -584,7 +576,7 @@ class Game {
             }
         }
         this.audio.setCochinillaBeam(this.enemies.some(enemy =>
-            enemy.alive && ((enemy instanceof CochinillaPerforamuros && enemy.phase === 'beam') || (enemy instanceof CochinillaEsquinero && enemy.phase === 'active'))));
+            enemy.alive && enemy instanceof CochinillaEsquinero && enemy.phase === 'active'));
         if (burnSound) this.audio.burnTick();
         // Update player bullets
         this.updatePlayerBullets();

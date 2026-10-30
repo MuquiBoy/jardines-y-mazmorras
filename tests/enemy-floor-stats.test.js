@@ -103,7 +103,7 @@ test('all enemy movement follows the shared universal player speed reference', (
         }
         return vm.runInContext(`(() => {
             const types = [BasicEnemy, MoscaTirador, SpiralEnemy, BossEnemy,
-                CochinillaEsquinero, BabosaPersecucion, CochinillaPerforamuros];
+                CochinillaEsquinero, BabosaPersecucion];
             return types.map(Type => new Type(0, 0));
         })()`, context);
     }

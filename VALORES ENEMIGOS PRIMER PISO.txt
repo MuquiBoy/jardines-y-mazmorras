@@ -13,9 +13,8 @@ Mini-jefe             Vida     Velocidad                 Ataque
 Cochinilla Esquinero  100 HP   0,00 (0 px/frame)         Espera 180 f; aviso 120 f; rayo 300 f; recuperación 300 f.
 Babosa Persecución    500 HP   0,70 (1,75 px/frame)      Contacto: 12 HP por choque nuevo.
 
-OTROS ENEMIGOS
+JEFE
 Enemigo                  Vida     Velocidad                 Cadencia/patrón
-Cochinilla Perforamuros  36 HP    0,22 (0,55 px/frame)      Espera aleatoria 180–420 f; aviso 54 f; rayo 180 f; recuperación 120 f.
 Jefe                     500 HP   0,16 (0,40 px/frame)      Un ataque cada 30 f; cambia de patrón cada 100 f.
 
 PROYECTILES Y DAÑO
