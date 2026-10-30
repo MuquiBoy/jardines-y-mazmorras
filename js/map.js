@@ -1113,7 +1113,44 @@ class DungeonMap {
             if (!enemyTypeAllowedInRoom(type, room.type)) {
                 throw new Error('Enemy type ' + type + ' is not allowed in room category ' + room.type + '.');
             }
-            enemies.push(createEnemy(type, x, y, ...args));
+            const enemy = createEnemy(type, x, y, ...args);
+            enemies.push(enemy);
+            return enemy;
+        };
+        // A marked cell represents one authored minion slot. Rooms without
+        // markers retain the legacy floor-scaled count until their templates
+        // are updated by the designer.
+        const spawnMinionWave = (fallbackCount, chooseType) => {
+            const markedCells = room.template?.enemySpawns || [];
+            if (markedCells.length) {
+                const occupied = enemies.map(enemy => ({ x: enemy.x, y: enemy.y, radius: enemy.radius || 16 }));
+                for (const cell of shuffledCopy(markedCells)) {
+                    const targetX = room.x + (cell.x + 0.5) * this.tileSize;
+                    const targetY = room.y + (cell.y + 0.5) * this.tileSize;
+                    const clearOfEnemies = point => occupied.every(other =>
+                        Math.hypot(point.x - other.x, point.y - other.y) >= 16 + other.radius + 2);
+                    let point = null;
+                    if (this.canOccupy(targetX, targetY, 16)) {
+                        const target = { x: targetX, y: targetY };
+                        if (clearOfEnemies(target)) point = target;
+                    }
+                    // Preserve one enemy per authored marker while moving an
+                    // invalid/overlapping marker to the nearest safe floor tile.
+                    if (!point) point = this.findFreeSpotNear(targetX, targetY, 16, occupied, 160, room);
+                    if (!point) {
+                        console.warn(`No se encontró espacio válido para un esbirro marcado en la sala ${room.type}.`);
+                        continue;
+                    }
+                    const enemy = spawnCategorizedEnemy(chooseType(), point.x, point.y);
+                    occupied.push({ x: enemy.x, y: enemy.y, radius: enemy.radius || 16 });
+                }
+                return;
+            }
+
+            for (let i = 0; i < fallbackCount; i++) {
+                const point = spawn();
+                spawnCategorizedEnemy(chooseType(), point.x, point.y);
+            }
         };
         // Higher floors can add enemies to rooms; each enemy's stats stay fixed.
         const extra = extraMinionsForFloor(floor);
@@ -1131,10 +1168,7 @@ class DungeonMap {
                 // existing weighted mix without admitting minibosses here.
                 if (enemyCategoriesForRoom(room.type).includes(ENEMY_CATEGORY.MINIONS)) {
                     const count = 2 + Math.floor(Math.random() * 3) + extra;
-                    for (let i = 0; i < count; i++) {
-                        const p = spawn();
-                        spawnCategorizedEnemy(randomEnemyType(ENEMY_CATEGORY.MINIONS), p.x, p.y);
-                    }
+                    spawnMinionWave(count, () => randomEnemyType(ENEMY_CATEGORY.MINIONS));
                 }
                 break;
             }
@@ -1166,10 +1200,7 @@ class DungeonMap {
                 }
                 if (categories.includes(ENEMY_CATEGORY.MINIONS)) {
                     const hCount = 4 + Math.floor(Math.random() * 3) + extra;
-                    for (let i = 0; i < hCount; i++) {
-                        const p = spawn();
-                        spawnCategorizedEnemy(hardEnemyType(), p.x, p.y);
-                    }
+                    spawnMinionWave(hCount, hardEnemyType);
                 }
                 break;
             }

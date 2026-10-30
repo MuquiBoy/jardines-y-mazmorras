@@ -33,7 +33,7 @@ COLOR RGB   MÁSCARA   INTERPRETACIÓN
 #FFFF00     2         Puerta transitable cuando está abierta.
 #0000FF     3 / 0     Obstáculo interior / muro conectado al borde exterior.
 #00FFFF     1         Suelo y marcador candidato de aparición del jugador.
-#FF00FF     1         Suelo y ubicación preferida para aparición de enemigos.
+#FF00FF     1         Suelo y una casilla de aparición de esbirro.
 Alfa 0      0         Sólido; no transitable.
 Otro RGB    0         Sólido; incluye #FF0000, sin tratamiento especial propio.
 
@@ -65,18 +65,23 @@ se ordena por cercanía al centro de la sala; por ello no garantiza que el
 jugador aparezca exactamente allí. Si no hay marcador válido, se usa una
 loseta transitable segura cercana al centro.
 
-#FF00FF — MARCADOR PREFERIDO DE ENEMIGOS (ADMITIDO, NO USADO ACTUALMENTE)
-Se convierte en suelo normal y añade una coordenada preferida a la lista de
-aparición de enemigos. Para enemigos comunes, el generador prueba primero esos
-puntos en orden aleatorio y luego cualquier loseta de suelo válida. Un punto
-se usa solo si el cuerpo cabe en la casilla y respeta la distancia mínima al
-jugador (normalmente 280 px, equivalentes a 7 losetas). Si ningún punto cumple,
-se busca otra loseta libre; el marcador no es una posición garantizada.
+#FF00FF — CASILLA DE APARICIÓN DE ESBIRRO
+Se convierte en suelo normal y marca un punto de aparición para un esbirro.
+Cada casilla magenta genera un esbirro; por lo tanto, el número de casillas
+determina la cantidad exacta de esbirros de esa sala. El tipo de cada uno se
+elige al azar del catálogo permitido para la sala. En `combat-hard`, los
+marcadores determinan solo los esbirros y se añade además el mini-jefe único.
 
-Los marcadores no se consumen ni reservan una loseta para un único enemigo.
-Si se desea repartir una oleada, conviene poner varios marcadores separados.
-Al rotar una plantilla, sus coordenadas de marcador también rotan.
+El centro de cada casilla es el punto de aparición. El juego verifica que el
+cuerpo pueda caber allí y no se superponga con otros enemigos. Si una marca no
+es segura por su cercanía a un muro u otro enemigo, ese esbirro se desplaza a la
+casilla transitable segura más cercana. Al rotar una plantilla, también rotan
+sus puntos marcados.
 
+Mientras una sala aún no tenga casillas magenta, conserva temporalmente la
+cantidad aleatoria anterior de esbirros (incluidos los ajustes por piso). En
+cuanto se añadan marcadores, estos reemplazan esa cantidad aleatoria: no se
+añaden oleadas extra sin marcar.
 #FF0000 Y OTROS COLORES — SÓLIDO POR REGLA GENERAL
 No hay una condición especial para el rojo en el lector. Cualquier RGB opaco
 que no sea uno de los códigos específicos anteriores cae en la regla
@@ -90,13 +95,13 @@ igual que una pared. No uses transparencia para indicar suelo.
 
 DÓNDE APARECEN LOS ENEMIGOS SEGÚN EL MAPA
 
-La plantilla determina las áreas transitables y puede sugerir puntos; el tipo
-de sala determina qué grupo de enemigos se genera:
+La plantilla determina las áreas transitables y los puntos y cantidad de
+esbirros; el tipo de sala determina qué grupos pueden generarse:
 - entry e hub: salas seguras, sin enemigos.
-- combat: esbirros; sus puntos preferidos son #FF00FF y, si no hay, el suelo
-  transitable adecuado.
-- combat-hard: esbirros más un único mini-jefe. Los esbirros usan la misma
-  selección de posiciones que en combat.
+- combat: esbirros; cada casilla #FF00FF genera uno. Sin marcadores se conserva
+  temporalmente la generación aleatoria anterior.
+- combat-hard: esbirros más un único mini-jefe. Cada casilla #FF00FF genera un
+  esbirro; el mini-jefe se coloca usando sus propias reglas de espacio.
 - treasure: sin enemigos.
 - boss: el jefe intenta aparecer en el centro de la sala; si no cabe, el motor
   busca otra posición segura.
