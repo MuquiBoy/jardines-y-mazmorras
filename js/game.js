@@ -319,6 +319,7 @@ class Game {
         // Create player at map center
         this.player = new Player(0, 0);
         this.player.setCharacter(characterId);
+        this._seenBastionTransformEvent = this.player.bastionTransformEvent || 0;
         if (this.testRoom) this.generateTestMap();
         else this.generateMap();
 
@@ -583,6 +584,7 @@ class Game {
 
         // Update enemy bullets
         this.updateEnemyBullets();
+        this.emitBastionTransformEffect();
 
         // Update XP orbs (may trigger level up → changes state)
         this.updateXPOrbs();
@@ -696,8 +698,8 @@ class Game {
                 continue;
             }
 
-            // Bastion absorbs part of the impact; some shots ricochet toward
-            // another party member and remain hostile enemy fire.
+            // Optional role modifiers stay neutral for Bastion: full damage,
+            // with no projectile ricochet passive.
             const ricochetChance = this.player.enemyProjectileRicochetChance ?? 0;
             const damageMultiplier = this.player.incomingDamageMultiplier ?? 1;
             const isProtectedFromThisBullet = bullet.ignorePlayerId === (this.player.id ?? 'local') && bullet.ignoreFrames > 0;
@@ -765,6 +767,15 @@ class Game {
             this.pendingLevelUps--;
             this.handleLevelUp();
         }
+    }
+
+    /** Show Bastion's orange death-burst exactly once when its gray heart empties. */
+    emitBastionTransformEffect() {
+        const player = this.player;
+        const event = player?.bastionTransformEvent || 0;
+        if (!player || event <= (this._seenBastionTransformEvent || 0)) return;
+        this._seenBastionTransformEvent = event;
+        this.spawnParticles(player.x, player.y, '#ff951f', 8);
     }
 
     /** Update particles. */
@@ -900,6 +911,7 @@ class Game {
                             this.ui.showLoading(`Preparando piso ${nextFloor}…`);
                             // Let the cover paint before preparing the next floor.
                             setTimeout(() => {
+                                this.player.restoreGrayHeartForNextFloor?.();
                                 this.floor = nextFloor;
                                 this.audio.descend();
                                 this.audio.nextTrack();
@@ -1223,4 +1235,3 @@ class Game {
         ctx.fillRect(0, 0, w, h);
     }
 }
-
