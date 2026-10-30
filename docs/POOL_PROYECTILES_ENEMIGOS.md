@@ -23,11 +23,11 @@ Se ejecutaron ocho simulaciones con dos jugadores en el mismo `Simulation` autor
 
 | Nivel de estadísticas | Encuentro y composición generada | Pico activo | Disparos emitidos / devueltos | Ampliaciones |
 |---:|---|---:|---:|---:|
-| 1 | Difícil: Cochinilla Esquinero, Básico y 3 moscas tiradoras | 8 | 37 / 34 | 0 |
+| 1 | Difícil: Cochinilla Esquinero, Esbirro Miedoso y 3 moscas tiradoras | 8 | 37 / 34 | 0 |
 | 1 | Jefe: Jefe | 73 | 161 / 88 | 0 |
-| 5 | Difícil: Cochinilla Esquinero, 3 Espirales y Básico | 61 | 263 / 220 | 0 |
+| 5 | Difícil: Cochinilla Esquinero, 3 Espirales y Esbirro Miedoso | 61 | 263 / 220 | 0 |
 | 5 | Jefe: Jefe | 78 | 199 / 130 | 0 |
-| 10 | Difícil: Cochinilla Esquinero, 3 Básicos, Espiral y Mosca Mosca Tirador | 29 | 189 / 167 | 0 |
+| 10 | Difícil: Cochinilla Esquinero, 3 Esbirros Miedosos, Espiral y Mosca Mosca Tirador | 29 | 189 / 167 | 0 |
 | 10 | Jefe: Jefe | 92 | 300 / 218 | 0 |
 | 15 | Difícil: Cochinilla Esquinero, Espiral y 4 moscas tiradoras | 52 | 242 / 199 | 0 |
 | 15 | Jefe: Jefe | 100 | 348 / 248 | 0 |

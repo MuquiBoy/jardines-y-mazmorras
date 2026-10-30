@@ -1,0 +1,68 @@
+JARDINES Y MAZMORRAS — FICHA DEL ESBIRRO MIEDOSO
+Estado actual del enemigo tras el cambio de nombre
+
+IDENTIDAD
+- Nombre clave y tipo de red: esbirro_miedoso.
+- Categoría: esbirro.
+- Conserva exactamente el comportamiento del antiguo enemigo perseguidor.
+  El nombre «Miedoso» todavía no implica huida ni cambio de inteligencia.
+
+ESTADÍSTICAS
+- Vida máxima: 30 HP.
+- Velocidad de movimiento: 0,70 de la velocidad universal del jugador.
+  Con 1,00 = 2,5 px/frame, equivale a 1,75 px/frame o 105 px/s a 60 FPS.
+  Si cambia la velocidad universal, su velocidad en píxeles cambia con ella.
+- Radio de colisión del cuerpo: 14 px. El dibujo actual usa un cuerpo de 28 px
+  más un contorno visual; el tamaño de dibujo no redefine la colisión.
+- Cadencia de disparo: 1 disparo cada 180 frames (3,00 s a 60 FPS).
+- Primer disparo: retraso aleatorio redondeado entre 108 y 216 frames
+  (aproximadamente 1,80 a 3,60 s); evita que una sala dispare al unísono.
+- Velocidad del proyectil: 1,5 px/frame (90 px/s a 60 FPS).
+- Daño real del proyectil estándar: 6 HP por impacto (medio corazón).
+  El campo interno damage = 10 permanece en el constructor, pero la creación
+  universal de proyectiles estándar fija el daño aplicado en 6 HP.
+- Proyectil: animación estándar enemiga de 10 × 10 px; hitbox circular de
+  4 px de radio. Un proyectil por ataque, sin perforación ni quemadura.
+- Rango del disparo: no existe un límite propio de distancia. El campo range
+  del proyectil es 0; este desaparece al impactar, tocar un muro o salir del
+  área del mapa. Su alcance práctico depende de la geometría de la sala.
+- Color interno del enemigo/proyectil: #FF4444.
+- Valor interno de experiencia: 10 XP, actualmente inactivo porque las
+  recompensas de experiencia por matar enemigos están deshabilitadas.
+
+PATRÓN DE COMPORTAMIENTO
+1. El encuentro se prepara al cargar el piso y permanece inactivo en su sala.
+   Al entrar el jugador, aparece la advertencia de generación durante 36
+   frames (0,60 s); después se activa junto con los demás enemigos.
+2. Cada paso de simulación recibe como objetivo la unidad viva más cercana.
+   En solitario puede ser el jugador o una invocación; en cooperativo también
+   considera a los otros jugadores vivos y sus invocaciones.
+3. Si no coincide con la posición del objetivo, intenta perseguirlo. Avanza
+   directamente cuando hay línea de visión; al encontrar paredes utiliza la
+   navegación compartida del motor para rodearlas y deslizarse junto a ellas.
+   Esa navegación no busca rutas hacia objetivos situados a más de 1400 px.
+4. No mantiene una distancia de seguridad ni retrocede. Puede desplazarse y
+   disparar en el mismo paso de simulación. El contacto corporal no es su
+   ataque: su daño proviene del proyectil.
+5. Al agotarse su temporizador dispara un único proyectil en la dirección de
+   la posición actual del objetivo y reinicia el temporizador a 180 frames.
+   No predice el movimiento futuro ni dispara ráfagas.
+6. El proyectil colisiona con la geometría y con objetivos válidos. Al matar
+   al esbirro, este deja de actuar y desaparece del encuentro.
+
+APARICIÓN
+- Elegible en combat/combat-simple y combat-hard; no es mini-jefe.
+- Se mantienen los pesos anteriores del enemigo básico: 3 de 6 entradas del
+  sorteo de esbirros en salas simples (50 %) y 1 de 5 en salas difíciles
+  (20 %). Estos porcentajes son por cada esbirro sorteado, no por sala.
+- Las plantillas pueden fijar cuántos esbirros aparecen mediante casillas
+  marcadas. La composición y cantidad del encuentro pueden variar con el
+  piso, pero sus estadísticas individuales no escalan automáticamente.
+
+FUENTES DEL JUEGO
+- js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js
+- js/enemies/catalog.js
+- js/enemy.js
+- js/enemy-projectile-pool.js
+- js/map.js
+- js/game.js y server/simulation.js

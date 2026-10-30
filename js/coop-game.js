@@ -88,7 +88,7 @@
     }
 
     function enemyObject(state, existing) {
-        const Ctor = enemyClasses[state.type] || BasicEnemy;
+        const Ctor = enemyClasses[state.type] || EsbirroMiedoso;
         let enemy = existing;
         if (!enemy) {
             if (Ctor === CochinillaEsquinero) {

@@ -7,7 +7,7 @@ DIRECCIÓN DE DISEÑO
 - Sus disparos y otras habilidades deben complementar ese patrón de movimiento.
 
 CATEGORÍA Y APARICIÓN
-- Esbirros: Básico, Mosca Tirador, Esbirro Tirador y Espiral.
+- Esbirros: Esbirro Miedoso, Mosca Tirador, Esbirro Tirador y Espiral.
 - Aparecen en salas combat/combat-simple y acompañan al mini-jefe en combat-hard.
 - El generador puede variar la cantidad y composición de esbirros por piso. Eso no modifica las estadísticas individuales.
 
@@ -15,7 +15,7 @@ REFERENCIA DE VELOCIDAD
 La velocidad universal del jugador es 1.00, equivalente a 2,5 px por frame de simulación (150 px/s). La configuración de cada enemigo guarda un multiplicador de ese valor; el juego convierte el multiplicador a px/frame al crear la unidad.
 
 ESBIRRO          VIDA   VELOCIDAD       CADENCIA FIJA
-Básico           30 HP  0,70 (1,75 px/f) 180 frames (3,00 s)
+Esbirro Miedoso  30 HP  0,70 (1,75 px/f) 180 frames (3,00 s)
 Mosca Tirador    28 HP  0,70 (1,75 px/f)  60 frames (1,00 s)
 Esbirro Tirador  28 HP  0,70 (1,75 px/f)  60 frames (1,00 s)
 Espiral           50 HP  0,50 (1,25 px/f) 300 frames (5,00 s)
@@ -24,7 +24,7 @@ Estas velocidades y cadencias son las mismas en todos los pisos. El intervalo re
 
 PATRONES Y CONDUCTA
 
-BÁSICO — perseguidor
+ESBIRRO MIEDOSO — perseguidor
 - Persigue continuamente al objetivo vivo más cercano usando navegación que rodea paredes.
 - Dispara un proyectil hacia la posición actual del objetivo.
 - Velocidad del proyectil: 1,50 px/frame (90 px/s).

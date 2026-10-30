@@ -81,7 +81,7 @@ for (const playerCount of [1, 2]) {
 test('enemy pool reuses released projectiles without carrying old state', () => {
     const run = Simulation.createRun(membersFor(1));
     const projectile = run.enemyProjectilePool.acquire({
-        id: 'recycle-me', x: 120, y: 140, color: '#fff', type: 'basic', projectileVisualType: 'enemy-standard'
+        id: 'recycle-me', x: 120, y: 140, color: '#fff', type: 'esbirro_miedoso', projectileVisualType: 'enemy-standard'
     }, 0, 1.5);
     projectile.hits = 99;
     projectile.pierce = 2;
@@ -91,7 +91,7 @@ test('enemy pool reuses released projectiles without carrying old state', () => 
 
     assert.equal(run.enemyProjectilePool.release(projectile), true);
     const reused = run.enemyProjectilePool.acquire({
-        id: 'new-owner', x: 220, y: 240, color: '#f00', type: 'basic'
+        id: 'new-owner', x: 220, y: 240, color: '#f00', type: 'esbirro_miedoso'
     }, Math.PI / 2, 2);
     assert.equal(reused, projectile);
     assert.equal(reused.radius, 4);
@@ -120,7 +120,7 @@ test('Bastión pierde el daño completo y los proyectiles terminan al impactar e
         for (const player of [pistolero, bastion]) {
             player.invincibleTimer = 0;
             const bullet = run.enemyProjectilePool.acquire({
-                id: 'damage-check', x: player.x, y: player.y, type: 'basic', color: '#f00'
+                id: 'damage-check', x: player.x, y: player.y, type: 'esbirro_miedoso', color: '#f00'
             }, 0, 0);
             bullet.damage = damage;
             run.enemyBullets.push(bullet);
@@ -153,8 +153,8 @@ test('Bastión elige la animación según el umbral exacto del corazón gris', (
     const Player = player.constructor;
     const armoredFrame = { form: 'armored' };
     const weakFrame = { form: 'weak' };
-    Player.animations.bastion = { frames: [armoredFrame], durations: [100], totalDuration: 100 };
-    Player.animations['bastion:debil'] = { frames: [weakFrame], durations: [100], totalDuration: 100 };
+    Player.animations['bastion:front'] = { frames: [armoredFrame], durations: [100], totalDuration: 100 };
+    Player.animations['bastion:debil:front'] = { frames: [weakFrame], durations: [100], totalDuration: 100 };
 
     for (const { grayHealth, expectedForm, expectedFrame } of [
         { grayHealth: 12, expectedForm: 'calabaza-blindada', expectedFrame: armoredFrame },
@@ -166,7 +166,7 @@ test('Bastión elige la animación según el umbral exacto del corazón gris', (
         player.health = player.maxHealth + grayHealth;
         player.updateBastionForm();
         assert.equal(player.bastionForm, expectedForm);
-        assert.equal(Player.walkFrameFor('bastion', 0, player.bastionForm), expectedFrame);
+        assert.equal(Player.walkFrameFor('bastion', 0, player.bastionForm, 'front'), expectedFrame);
     }
 });
 
@@ -227,7 +227,7 @@ test('Bastión pierde el daño completo y los proyectiles terminan al impactar e
             const before = player.health;
             player.invincibleTimer = 0;
             const bullet = pool.acquire({ id: 'solo-damage-check', x: 500, y: 500,
-                type: 'basic', color: '#f00' }, 0, 0);
+                type: 'esbirro_miedoso', color: '#f00' }, 0, 0);
             bullet.damage = damage;
             game.enemyBullets.push(bullet);
             game.updateEnemyBullets();

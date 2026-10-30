@@ -10,7 +10,7 @@ const ENEMY_CATEGORY = Object.freeze({
 });
 
 const ENEMY_TYPES_BY_CATEGORY = Object.freeze({
-    [ENEMY_CATEGORY.MINIONS]: Object.freeze(['basic', 'mosca_tirador', 'esbirro_tirador', 'spiral']),
+    [ENEMY_CATEGORY.MINIONS]: Object.freeze(['esbirro_miedoso', 'mosca_tirador', 'esbirro_tirador', 'spiral']),
     [ENEMY_CATEGORY.MINI_BOSSES]: Object.freeze(['cochinilla-esquinero', 'babosa_persecucion'])
 });
 
@@ -23,7 +23,7 @@ const ENEMY_CATEGORIES_BY_ROOM = Object.freeze({
 // Conventional floor bosses use their dedicated boss room, outside ordinary
 // minion/miniboss pools.
 const ENEMY_CLASSES = Object.freeze({
-    basic: BasicEnemy,
+    esbirro_miedoso: EsbirroMiedoso,
     mosca_tirador: MoscaTirador,
     esbirro_tirador: EsbirroTirador,
     spiral: SpiralEnemy,
@@ -47,8 +47,8 @@ async function loadEnemyArtwork() {
     }
 }
 
-const MINION_WEIGHTS = Object.freeze(['basic', 'basic', 'basic', 'mosca_tirador', 'esbirro_tirador', 'spiral']);
-const HARD_MINION_WEIGHTS = Object.freeze(['basic', 'mosca_tirador', 'spiral', 'esbirro_tirador', 'spiral']);
+const MINION_WEIGHTS = Object.freeze(['esbirro_miedoso', 'esbirro_miedoso', 'esbirro_miedoso', 'mosca_tirador', 'esbirro_tirador', 'spiral']);
+const HARD_MINION_WEIGHTS = Object.freeze(['esbirro_miedoso', 'mosca_tirador', 'spiral', 'esbirro_tirador', 'spiral']);
 
 function enemyCategoriesForRoom(roomType) {
     return ENEMY_CATEGORIES_BY_ROOM[roomType] || [];
@@ -73,7 +73,7 @@ function chooseEnemyType(types) {
 function createEnemy(type, x, y, ...args) {
     const normalizedType = type === 'corner-cochinilla' || type === 'cochinilla_esquinero'
         ? 'cochinilla-esquinero' : type;
-    const EnemyClass = ENEMY_CLASSES[normalizedType] || BasicEnemy;
+    const EnemyClass = ENEMY_CLASSES[normalizedType] || EsbirroMiedoso;
     if (EnemyClass === CochinillaEsquinero) {
         return new EnemyClass(x, y, args[0] || null, args[1] || 'top-left');
     }

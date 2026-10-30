@@ -26,7 +26,7 @@ the run ends.
 |---|---|
 | **Procedural maps** | 6–9 rooms grown outward from a start room, spacing-checked, then typed (combat, hard combat, treasure, empty, exit) and connected by corridors you walk down |
 | **Roguelite upgrades** | 10 upgrades drafted 3-at-a-time on level-up — health, damage, speed, multi-shot, pierce, fire rate, bullet speed, pickup magnet |
-| **Enemy variety** | Basic chasers, the kiting Mosca Tirador, and spiral emitters, each with its own movement and firing pattern |
+| **Enemy variety** | Esbirro Miedoso chasers, the kiting Mosca Tirador, and spiral emitters, each with its own movement and firing pattern |
 | **Floor composition** | Encounter types and group sizes can vary by floor; each enemy keeps its authored statistics |
 | **Boss gate** | Each floor's exit is locked behind a multi-phase boss, and opens where you kill it |
 | **Sound** | Effects synthesized live via Web Audio — no samples to download — over a three-track soundtrack that advances each floor |
