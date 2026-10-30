@@ -25,6 +25,15 @@ function circleCollision(x1, y1, r1, x2, y2, r2) {
  * @returns {boolean}
  */
 function bulletHitsPlayer(bullet, player) {
+    if (player.hitboxWidth > 0 && player.hitboxHeight > 0) {
+        const halfWidth = player.hitboxWidth / 2;
+        const halfHeight = player.hitboxHeight / 2;
+        const closestX = Math.max(player.x - halfWidth, Math.min(bullet.x, player.x + halfWidth));
+        const closestY = Math.max(player.y - halfHeight, Math.min(bullet.y, player.y + halfHeight));
+        const dx = bullet.x - closestX;
+        const dy = bullet.y - closestY;
+        return dx * dx + dy * dy < bullet.radius * bullet.radius;
+    }
     return circleCollision(bullet.x, bullet.y, bullet.radius, player.x, player.y, player.radius);
 }
 

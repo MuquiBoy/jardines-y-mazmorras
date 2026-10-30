@@ -5,7 +5,7 @@ const PLAYER_SPRITE_ROOT = '00-sprites/jugador/';
 const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
 const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
-const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v2';
+const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v3';
 const PLAYER_BASTION_FORM_VERSION = 'bastion-debil-form-v1';
 const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
 const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;
@@ -288,6 +288,7 @@ class Player {
     constructor(x, y) {
         Player.loadSprites();
         this.x = x; this.y = y; this.radius = 12; this.visualScale = 1;
+        this.hitboxWidth = 0; this.hitboxHeight = 0; this.spriteWidth = 24; this.spriteHeight = 24;
         this.maxHealth = 100; this.health = 100; this.maxGrayHealth = 0; this.grayHealth = 0;
         this.bastionForm = null; this.bastionTransformEvent = 0;
         this.speed = 2.25; this.damage = 10;
@@ -307,6 +308,29 @@ class Player {
     }
 
     cancelSniperAim() { this.sniperAiming = false; }
+
+    canOccupyAt(map, x, y) {
+        if (!map) return true;
+        if (this.hitboxWidth > 0 && this.hitboxHeight > 0 && typeof map.canOccupyRect === 'function') {
+            return map.canOccupyRect(x, y, this.hitboxWidth, this.hitboxHeight);
+        }
+        return map.canOccupy(x, y, this.radius);
+    }
+
+    overlapsCircleAt(x, y, circle) {
+        const radius = Math.max(0, circle?.radius || 0);
+        if (this.hitboxWidth > 0 && this.hitboxHeight > 0) {
+            const halfWidth = this.hitboxWidth / 2;
+            const halfHeight = this.hitboxHeight / 2;
+            const closestX = Math.max(x - halfWidth, Math.min(circle.x, x + halfWidth));
+            const closestY = Math.max(y - halfHeight, Math.min(circle.y, y + halfHeight));
+            const dx = circle.x - closestX;
+            const dy = circle.y - closestY;
+            return dx * dx + dy * dy < radius * radius;
+        }
+        const dx = circle.x - x, dy = circle.y - y;
+        return dx * dx + dy * dy < (this.radius + radius) * (this.radius + radius);
+    }
 
     setCharacter(characterId) {
         const role = CHARACTER_ROLES[characterId] || CHARACTER_ROLES.pistolero;
@@ -441,16 +465,16 @@ class Player {
         this.turretActive = this.weaponKind === 'turret' && !!input.mouseDown;
         const moveSpeed = this.turretActive ? 0 : this.speed;
         const canMoveTo = (x, y) => {
-            if (map && !map.canOccupy(x, y, this.radius)) return false;
+            if (map && !this.canOccupyAt(map, x, y)) return false;
             for (const blocker of blockers) {
                 if (!blocker || blocker.alive === false) continue;
-                const minDistance = this.radius + blocker.radius;
                 const currentX = this.x - blocker.x, currentY = this.y - blocker.y;
                 const nextX = x - blocker.x, nextY = y - blocker.y;
                 const currentDistanceSq = currentX * currentX + currentY * currentY;
                 const nextDistanceSq = nextX * nextX + nextY * nextY;
-                if (nextDistanceSq < minDistance * minDistance &&
-                    !(currentDistanceSq < minDistance * minDistance && nextDistanceSq > currentDistanceSq)) return false;
+                const overlapsCurrent = this.overlapsCircleAt(this.x, this.y, blocker);
+                const overlapsNext = this.overlapsCircleAt(x, y, blocker);
+                if (overlapsNext && !(overlapsCurrent && nextDistanceSq > currentDistanceSq)) return false;
             }
             return true;
         };
@@ -459,8 +483,10 @@ class Player {
         const ny = this.y + dy * moveSpeed;
         if (canMoveTo(this.x, ny)) this.y = ny;
         if (map) {
-            this.x = Math.max(this.radius, Math.min(this.x, map.width - this.radius));
-            this.y = Math.max(this.radius, Math.min(this.y, map.height - this.radius));
+            const halfWidth = this.hitboxWidth > 0 ? this.hitboxWidth / 2 : this.radius;
+            const halfHeight = this.hitboxHeight > 0 ? this.hitboxHeight / 2 : this.radius;
+            this.x = Math.max(halfWidth, Math.min(this.x, map.width - halfWidth));
+            this.y = Math.max(halfHeight, Math.min(this.y, map.height - halfHeight));
         }
 
         this.updateKnockbackImpulse(map, blockers);
@@ -534,14 +560,14 @@ class Player {
         const outwardY = distance > 0.001 ? sourceDy / distance : impulse.directionY;
         const step = Math.min(12, Math.max(3, (impulse.targetDistance - distance) * 0.28));
         const canStepTo = (x, y) => {
-            if (map && !map.canOccupy(x, y, this.radius)) return false;
+            if (map && !this.canOccupyAt(map, x, y)) return false;
             for (const blocker of blockers) {
                 if (!blocker || blocker.alive === false) continue;
-                const minDistance = this.radius + (blocker.radius || 0);
                 const currentDistance = Math.hypot(this.x - blocker.x, this.y - blocker.y);
                 const nextDistance = Math.hypot(x - blocker.x, y - blocker.y);
-                if (nextDistance < minDistance &&
-                    !(currentDistance < minDistance && nextDistance > currentDistance)) return false;
+                const overlapsCurrent = this.overlapsCircleAt(this.x, this.y, blocker);
+                const overlapsNext = this.overlapsCircleAt(x, y, blocker);
+                if (overlapsNext && !(overlapsCurrent && nextDistance > currentDistance)) return false;
             }
             return true;
         };
@@ -612,7 +638,8 @@ class Player {
     }
 
     draw(ctx, aimPointer = null, aimPointerState = null) {
-        const size = 24 * (this.visualScale || 1);
+        const visualScale = this.visualScale || 1;
+        const size = 24 * visualScale;
         const px = this.renderX ?? this.x, py = this.renderY ?? this.y;
         const directionX = aimPointerState?.x ?? this.renderAimX ?? this.aimX;
         const directionY = aimPointerState?.y ?? this.renderAimY ?? this.aimY;
@@ -637,31 +664,38 @@ class Player {
         const walkFrame = Player.walkFrameFor(this.character, undefined, this.bastionForm, this.pistoleroFacing);
         const sprite = Player.spriteFor(this.character, this.bastionForm);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
+        const sourceWidth = walkFrame?.width || (spriteReady ? sprite.naturalWidth : this.spriteWidth || 24);
+        const sourceHeight = walkFrame?.height || (spriteReady ? sprite.naturalHeight : this.spriteHeight || 24);
+        const renderWidth = this.character === 'pistolero' ? Math.round(sourceWidth * visualScale) : Math.round(size);
+        const renderHeight = this.character === 'pistolero' ? Math.round(sourceHeight * visualScale) : Math.round(size);
+        const spriteLeft = snap(px - renderWidth / 2);
+        const spriteTop = snap(py - renderHeight / 2);
+        const mirrorAnchorX = spriteLeft + renderWidth / 2;
         const damageMask = redFlash ? Player.damageMasks[this.character] : null;
 
         ctx.save();
         if (invulnerable) ctx.globalAlpha = redFlash ? 0.88 : 0.96;
         ctx.save();
         if (this.character === 'pistolero' && this.pistoleroMirrored) {
-            ctx.translate(Math.round(px) * 2, 0);
+            ctx.translate(mirrorAnchorX * 2, 0);
             ctx.scale(-1, 1);
         }
         if (redFlash && !damageMask) ctx.filter = 'sepia(1) saturate(5) hue-rotate(315deg)';
         if (walkFrame || spriteReady) {
-            // Preserve nearest-neighbor pixels and the role's authored 24/32/40 px footprint.
+            // Preserve each authored frame's dimensions with nearest-neighbor scaling.
             ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(walkFrame || sprite, snap(px - size / 2), snap(py - size / 2), Math.round(size), Math.round(size));
+            ctx.drawImage(walkFrame || sprite, spriteLeft, spriteTop, renderWidth, renderHeight);
         } else {
-            pixelRect(ctx, px, py, size + 4, size + 4, PALETTE.void);
-            pixelRect(ctx, px, py, size, size, this.color || PALETTE.player);
-            pixelRect(ctx, px, py, size * 0.52, size * 0.52, PALETTE.bone);
+            pixelRect(ctx, px, py, renderWidth + 4, renderHeight + 4, PALETTE.void);
+            pixelRect(ctx, px, py, renderWidth, renderHeight, this.color || PALETTE.player);
+            pixelRect(ctx, px, py, renderWidth * 0.52, renderHeight * 0.52, PALETTE.bone);
         }
         if (damageMask) {
             // source-atop clips the authored red overlay to the current walk
             // frame's alpha, so transparent pixels stay completely invisible.
             ctx.filter = 'none';
             ctx.globalCompositeOperation = 'source-atop';
-            ctx.drawImage(damageMask, snap(px - size / 2), snap(py - size / 2), Math.round(size), Math.round(size));
+            ctx.drawImage(damageMask, spriteLeft, spriteTop, renderWidth, renderHeight);
         }
         ctx.restore();
         if (aimPointer?.complete && aimPointer.naturalWidth > 0) {

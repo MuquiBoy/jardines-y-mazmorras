@@ -109,7 +109,10 @@ class BabosaPersecucion extends Enemy {
             const dx = player.x - this.x;
             const dy = player.y - this.y;
             const distance = Math.hypot(dx, dy);
-            if (distance > this.radius + (player.radius || 12)) continue;
+            const overlapsPlayer = typeof player.overlapsCircleAt === 'function'
+                ? player.overlapsCircleAt(player.x, player.y, this)
+                : distance <= this.radius + (player.radius || 12);
+            if (!overlapsPlayer) continue;
             currentContacts.add(playerId);
             if (this._contactingPlayerIds.has(playerId)) continue;
 
@@ -138,7 +141,12 @@ class BabosaPersecucion extends Enemy {
                 for (let i = 0; i < BABOSA_PERSECUCION_KNOCKBACK / step; i++) {
                     const nextX = player.x + nx * step;
                     const nextY = player.y + ny * step;
-                    if (map && !map.canOccupy(nextX, nextY, player.radius || 12)) break;
+                    if (map) {
+                        const canOccupy = player.hitboxWidth > 0 && player.hitboxHeight > 0 && typeof map.canOccupyRect === 'function'
+                            ? map.canOccupyRect(nextX, nextY, player.hitboxWidth, player.hitboxHeight)
+                            : map.canOccupy(nextX, nextY, player.radius || 12);
+                        if (!canOccupy) break;
+                    }
                     player.x = nextX;
                     player.y = nextY;
                     if (Math.hypot(player.x - this.x, player.y - this.y) >= targetDistance) break;

@@ -1322,6 +1322,20 @@ class DungeonMap {
             this.isWalkable(x, y - radius) && this.isWalkable(x, y + radius);
     }
 
+    /** Check an axis-aligned hitbox against its corners and side midpoints. */
+    canOccupyRect(x, y, width, height) {
+        const halfWidth = Math.max(0, width) / 2;
+        const halfHeight = Math.max(0, height) / 2;
+        const xs = [x - halfWidth, x, x + halfWidth];
+        const ys = [y - halfHeight, y, y + halfHeight];
+        for (const sampleX of xs) {
+            for (const sampleY of ys) {
+                if (!this.isWalkable(sampleX, sampleY)) return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * True when a circle can travel from A to B in a straight line without
      * touching a solid cell.
