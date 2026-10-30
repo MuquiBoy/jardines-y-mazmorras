@@ -2,7 +2,7 @@ JARDINES Y MAZMORRAS — FICHA DE ESBIRROS
 Estadísticas y comportamientos actuales
 
 CATEGORÍA Y APARICIÓN
-- Esbirros: Básico, Mosca Tirador y Espiral.
+- Esbirros: Básico, Mosca Tirador, Esbirro Tirador y Espiral.
 - Aparecen en salas combat/combat-simple y acompañan al mini-jefe en combat-hard.
 - El generador puede variar la cantidad y composición de esbirros por piso. Eso no modifica las estadísticas individuales.
 
@@ -12,6 +12,7 @@ La velocidad universal del jugador es 1.00, equivalente a 2,5 px por frame de si
 ESBIRRO          VIDA   VELOCIDAD       CADENCIA FIJA
 Básico           30 HP  0,70 (1,75 px/f) 180 frames (3,00 s)
 Mosca Tirador    28 HP  0,70 (1,75 px/f)  60 frames (1,00 s)
+Esbirro Tirador  28 HP  0,70 (1,75 px/f)  60 frames (1,00 s)
 Espiral           50 HP  0,50 (1,25 px/f) 300 frames (5,00 s)
 
 Estas velocidades y cadencias son las mismas en todos los pisos. El intervalo repetido de ataque es el valor de la tabla; el primer disparo comienza con un retraso aleatorio entre 0,6 y 1,2 veces ese intervalo para que las unidades no disparen juntas al entrar en una sala.
@@ -31,6 +32,13 @@ MOSCA TIRADOR — hostigadora de media distancia
 - Velocidad del proyectil: 2,50 px/frame (150 px/s).
 - Cadencia: un disparo cada 60 frames.
 - Su animación de vuelo continúa tanto quieta como en movimiento.
+
+ESBIRRO TIRADOR — clon temporal de Mosca Tirador
+- Conserva la misma IA para mantener 180–250 px, navegación, disparo dirigido,
+  estadísticas, cadencia, daño y animación.
+- Comparte el peso de generación que antes correspondía a Mosca Tirador, así que
+  la frecuencia total de la familia de tiradores se mantiene.
+- Su ficha individual está en `esbirros/esbirro_tirador/FICHA_ESBIRRO_TIRADOR.txt`.
 
 ESPIRAL — disparo radial
 - Se aproxima lentamente al objetivo hasta unos 140 px; dentro de esa distancia deja de acercarse.

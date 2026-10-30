@@ -1,0 +1,44 @@
+JARDINES Y MAZMORRAS — FICHA DE ESBIRRO
+ESBIRRO TIRADOR
+
+ESTADO
+Clon funcional de Mosca Tirador. Por ahora conserva exactamente sus estadísticas,
+comportamiento de combate y animación. Esta copia permite ajustar el balance y la
+identidad por separado en una iteración posterior.
+
+ESTADÍSTICAS
+- Vida: 28 HP.
+- Velocidad de movimiento: multiplicador 0,70 de la velocidad universal.
+- Referencia actual: 1,00 = 2,5 px/frame (150 px/s); por tanto 0,70 = 1,75 px/frame
+  (105 px/s).
+- Radio de colisión: 12 px.
+- Cadencia: un disparo cada 60 frames (1,00 s a 60 FPS).
+- Primer disparo: retraso aleatorio de 36 a 72 frames (0,60–1,20 s).
+- Velocidad del proyectil: 2,5 px/frame (150 px/s).
+- Daño real del proyectil estándar: 6 HP por impacto (medio corazón). El campo
+  interno `damage = 15` se conserva del clon original; el proyectil estándar usa
+  la regla universal de 6 HP.
+- `xpValue`: 15, heredado de Mosca Tirador. La experiencia por bajas está desactivada
+  globalmente y este valor no produce una recompensa durante el juego.
+
+COMPORTAMIENTO
+- Mantiene una distancia de combate de 180–250 px respecto al jugador objetivo.
+- Si el jugador se acerca a menos de 180 px, retrocede usando la navegación que evita
+  paredes y obstáculos.
+- Si el jugador queda a más de 250 px, se aproxima mediante esa misma navegación.
+- Dentro de la franja de 180–250 px se detiene y limpia la ruta de navegación previa.
+- Dispara hacia la posición actual del jugador al llegar a cero su temporizador.
+- Su animación de vuelo se reproduce continuamente, tanto al moverse como al estar quieto.
+- Puede usar la pool de proyectiles enemigos existente.
+
+APARICIÓN
+- Categoría: esbirro.
+- Elegible en salas `combat`, `combat-simple` y `combat-hard`.
+- Comparte la proporción total que antes correspondía a los tiradores en las tablas
+  de generación: en esas selecciones, Mosca Tirador y Esbirro Tirador tienen el mismo
+  peso. No modifica la frecuencia total de la familia de tiradores.
+
+RECURSOS VISUALES
+- Usa temporalmente la animación de Mosca Tirador desde:
+  `00-sprites/enemigos/2_esbirros/mosca_tirador/mosca_tirador.aseprite`.
+- El dibujo placeholder conserva la paleta de Mosca Tirador.

@@ -26,6 +26,7 @@ for (const file of [
     'enemy.js',
     'enemies/esbirros/basic-enemy.js',
     'enemies/esbirros/mosca-tirador.js',
+    'enemies/esbirros/esbirro_tirador/esbirro_tirador.js',
     'enemies/esbirros/spiral-enemy.js',
     'enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js',
     'enemies/mini-jefes/babosa_persecucion/babosa_persecucion.js',
@@ -34,7 +35,7 @@ for (const file of [
 ]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, BasicEnemy, MoscaTirador, EsbirroTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, circleCollision, ricochetEnemyBulletTowardParty, bulletBlockedByMap, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 // Co-op room-clear revive tuning. The server remains authoritative.
