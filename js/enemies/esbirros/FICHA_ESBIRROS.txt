@@ -30,6 +30,7 @@ ESBIRRO MIEDOSO — perseguidor que busca cobertura
 - Si ya está protegido, conserva la posición. Si no encuentra cobertura azul cercana, se aleja del jugador y vuelve a buscar.
 - Desde cobertura busca una línea despejada, dispara y vuelve al refugio. Sus disparos no atraviesan obstáculos.
 - Proyectil: 2,00 px/frame y 6 HP por impacto.
+- Su animación de 36 x 36 px corre a 0,50x; se dibuja a tamaño intrínseco.
 - Su ficha completa está en esbirros/esbirro_miedoso/FICHA_ESBIRRO_MIEDOSO.txt.
 
 MOSCA TIRADOR — hostigadora de media distancia

@@ -31,7 +31,8 @@ COMPORTAMIENTO
 
 ANIMACIÓN
 - Usa esbirro_miedoso_walk.aseprite (36 × 36 px por fotograma).
-- El ciclo se repite continuamente en reposo, persecución, huida, cobertura y disparo, con los tiempos de fotograma definidos por el archivo.
+- El ciclo se repite continuamente en reposo, persecución, huida, cobertura y disparo. Reproduce a 0,50x: cada fotograma dura el doble de su tiempo original.
+- El lienzo de cada fotograma es de 36 x 36 px y se dibuja a su tamaño intrínseco, sin estiramiento.
 - Los fotogramas se preparan antes de mostrar el juego. Si la animación personalizada no está disponible, el enemigo no dibuja el placeholder.
 
 PRUEBAS TÁCTICAS

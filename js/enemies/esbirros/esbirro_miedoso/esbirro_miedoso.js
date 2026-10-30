@@ -1,6 +1,7 @@
 /* Esbirro: clase independiente, cargada después de js/enemy.js. */
 const ESBIRRO_MIEDOSO_WALK_PATH = '00-sprites/enemigos/2_esbirros/esbirro_miedoso/esbirro_miedoso_walk.aseprite';
-const ESBIRRO_MIEDOSO_WALK_VERSION = 'esbirro-miedoso-walk-20261030-v2';
+const ESBIRRO_MIEDOSO_WALK_VERSION = 'esbirro-miedoso-walk-20261030-v3';
+const ESBIRRO_MIEDOSO_PLAYBACK_SPEED = 0.5;
 
 // ===== EsbirroMiedoso — perseguidor que busca cobertura a media vida =====
 class EsbirroMiedoso extends Enemy {
@@ -60,7 +61,7 @@ class EsbirroMiedoso extends Enemy {
         // The authored walk cycle is used continuously for idle, pursuit,
         // firing, and cover movement.
         const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        let frameTime = (now - this.animationStartTime) % animation.totalDuration;
+        let frameTime = ((now - this.animationStartTime) * ESBIRRO_MIEDOSO_PLAYBACK_SPEED) % animation.totalDuration;
         let frameIndex = 0;
         while (frameIndex < animation.durations.length - 1 &&
                frameTime >= animation.durations[frameIndex]) {
@@ -72,7 +73,8 @@ class EsbirroMiedoso extends Enemy {
         const height = frame.height || EsbirroMiedoso.DRAW_SIZE;
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(frame, snap(this.x - width / 2), snap(this.y - height / 2), width, height);
+        // Draw at the decoded 36 x 36 px canvas size without scaling arguments.
+        ctx.drawImage(frame, snap(this.x - width / 2), snap(this.y - height / 2));
         ctx.restore();
         this.drawHealth(ctx, Math.max(width, height));
     }
