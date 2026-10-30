@@ -171,3 +171,11 @@ Bastión      10,8 HP/s
 
 - Supuestos: todos los disparos impactan; los cinco perdigones golpean al mismo objetivo; la quemadura mantiene su cadencia máxima sin acumulación; las seis invocaciones sobreviven y atacan constantemente al mismo objetivo; todos los proyectiles del Bastión impactan pese a su dispersión. Por tanto, estos valores no bastan por sí solos para declarar un rol demasiado fuerte o débil.
 - El cálculo señala dónde enfocar futuras pruebas: precisión y posicionamiento para Perdigonero/Bastión, supervivencia y tiempo de contacto de las invocaciones, y alcance/ventanas de exposición para Piromano. No se cambiaron estadísticas de juego; las cifras deberán validarse con partidas reales.
+
+## 2026-10-30 — Auditoría de marcadores de aparición de esbirros
+
+- El manifiesto publicado registra 22 plantillas: 1 entry, 4 hub, 8 combat, 6 combat-hard, 2 treasure y 1 boss.
+- Revisé las 22 imágenes PNG de la carpeta local muestreando el centro de cada celda de 40 × 40 px, igual que el cargador del juego. El resultado fue 0 casillas opacas #FF00FF.
+- El cargador interpreta una casilla exacta #FF00FF como suelo y punto de aparición; el generador baraja esas marcas y escoge un esbirro al azar por cada marca en combat y combat-hard. Si una marca no admite la colisión, busca suelo libre cercano.
+- Como todavía no hay marcas, las salas continúan usando el conteo aleatorio heredado: 2–4 esbirros en combat y 4–6 en combat-hard, antes de los incrementos profundos. Por eso la selección por casilla ya está implementada, pero aún no controla la composición de las plantillas actuales.
+- El catálogo conserva 4 IDs de esbirro (3 patrones distintos porque Esbirro Tirador es un clon temporal); en la carpeta gráfica local solo encontré una carpeta de sprite de esbirro, la de Mosca Tirador. No se añadieron ubicaciones ni conceptos de enemigos.
