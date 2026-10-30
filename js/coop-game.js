@@ -107,6 +107,10 @@
         const currentPlayers = new Map();
         for (const record of state.players) {
             const oldPlayer = playersById.get(record.id);
+            if (oldPlayer && record.character === 'bastion' &&
+                (record.bastionTransformEvent || 0) > (oldPlayer.bastionTransformEvent || 0)) {
+                game.spawnParticles(record.x, record.y, '#ff951f', 8);
+            }
             if (record.id === localId && oldPlayer && record.ammo < oldPlayer.ammo) {
                 if (record.character === 'tirador') game.audio.sniperShot();
                 else if (record.character === 'piromano') game.audio.flameShot();
@@ -241,6 +245,9 @@
             const aimDistance = player._drawAimDistanceState;
             player.renderAimPointerDistance = interpolateAimPointerDistance(aimDistance.from, aimDistance.to, alpha);
         }
+        // The co-op client only renders authoritative snapshots; advance its
+        // presentation-only particles locally so synced Bastion bursts expire.
+        game.updateParticles();
         const viewer = playersById.get(window.coopClient.playerId) || game.player;
         const cameraSelection = resolveSpectatorCameraTarget(
             viewer, [...playersById.values()], spectatorTargetId
