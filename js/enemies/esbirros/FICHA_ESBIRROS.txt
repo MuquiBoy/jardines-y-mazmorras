@@ -1,6 +1,11 @@
 JARDINES Y MAZMORRAS — FICHA DE ESBIRROS
 Estadísticas y comportamientos actuales
 
+DIRECCIÓN DE DISEÑO
+- Cada esbirro nuevo debe presionar al jugador mediante un patrón de movimiento
+  identificable que afecte su posicionamiento durante el combate.
+- Sus disparos y otras habilidades deben complementar ese patrón de movimiento.
+
 CATEGORÍA Y APARICIÓN
 - Esbirros: Básico, Mosca Tirador, Esbirro Tirador y Espiral.
 - Aparecen en salas combat/combat-simple y acompañan al mini-jefe en combat-hard.
