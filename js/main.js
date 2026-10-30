@@ -116,6 +116,11 @@
         if (event.code !== 'Escape' || event.repeat) return;
         event.preventDefault();
         escapeActionOnKeyup = isGameFullscreen() ? 'exit' : 'enter';
+        // Release through the API so the next Escape activation may lock again;
+        // browsers can reject immediate relock after their default Esc release.
+        if (escapeActionOnKeyup === 'exit' && document.pointerLockElement === canvas) {
+            document.exitPointerLock?.();
+        }
     }, true);
 
     window.addEventListener('keyup', (event) => {
