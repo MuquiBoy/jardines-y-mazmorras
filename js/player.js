@@ -304,7 +304,7 @@ class Player {
         this.fireTimer = 0; this.invincibleTimer = 0; this.sniperAiming = false;
         this.knockbackImpulse = null;
         this.aimX = 0; this.aimY = -1; this.angle = 0; this.character = 'pistolero';
-        this.pistoleroFacing = 'front'; this.pistoleroMirrored = false;
+        this.pistoleroFacing = 'front';
     }
 
     cancelSniperAim() { this.sniperAiming = false; }
@@ -649,13 +649,9 @@ class Player {
         const pointerY = pointerPosition.y;
         if (this.character === 'pistolero') {
             if (!this.pistoleroFacing) this.pistoleroFacing = 'front';
-            if (this.pistoleroMirrored === undefined) this.pistoleroMirrored = false;
             // Preserve the last vertical facing when the pointer is level with the sprite center.
             if (pointerY <= py - 1) this.pistoleroFacing = 'back';
             else if (pointerY >= py + 1) this.pistoleroFacing = 'front';
-            // Aim right keeps the authored view; aim left mirrors it.
-            if (pointerX <= px - 1) this.pistoleroMirrored = true;
-            else if (pointerX >= px + 1) this.pistoleroMirrored = false;
         }
         const invulnerable = this.invincibleTimer > 0;
         const elapsedInvulnerability = PLAYER_DAMAGE_INVULNERABILITY_FRAMES - this.invincibleTimer;
@@ -670,16 +666,11 @@ class Player {
         const renderHeight = this.character === 'pistolero' ? Math.round(sourceHeight * visualScale) : Math.round(size);
         const spriteLeft = snap(px - renderWidth / 2);
         const spriteTop = snap(py - renderHeight / 2);
-        const mirrorAnchorX = spriteLeft + renderWidth / 2;
         const damageMask = redFlash ? Player.damageMasks[this.character] : null;
 
         ctx.save();
         if (invulnerable) ctx.globalAlpha = redFlash ? 0.88 : 0.96;
         ctx.save();
-        if (this.character === 'pistolero' && this.pistoleroMirrored) {
-            ctx.translate(mirrorAnchorX * 2, 0);
-            ctx.scale(-1, 1);
-        }
         if (redFlash && !damageMask) ctx.filter = 'sepia(1) saturate(5) hue-rotate(315deg)';
         if (walkFrame || spriteReady) {
             // Preserve each authored frame's dimensions with nearest-neighbor scaling.
