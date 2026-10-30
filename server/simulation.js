@@ -104,6 +104,9 @@ function generateFloor(run) {
     const nextFloor = run.floor + 1;
     const map = new Engine.DungeonMap(14000, 14000);
     map.generate(nextFloor);
+    // Release this run's previous-floor cache before preparing exactly one new floor.
+    run.preparedEnemiesByRoom?.clear();
+    run.preparedEnemiesByRoom = new Map();
     run.map = map;
     run.enemies = [];
     run.playerBullets = [];
@@ -120,6 +123,10 @@ function generateFloor(run) {
         player.y = start.y;
         player.invincibleTimer = 45;
     });
+    run.preparedEnemiesByRoom = map.prepareEnemiesForFloor(nextFloor);
+    for (const enemies of run.preparedEnemiesByRoom.values()) {
+        for (const enemy of enemies) enemy.id = crypto.randomUUID();
+    }
     run.mapVersion++;
 }
 
@@ -136,13 +143,27 @@ function createRun(members, reusableProjectilePool = null) {
 
 function spawnEnemiesForRoom(run, room, player) {
     const roomIndex = run.map.rooms.indexOf(room);
-    const enemies = run.map.getEnemiesForRoom(room, player, 280, run.floor);
+    const enemies = run.preparedEnemiesByRoom.get(roomIndex) || [];
+    run.preparedEnemiesByRoom.delete(roomIndex);
     for (const enemy of enemies) {
-        enemy.id = crypto.randomUUID();
         enemy.roomIndex = roomIndex;
         run.enemies.push(enemy);
     }
+    room.spawnWarningTimer = 0;
+    room.spawnWarningMarkers = [];
     room.spawned = true;
+}
+
+function beginRoomSpawnWarning(run, room) {
+    if (!room || room.spawned || room.spawnWarningTimer > 0) return;
+    const roomIndex = run.map.rooms.indexOf(room);
+    const enemies = run.preparedEnemiesByRoom.get(roomIndex) || [];
+    if (!enemies.length) {
+        spawnEnemiesForRoom(run, room);
+        return;
+    }
+    room.spawnWarningTimer = 36; // 0.6 s at 60 Hz
+    room.spawnWarningMarkers = enemies.map(enemy => ({ x: enemy.x, y: enemy.y }));
 }
 
 function spawnRoom(run, room, player) {
@@ -210,6 +231,12 @@ function updateRoomLocks(run) {
         ...run.enemies.filter(enemy => enemy.alive),
         ...run.summons.filter(summon => summon.alive && summon.health > 0)
     ];
+    // All enemies in the room leave the dormant cache on one shared tick.
+    for (const room of run.map.rooms) {
+        if (!(room.spawnWarningTimer > 0)) continue;
+        room.spawnWarningTimer--;
+        if (room.spawnWarningTimer <= 0) spawnEnemiesForRoom(run, room);
+    }
     for (const room of run.map.rooms) {
         if (!room.lockPending || room.locked || room.cleared) continue;
         if (!run.map.canLockRoom(room, players, blockers)) continue;
@@ -217,7 +244,7 @@ function updateRoomLocks(run) {
         const inside = players.filter(player => run.map.pointInRoom(player.x, player.y) === room);
         const anchor = inside.find(player => player.id === room.triggerPlayerId) || inside[0];
         if (anchor) teleportPartyIntoRoom(run, room, anchor);
-        if (!room.spawned) spawnEnemiesForRoom(run, room, anchor || players[0]);
+        if (!room.spawned) beginRoomSpawnWarning(run, room);
         run.mapVersion++;
     }
 }
@@ -278,7 +305,8 @@ function stepRun(run, inputs) {
         const room = run.map.getCurrentRoom(player.x, player.y);
         if (room) spawnRoom(run, room, player);
         if (run.map.exit && Math.hypot(player.x - run.map.exit.x, player.y - run.map.exit.y) < player.radius + 20) {
-            generateFloor(run);
+            run.phase = 'loading';
+            run.nextFloorPending = true;
             return;
         }
     }
@@ -404,6 +432,14 @@ function stepRun(run, inputs) {
     if (![...run.players.values()].some(player => player.health > 0)) run.phase = 'ended';
 }
 
+function completeFloorTransition(run) {
+    if (!run || run.phase !== 'loading' || !run.nextFloorPending) return false;
+    run.nextFloorPending = false;
+    generateFloor(run);
+    run.phase = 'playing';
+    return true;
+}
+
 function mapState(map) {
     const roomIndex = room => room ? map.rooms.indexOf(room) : -1;
     return {
@@ -456,6 +492,6 @@ function applyUpgrade(run, playerId, upgradeId) {
     return true;
 }
 
-module.exports = { createRun, stepRun, snapshot, applyUpgrade,
+module.exports = { createRun, stepRun, snapshot, applyUpgrade, completeFloorTransition,
     getProjectilePoolStats: run => run?.enemyProjectilePool?.getStats() || null };
 

@@ -87,6 +87,8 @@ class Game {
         this.xpOrbs = [];
         this.particles = [];
         this.summons = [];
+        // Dormant room encounters prepared once during this floor's loading phase.
+        this.preparedEnemiesByRoom = new Map();
 
         // Map
         this.map = null;
@@ -360,6 +362,9 @@ class Game {
 
     /** Generate a new map and populate it. */
     generateMap() {
+        this.preparedEnemiesByRoom?.clear();
+        this.preparedEnemiesByRoom = new Map();
+        this.enemies = [];
         this.map = new DungeonMap(14000, 14000);
         this.map.generate(this.floor);
 
@@ -367,12 +372,9 @@ class Game {
         this.player.x = this.map.playerStart.x;
         this.player.y = this.map.playerStart.y;
 
-        // Spawn enemies for the starting room
-        this.enemies = [];
+        // Prepare only this floor. Every encounter remains dormant until entry.
+        this.preparedEnemiesByRoom = this.map.prepareEnemiesForFloor(this.floor);
         this.currentRoom = null; // Reset room tracking for new map
-        const startRoom = this.map.rooms[0];
-        const enemies = this.map.getEnemiesForRoom(startRoom, null, 280, this.floor);
-        this.enemies.push(...enemies);
 
         // Clear other entities
         this.bullets = [];
@@ -384,21 +386,46 @@ class Game {
 
     /** Generate the private five-room 0-0 route and start at its entry. */
     generateTestMap() {
+        this.preparedEnemiesByRoom?.clear();
+        this.preparedEnemiesByRoom = new Map();
+        this.enemies = [];
         this.map = new DungeonMap(14000, 14000);
         this.map.generateTestFloor();
         this.player.x = this.map.playerStart.x;
         this.player.y = this.map.playerStart.y;
         this.currentRoom = this.map.rooms[0];
-        this.enemies = [];
+        this.preparedEnemiesByRoom = this.map.prepareEnemiesForFloor(this.floor);
         this.bullets = []; this.clearEnemyProjectiles(); this.xpOrbs = []; this.particles = []; this.summons = [];
     }
-    /** Spawn enemies for a new room. */
-    spawnRoomEnemies(room) {
-        // Keep spawns clear of the doorway the player just walked through.
-        const enemies = this.map.getEnemiesForRoom(room, this.player, 280, this.floor);
+    /** Move a prepared room encounter into the active simulation. */
+    activatePreparedRoomEnemies(room) {
+        if (!room || room.spawned) return;
         const roomIndex = this.map.rooms.indexOf(room);
+        const enemies = this.preparedEnemiesByRoom.get(roomIndex) || [];
+        this.preparedEnemiesByRoom.delete(roomIndex);
         for (const enemy of enemies) enemy.roomIndex = roomIndex;
         this.enemies.push(...enemies);
+        room.spawnWarningTimer = 0;
+        room.spawnWarningMarkers = [];
+        room.spawned = true;
+    }
+
+    /** Start the 0.6 second warning before a sealed encounter activates. */
+    beginRoomSpawnWarning(room) {
+        if (!room || room.spawned || room.spawnWarningTimer > 0) return;
+        const roomIndex = this.map.rooms.indexOf(room);
+        const enemies = this.preparedEnemiesByRoom.get(roomIndex) || [];
+        if (!enemies.length) {
+            this.activatePreparedRoomEnemies(room);
+            return;
+        }
+        room.spawnWarningTimer = 36; // 0.6 s at the fixed 60 Hz simulation rate
+        room.spawnWarningMarkers = enemies.map(enemy => ({ x: enemy.x, y: enemy.y }));
+    }
+
+    /** Activate the already-prepared entities for a safe or cleared room. */
+    spawnRoomEnemies(room) {
+        this.activatePreparedRoomEnemies(room);
 
         // Treasure room bonus
         const treasure = this.map.getTreasureForRoom(room);
@@ -877,24 +904,29 @@ class Game {
                         this.transitionAlpha += 0.05;
                         if (this.transitionAlpha >= 1) {
                             clearInterval(fadeInterval);
-                            this.floor++;
-                            this.audio.descend();
-                            this.audio.nextTrack();
-                            this.generateMap();
-                            this.ui.drawNotification(this.ctx, `FLOOR ${this.floor}`);
-                            this.transitionAlpha = 1;
+                            const nextFloor = this.floor + 1;
+                            this.ui.showLoading(`Preparando piso ${nextFloor}…`);
+                            // Let the cover paint before preparing the next floor.
+                            setTimeout(() => {
+                                this.floor = nextFloor;
+                                this.audio.descend();
+                                this.audio.nextTrack();
+                                this.generateMap();
+                                this.ui.drawNotification(this.ctx, `FLOOR ${this.floor}`);
+                                this.transitionAlpha = 1;
+                                this.ui.hideLoading();
 
-                            const fadeBack = setInterval(() => {
-                                this.transitionAlpha -= 0.05;
-                                if (this.transitionAlpha <= 0) {
-                                    this.transitioning = false;
-                                    this.transitionAlpha = 0;
-                                    this.state = 'PLAYING';
-                                    clearInterval(fadeBack);
-                                    // Restart the game loop so player can continue playing
-                                    this.startLoop();
-                                }
-                            }, 16);
+                                const fadeBack = setInterval(() => {
+                                    this.transitionAlpha -= 0.05;
+                                    if (this.transitionAlpha <= 0) {
+                                        this.transitioning = false;
+                                        this.transitionAlpha = 0;
+                                        this.state = 'PLAYING';
+                                        clearInterval(fadeBack);
+                                        this.startLoop();
+                                    }
+                                }, 16);
+                            }, 0);
                         }
                     }, 16);
                 }
@@ -913,17 +945,22 @@ class Game {
 
     /** Close combat-room doors once the player is safely inside. */
     updateRoomLocks() {
+        // Advance warning timers first; every entity in a room activates on
+        // the same simulation step after its 0.6 second telegraph.
+        for (const room of this.map.rooms) {
+            if (!(room.spawnWarningTimer > 0)) continue;
+            room.spawnWarningTimer--;
+            if (room.spawnWarningTimer <= 0) this.activatePreparedRoomEnemies(room);
+        }
         const blockers = this.enemies.filter(enemy => enemy.alive);
         for (const room of this.map.rooms) {
             if (!room.lockPending || room.locked || room.cleared) continue;
             if (!this.map.canLockRoom(room, [this.player], blockers)) continue;
             this.map.lockRoom(room);
-            // The room is sealed first; the encounter starts behind closed
-            // doors. `spawned` also keeps the empty room from being counted
-            // as cleared during the frames before the lock lands.
+            // Seal the room before showing warning squares and activating
+            // the already-prepared encounter.
             if (!room.spawned) {
-                this.spawnRoomEnemies(room);
-                room.spawned = true;
+                this.beginRoomSpawnWarning(room);
             }
         }
     }
@@ -1069,6 +1106,16 @@ class Game {
                       -Math.round(this.camera.y * renderScale) / renderScale + sy);
 
         if (this.map) this.map.draw(ctx, this.camera, this.viewWidth, this.viewHeight);
+        // White pixel frames flash at dormant enemy positions for the 0.6 s warning.
+        const warningVisible = Math.floor(performance.now() / 90) % 2 === 0;
+        if (warningVisible && this.map) {
+            for (const room of this.map.rooms) {
+                if (!(room.spawnWarningTimer > 0)) continue;
+                for (const marker of room.spawnWarningMarkers || []) {
+                    pixelFrame(ctx, marker.x, marker.y, 36, 36, 4, '#ffffff');
+                }
+            }
+        }
         this.drawSniperAim(ctx);
 
         // XP orbs — squares with a dim halo

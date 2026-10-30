@@ -159,6 +159,7 @@
         }
         game.ui.updateHUD(game.player, game.floor);
         game.ui.showHUD(true);
+        if (state.phase === 'playing') game.ui.hideLoading();
         lastSnapshotAt = performance.now();
     }
 

@@ -95,27 +95,66 @@ function broadcast(room) {
 
 function startSharedRun(room) {
     const previousRun = room.run;
-    try {
-        const reusablePool = previousRun?.enemyProjectilePool || null;
-        if (reusablePool) reusablePool.releaseAll(previousRun.enemyBullets);
-        room.run = Simulation.createRun([...room.players.values()], reusablePool);
-        room.phase = 'playing';
-        const initial = { type: 'game_start', snapshot: Simulation.snapshot(room.run) };
-        for (const player of room.players.values()) send(player.socket, initial);
-    } catch (error) {
-        console.error('No se pudo preparar la partida compartida.', error);
-        room.run = previousRun;
-        room.phase = previousRun ? 'ended' : 'lobby';
-        for (const player of room.players.values()) {
-            send(player.socket, { type: 'error', message: 'No se pudo preparar la mazmorra. Intenta iniciar de nuevo.' });
-        }
+    const startToken = (room.startToken || 0) + 1;
+    room.startToken = startToken;
+    room.phase = 'loading';
+    for (const player of room.players.values()) {
+        send(player.socket, { type: 'game_loading', floor: 1 });
     }
+    // Yield so every connected client can paint its loading screen before the
+    // map, enemy cache and projectile pool are prepared for the new run.
+    setTimeout(() => {
+        if (rooms.get(room.id) !== room || room.startToken !== startToken) return;
+        try {
+            const reusablePool = previousRun?.enemyProjectilePool || null;
+            if (reusablePool) reusablePool.releaseAll(previousRun.enemyBullets);
+            room.run = Simulation.createRun([...room.players.values()], reusablePool);
+            room.phase = 'playing';
+            const initial = { type: 'game_start', snapshot: Simulation.snapshot(room.run) };
+            for (const player of room.players.values()) send(player.socket, initial);
+        } catch (error) {
+            console.error('No se pudo preparar la partida compartida.', error);
+            room.run = previousRun;
+            room.phase = previousRun ? 'ended' : 'lobby';
+            for (const player of room.players.values()) {
+                send(player.socket, { type: 'error', message: 'No se pudo preparar la mazmorra. Intenta iniciar de nuevo.' });
+            }
+        }
+    }, 0);
 }
 
 setInterval(() => {
     for (const room of rooms.values()) {
         if (room.phase !== 'playing' || !room.run) continue;
         Simulation.stepRun(room.run, new Map([...room.players.values()].map(p => [p.id, p.input])));
+        if (room.run.phase === 'loading' && room.run.nextFloorPending && !room.floorTransitionScheduled) {
+            const run = room.run;
+            room.phase = 'loading';
+            room.floorTransitionScheduled = true;
+            for (const player of room.players.values()) {
+                send(player.socket, { type: 'floor_loading', floor: run.floor + 1 });
+            }
+            // Keep the cover visible while the next floor's templates and
+            // dormant encounters are prepared; no future floor is generated.
+            setTimeout(() => {
+                if (rooms.get(room.id) !== room || room.run !== run || room.phase !== 'loading') return;
+                try {
+                    Simulation.completeFloorTransition(run);
+                    room.phase = 'playing';
+                    room.floorTransitionScheduled = false;
+                    const update = { type: 'game_snapshot', snapshot: Simulation.snapshot(run) };
+                    for (const player of room.players.values()) send(player.socket, update);
+                } catch (error) {
+                    console.error('No se pudo preparar el siguiente piso.', error);
+                    room.phase = 'ended';
+                    room.floorTransitionScheduled = false;
+                    for (const player of room.players.values()) {
+                        send(player.socket, { type: 'error', message: 'No se pudo preparar el siguiente piso.' });
+                    }
+                }
+            }, 50);
+            continue;
+        }
         if (room.run.phase === 'ended') {
             room.phase = 'ended';
             const finalUpdate = { type: 'game_snapshot', snapshot: Simulation.snapshot(room.run) };

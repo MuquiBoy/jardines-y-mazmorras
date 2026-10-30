@@ -1081,6 +1081,26 @@ class DungeonMap {
     }
 
     /**
+     * Prepare the default encounter entities for this floor exactly once.
+     * The returned room-index map is owned by the run and remains inactive
+     * until that room is entered. Spawn selection still uses the same room
+     * templates, collision checks, encounter tables and floor composition as
+     * getEnemiesForRoom(); it simply happens during this floor's load.
+     */
+    prepareEnemiesForFloor(floor = 1) {
+        const prepared = new Map();
+        const encounterTypes = new Set(['combat', 'combat-simple', 'combat-hard', 'boss']);
+        for (let roomIndex = 0; roomIndex < this.rooms.length; roomIndex++) {
+            const room = this.rooms[roomIndex];
+            if (!encounterTypes.has(room.type)) continue;
+            const enemies = this.getEnemiesForRoom(room, null, 280, floor);
+            for (const enemy of enemies) enemy.roomIndex = roomIndex;
+            prepared.set(roomIndex, enemies);
+        }
+        return prepared;
+    }
+
+    /**
      * Get enemies for a given room.
      * @param {Object} room
      * @param {Object|null} avoid - point to keep spawns away from (the player)

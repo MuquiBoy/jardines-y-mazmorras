@@ -97,12 +97,17 @@
             try { message = JSON.parse(event.data); } catch (_) { return; }
             if (message.type === 'error') {
                 status.textContent = message.message;
-                if (client.starting && client.gameEnabled) window.abyssGame?.ui.showLoadingError(message.message);
+                if (client.gameEnabled) window.abyssGame?.ui.showLoadingError(message.message);
                 else window.abyssGame?.ui.hideLoading();
                 client.starting = false;
                 return;
             }
             if (message.type === 'welcome') { client.playerId = message.playerId; return; }
+            if (message.type === 'game_loading' || message.type === 'floor_loading') {
+                client.phase = 'loading';
+                window.abyssGame?.ui.showLoading(`Preparando piso ${message.floor || 1}…`);
+                return;
+            }
             if (message.type === 'game_start') {
                 client.gameEnabled = true;
                 client.phase = 'playing';
