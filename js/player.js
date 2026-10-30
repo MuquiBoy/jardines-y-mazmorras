@@ -5,6 +5,7 @@ const PLAYER_SPRITE_ROOT = '00-sprites/jugador/';
 const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
 const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
+const PLAYER_BASTION_FORM_VERSION = 'bastion-debil-form-v1';
 const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
 const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;
 
@@ -195,14 +196,21 @@ class Player {
         if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
             typeof document === 'undefined') return;
         for (const role of Object.values(CHARACTER_ROLES)) {
-            if (Player.animations[role.id] || Player.animationPromises[role.id]) continue;
-            const url = PLAYER_SPRITE_ROOT + role.id + '/' + role.id + '_walk.aseprite?v=' + PLAYER_WALK_VERSION;
-            Player.animationPromises[role.id] = decodeAsepriteAnimation(url)
-                .then(animation => { if (animation) Player.animations[role.id] = animation; })
-                .catch(error => {
-                    delete Player.animationPromises[role.id];
-                    console.warn('No se pudo cargar la animación walk de ' + role.name + '.', error);
-                });
+            const sources = [{ key: role.id, name: role.sprite, version: PLAYER_WALK_VERSION }];
+            if (role.depletedSprite) {
+                sources.push({ key: `${role.id}:debil`, name: role.depletedSprite, version: PLAYER_BASTION_FORM_VERSION });
+            }
+            for (const source of sources) {
+                if (!source.name || Player.animations[source.key] || Player.animationPromises[source.key]) continue;
+                const filename = encodeURIComponent(`${source.name}_walk.aseprite`);
+                const url = PLAYER_SPRITE_ROOT + role.sprite + '/' + filename + '?v=' + source.version;
+                Player.animationPromises[source.key] = decodeAsepriteAnimation(url)
+                    .then(animation => { if (animation) Player.animations[source.key] = animation; })
+                    .catch(error => {
+                        delete Player.animationPromises[source.key];
+                        console.warn('No se pudo cargar la animación ' + source.name + '.', error);
+                    });
+            }
         }
     }
 
@@ -224,8 +232,9 @@ class Player {
     }
 
     /** Select a frame by its authored Aseprite duration; looping never depends on movement. */
-    static walkFrameFor(character, now = (typeof performance !== 'undefined' ? performance.now() : Date.now())) {
-        const animation = Player.animations[character];
+    static walkFrameFor(character, now = (typeof performance !== 'undefined' ? performance.now() : Date.now()), form = null) {
+        const animationKey = character === 'bastion' && form === 'bastion-debil' ? 'bastion:debil' : character;
+        const animation = Player.animations[animationKey];
         if (!animation) return null;
         let time = now % animation.totalDuration;
         for (let i = 0; i < animation.frames.length; i++) {
@@ -250,19 +259,27 @@ class Player {
             const image = new Image();
             image.src = `${PLAYER_SPRITE_ROOT}${role.sprite}/${role.sprite}_sticker.png?v=${PLAYER_SPRITE_VERSION}`;
             Player.sprites[role.id] = image;
+            if (role.depletedSprite) {
+                const depletedImage = new Image();
+                depletedImage.src = `${PLAYER_SPRITE_ROOT}${role.sprite}/${encodeURIComponent(role.depletedSprite + '_sticker.png')}?v=${PLAYER_BASTION_FORM_VERSION}`;
+                Player.sprites[`${role.id}:debil`] = depletedImage;
+            }
         }
         return Player.sprites;
     }
 
-    static spriteFor(character) {
+    static spriteFor(character, form = null) {
         const sprites = Player.sprites || Player.loadSprites();
-        return sprites ? sprites[character] || null : null;
+        if (!sprites) return null;
+        const formKey = character === 'bastion' && form === 'bastion-debil' ? 'bastion:debil' : character;
+        return sprites[formKey] || sprites[character] || null;
     }
 
     constructor(x, y) {
         Player.loadSprites();
         this.x = x; this.y = y; this.radius = 12; this.visualScale = 1;
         this.maxHealth = 100; this.health = 100; this.maxGrayHealth = 0; this.grayHealth = 0;
+        this.bastionForm = null; this.bastionTransformEvent = 0;
         this.speed = 2.25; this.damage = 10;
         this.fireRate = 12; this.bulletSpeed = 3.5; this.bulletCount = 1;
         this.bulletPierce = 0; this.magnetRange = 100;
@@ -284,6 +301,32 @@ class Player {
         const role = CHARACTER_ROLES[characterId] || CHARACTER_ROLES.pistolero;
         role.apply(this);
         return role;
+    }
+
+    /** Keep Bastion's form and movement tied to the temporary gray heart. */
+    updateBastionForm(resetForFloor = false) {
+        if (this.character !== 'bastion') return false;
+        const previousForm = this.bastionForm;
+        if (resetForFloor) this.bastionForm = 'calabaza-blindada';
+        else if ((this.grayHealth || 0) <= 0) this.bastionForm = 'bastion-debil';
+        else if (this.bastionForm !== 'bastion-debil') this.bastionForm = 'calabaza-blindada';
+
+        const role = CHARACTER_ROLES.bastion;
+        const multiplier = this.bastionForm === 'bastion-debil'
+            ? role.depletedMovementSpeed
+            : role.movementSpeed;
+        this.speed = movementSpeedFromMultiplier(multiplier);
+        return previousForm !== this.bastionForm;
+    }
+
+    /** Refill only Bastion's gray heart at the floor boundary; preserve red HP. */
+    restoreGrayHeartForNextFloor() {
+        if (this.character !== 'bastion') return false;
+        const redHealth = this.permanentHealth;
+        this.grayHealth = this.maxGrayHealth;
+        this.health = redHealth + this.grayHealth;
+        this.updateBastionForm(true);
+        return true;
     }
 
     xpToNext() {
@@ -315,6 +358,9 @@ class Player {
         // Gray hearts are temporary: damage consumes them before red health.
         // They never regenerate through healing, upgrades, or revival.
         this.grayHealth = Math.max(0, (this.grayHealth || 0) - damage);
+        if (this.character === 'bastion' && this.grayHealth <= 0 && this.updateBastionForm()) {
+            this.bastionTransformEvent = (this.bastionTransformEvent || 0) + 1;
+        }
         this.invincibleTimer = PLAYER_DAMAGE_INVULNERABILITY_FRAMES;
     }
 
@@ -561,8 +607,8 @@ class Player {
         const elapsedInvulnerability = PLAYER_DAMAGE_INVULNERABILITY_FRAMES - this.invincibleTimer;
         const redFlash = invulnerable &&
             Math.floor(elapsedInvulnerability / PLAYER_DAMAGE_FLASH_PHASE_FRAMES) % 2 === 0;
-        const walkFrame = Player.walkFrameFor(this.character);
-        const sprite = Player.spriteFor(this.character);
+        const walkFrame = Player.walkFrameFor(this.character, undefined, this.bastionForm);
+        const sprite = Player.spriteFor(this.character, this.bastionForm);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
         const damageMask = redFlash ? Player.damageMasks[this.character] : null;
 
@@ -637,4 +683,3 @@ class Player {
 Player.loadSprites();
 Player.loadAnimations();
 Player.loadDamageMasks();
-
