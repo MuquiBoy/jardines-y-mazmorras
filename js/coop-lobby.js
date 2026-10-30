@@ -98,6 +98,7 @@
             if (message.type === 'error') {
                 status.textContent = message.message;
                 if (client.gameEnabled) window.abyssGame?.ui.showLoadingError(message.message);
+                else if (client.starting) window.abyssGame?.ui.showLoadingError(message.message);
                 else window.abyssGame?.ui.hideLoading();
                 client.starting = false;
                 return;
