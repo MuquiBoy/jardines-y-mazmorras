@@ -5,6 +5,7 @@ const PLAYER_SPRITE_ROOT = '00-sprites/jugador/';
 const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
 const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
+const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v1';
 const PLAYER_BASTION_FORM_VERSION = 'bastion-debil-form-v1';
 const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
 const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;
@@ -197,18 +198,24 @@ class Player {
             typeof document === 'undefined') return;
         for (const role of Object.values(CHARACTER_ROLES)) {
             const sources = [{ key: role.id, name: role.sprite, version: PLAYER_WALK_VERSION }];
+            if (role.id === 'pistolero') {
+                sources.push(
+                    { key: 'pistolero:back', filename: 'pistolero_walk-back.aseprite', version: PLAYER_PISTOLERO_DIRECTION_VERSION },
+                    { key: 'pistolero:front', filename: 'pistolero_walk-front.aseprite', version: PLAYER_PISTOLERO_DIRECTION_VERSION }
+                );
+            }
             if (role.depletedSprite) {
                 sources.push({ key: `${role.id}:debil`, name: role.depletedSprite, version: PLAYER_BASTION_FORM_VERSION });
             }
             for (const source of sources) {
-                if (!source.name || Player.animations[source.key] || Player.animationPromises[source.key]) continue;
-                const filename = encodeURIComponent(`${source.name}_walk.aseprite`);
+                if ((!source.name && !source.filename) || Player.animations[source.key] || Player.animationPromises[source.key]) continue;
+                const filename = encodeURIComponent(source.filename || source.name + '_walk.aseprite');
                 const url = PLAYER_SPRITE_ROOT + role.sprite + '/' + filename + '?v=' + source.version;
                 Player.animationPromises[source.key] = decodeAsepriteAnimation(url)
                     .then(animation => { if (animation) Player.animations[source.key] = animation; })
                     .catch(error => {
                         delete Player.animationPromises[source.key];
-                        console.warn('No se pudo cargar la animación ' + source.name + '.', error);
+                        console.warn('No se pudo cargar la animación ' + (source.name || source.filename) + '.', error);
                     });
             }
         }
@@ -232,9 +239,12 @@ class Player {
     }
 
     /** Select a frame by its authored Aseprite duration; looping never depends on movement. */
-    static walkFrameFor(character, now = (typeof performance !== 'undefined' ? performance.now() : Date.now()), form = null) {
+    static walkFrameFor(character, now = (typeof performance !== 'undefined' ? performance.now() : Date.now()), form = null, facing = null) {
+        const directionalKey = character === 'pistolero' && (facing === 'back' || facing === 'front')
+            ? 'pistolero:' + facing
+            : null;
         const animationKey = character === 'bastion' && form === 'bastion-debil' ? 'bastion:debil' : character;
-        const animation = Player.animations[animationKey];
+        const animation = (directionalKey && Player.animations[directionalKey]) || Player.animations[animationKey];
         if (!animation) return null;
         let time = now % animation.totalDuration;
         for (let i = 0; i < animation.frames.length; i++) {
@@ -293,6 +303,7 @@ class Player {
         this.fireTimer = 0; this.invincibleTimer = 0; this.sniperAiming = false;
         this.knockbackImpulse = null;
         this.aimX = 0; this.aimY = -1; this.angle = 0; this.character = 'pistolero';
+        this.pistoleroFacing = 'front'; this.pistoleroMirrored = false;
     }
 
     cancelSniperAim() { this.sniperAiming = false; }
@@ -603,11 +614,27 @@ class Player {
     draw(ctx, aimPointer = null, aimPointerState = null) {
         const size = 24 * (this.visualScale || 1);
         const px = this.renderX ?? this.x, py = this.renderY ?? this.y;
+        const directionX = aimPointerState?.x ?? this.renderAimX ?? this.aimX;
+        const directionY = aimPointerState?.y ?? this.renderAimY ?? this.aimY;
+        const distance = aimPointerState?.distance ?? this.renderAimPointerDistance ?? AIM_POINTER_DEFAULT_DISTANCE;
+        const pointerPosition = aimPointerPosition(px, py, size, directionX, directionY, distance);
+        const pointerX = pointerPosition.x;
+        const pointerY = pointerPosition.y;
+        if (this.character === 'pistolero') {
+            if (!this.pistoleroFacing) this.pistoleroFacing = 'front';
+            if (this.pistoleroMirrored === undefined) this.pistoleroMirrored = false;
+            // Preserve the last vertical facing when the pointer is level with the sprite center.
+            if (pointerY <= py - 1) this.pistoleroFacing = 'back';
+            else if (pointerY >= py + 1) this.pistoleroFacing = 'front';
+            // Aim right keeps the authored view; aim left mirrors it.
+            if (pointerX <= px - 1) this.pistoleroMirrored = true;
+            else if (pointerX >= px + 1) this.pistoleroMirrored = false;
+        }
         const invulnerable = this.invincibleTimer > 0;
         const elapsedInvulnerability = PLAYER_DAMAGE_INVULNERABILITY_FRAMES - this.invincibleTimer;
         const redFlash = invulnerable &&
             Math.floor(elapsedInvulnerability / PLAYER_DAMAGE_FLASH_PHASE_FRAMES) % 2 === 0;
-        const walkFrame = Player.walkFrameFor(this.character, undefined, this.bastionForm);
+        const walkFrame = Player.walkFrameFor(this.character, undefined, this.bastionForm, this.pistoleroFacing);
         const sprite = Player.spriteFor(this.character, this.bastionForm);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
         const damageMask = redFlash ? Player.damageMasks[this.character] : null;
@@ -615,6 +642,10 @@ class Player {
         ctx.save();
         if (invulnerable) ctx.globalAlpha = redFlash ? 0.88 : 0.96;
         ctx.save();
+        if (this.character === 'pistolero' && this.pistoleroMirrored) {
+            ctx.translate(Math.round(px) * 2, 0);
+            ctx.scale(-1, 1);
+        }
         if (redFlash && !damageMask) ctx.filter = 'sepia(1) saturate(5) hue-rotate(315deg)';
         if (walkFrame || spriteReady) {
             // Preserve nearest-neighbor pixels and the role's authored 24/32/40 px footprint.
@@ -633,12 +664,6 @@ class Player {
             ctx.drawImage(damageMask, snap(px - size / 2), snap(py - size / 2), Math.round(size), Math.round(size));
         }
         ctx.restore();
-        const directionX = aimPointerState?.x ?? this.renderAimX ?? this.aimX;
-        const directionY = aimPointerState?.y ?? this.renderAimY ?? this.aimY;
-        const distance = aimPointerState?.distance ?? this.renderAimPointerDistance ?? AIM_POINTER_DEFAULT_DISTANCE;
-        const pointerPosition = aimPointerPosition(px, py, size, directionX, directionY, distance);
-        const pointerX = pointerPosition.x;
-        const pointerY = pointerPosition.y;
         if (aimPointer?.complete && aimPointer.naturalWidth > 0) {
             const pointerWidth = aimPointer.naturalWidth;
             const pointerHeight = aimPointer.naturalHeight;
