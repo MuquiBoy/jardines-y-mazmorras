@@ -145,6 +145,38 @@ test('cursor at sprite center retains the last valid direction and uses the one-
     assert.equal(pointer.y, 0);
 });
 
+test('pointer lock keeps a virtual cursor for local and cooperative aiming', () => {
+    const game = Object.create(GamePrototype);
+    const rect = { left: 10, top: 20, right: 810, bottom: 620, width: 800, height: 600 };
+    game.canvas = { width: 800, height: 600, getBoundingClientRect: () => rect };
+    game.input = { mouseX: 0, mouseY: 0 };
+    game.player = { character: 'pistolero' };
+    context.document = { pointerLockElement: game.canvas };
+    try {
+        game.pointerClientX = 400;
+        game.pointerClientY = 300;
+        game.recordMousePosition({ type: 'mousemove', clientX: 410, clientY: 320, movementX: 25, movementY: -15 });
+        assert.equal(game.pointerClientX, 425);
+        assert.equal(game.pointerClientY, 285);
+        assert.ok(game.input.mouseX > 0 && game.input.mouseY > 0);
+
+        game.recordMousePosition({ type: 'mousemove', clientX: 410, clientY: 320, movementX: 5000, movementY: -5000 });
+        assert.equal(game.pointerClientX, rect.right);
+        assert.equal(game.pointerClientY, rect.top);
+
+        game.recordMousePosition({ type: 'mouseup', clientX: 410, clientY: 320, movementX: -300, movementY: 300 });
+        assert.equal(game.pointerClientX, rect.right);
+        assert.equal(game.pointerClientY, rect.top);
+
+        context.document.pointerLockElement = null;
+        game.recordMousePosition({ type: 'mousemove', clientX: 410, clientY: 320, movementX: 5000, movementY: 5000 });
+        assert.equal(game.pointerClientX, 410);
+        assert.equal(game.pointerClientY, 320);
+    } finally {
+        delete context.document;
+    }
+});
+
 test('remote pointer radii interpolate and remain inside the same limits', () => {
     assert.equal(interpolateAimPointerDistance(40, 120, 0.5), 80);
     assert.equal(interpolateAimPointerDistance(160, 10, 0), 120);

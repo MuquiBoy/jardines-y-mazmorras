@@ -56,6 +56,12 @@ html:fullscreen * {
     cursor: none !important;
 }
 
+/* Pause and upgrade menus still need a visible mouse after pointer lock ends. */
+html.game-fullscreen.game-menu-cursor,
+html.game-fullscreen.game-menu-cursor * {
+    cursor: auto !important;
+}
+
 /* ===== Screen overlays ===== */
 .screen {
     position: absolute;

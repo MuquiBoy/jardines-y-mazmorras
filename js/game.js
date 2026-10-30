@@ -162,6 +162,23 @@ class Game {
         this.input.mouseY = (this.pointerClientY - rect.top) * scale;
     }
 
+    /** Keep the game's virtual cursor moving while the browser pointer is locked. */
+    recordMousePosition(event) {
+        if (typeof document !== 'undefined' && document.pointerLockElement === this.canvas) {
+            const rect = this.canvas.getBoundingClientRect();
+            const previousX = Number.isFinite(this.pointerClientX) ? this.pointerClientX : rect.left + rect.width / 2;
+            const previousY = Number.isFinite(this.pointerClientY) ? this.pointerClientY : rect.top + rect.height / 2;
+            const dx = event.type === 'mousemove' ? (event.movementX || 0) : 0;
+            const dy = event.type === 'mousemove' ? (event.movementY || 0) : 0;
+            this.pointerClientX = Math.max(rect.left, Math.min(rect.right, previousX + dx));
+            this.pointerClientY = Math.max(rect.top, Math.min(rect.bottom, previousY + dy));
+        } else {
+            this.pointerClientX = event.clientX;
+            this.pointerClientY = event.clientY;
+        }
+        this.updatePointerWorld();
+    }
+
     /** Return render-only pointer direction and radius, measured from the visible sprite center. */
     getAimPointerForRender(player) {
         let fallbackX = player?.renderAimX ?? player?.aimX ?? 0;
@@ -277,19 +294,18 @@ class Game {
         this.canvas.addEventListener('pointerdown', focusCanvas);
 
         this.canvas.addEventListener('mousemove', (e) => {
-            this.pointerClientX = e.clientX; this.pointerClientY = e.clientY;
-            this.updatePointerWorld();
+            this.recordMousePosition(e);
         });
 
         this.canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { this.audio.unlock(); this.pointerClientX = e.clientX; this.pointerClientY = e.clientY; this.updatePointerWorld(); this.input.mouseDown = true; this.input.mousePressed = true; }
+            if (e.button === 0) { this.audio.unlock(); this.recordMousePosition(e); this.input.mouseDown = true; this.input.mousePressed = true; }
         });
 
         // Bound to the window, not the canvas: releasing the button after the
         // cursor has left the canvas otherwise never clears mouseDown, and the
         // player keeps firing.
         window.addEventListener('mouseup', (e) => {
-            if (e.button === 0) { this.pointerClientX = e.clientX; this.pointerClientY = e.clientY; this.updatePointerWorld(); this.input.mouseDown = false; this.input.mouseReleased = true; }
+            if (e.button === 0) { this.recordMousePosition(e); this.input.mouseDown = false; this.input.mouseReleased = true; }
         });
 
         // A key held while the window loses focus never receives its keyup, so
@@ -1074,6 +1090,18 @@ class Game {
     }
     /** Render the game. */
     render() {
+        if (typeof document !== 'undefined' && document.documentElement &&
+            (document.fullscreenElement || document.webkitFullscreenElement)) {
+            document.documentElement.classList.toggle('game-menu-cursor',
+                this.state === 'PAUSED' || this.state === 'LEVEL_UP' || this.state === 'GAME_OVER');
+        }
+        // Menus need the real cursor for their buttons and upgrade cards.
+        // Both local and cooperative play render through this method.
+        if (typeof document !== 'undefined' && document.pointerLockElement === this.canvas &&
+            (this.state === 'PAUSED' || this.state === 'LEVEL_UP' || this.state === 'GAME_OVER')) {
+            this.pointerLockReleaseForMenu = true;
+            document.exitPointerLock?.();
+        }
         const ctx = this.ctx;
         const CW = this.canvas.width;   // canvas (game-pixel) space
         const CH = this.canvas.height;

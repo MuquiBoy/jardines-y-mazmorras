@@ -46,23 +46,65 @@
         catch (_) { canvas.focus(); }
     }
 
-    // Escape toggles browser fullscreen. Entering on keyup prevents the
-    // browser from treating the same Escape keydown as an immediate exit.
+    // Escape toggles browser fullscreen. Pointer lock keeps the system cursor
+    // away from the browser's top-edge exit control while the game is active.
+    // The game's own virtual cursor continues to receive relative movement.
+    // Entering on keyup prevents the same Escape keydown from immediately
+    // releasing fullscreen or pointer lock.
     // The requested action is captured on keydown so fullscreenchange during
     // that key press cannot turn an intended exit into a re-entry.
     const fullscreenRoot = document.documentElement;
     let escapeActionOnKeyup = null;
+    let fullscreenExitPending = false;
+    let fullscreenEntryPending = false;
     function isGameFullscreen() {
         return !!(document.fullscreenElement || document.webkitFullscreenElement);
     }
     function syncFullscreenCursor() {
-        fullscreenRoot.classList.toggle('game-fullscreen', isGameFullscreen());
+        const active = isGameFullscreen();
+        if (active) fullscreenEntryPending = false;
+        fullscreenRoot.classList.toggle('game-fullscreen', active);
+        fullscreenRoot.classList.toggle('game-menu-cursor', active &&
+            (game.state === 'START' || game.state === 'PAUSED' ||
+             game.state === 'LEVEL_UP' || game.state === 'GAME_OVER'));
+        if (!active) {
+            fullscreenExitPending = false;
+            if (document.pointerLockElement === canvas) document.exitPointerLock?.();
+        }
         // Fullscreen transitions can return focus to the browser's prior UI
         // element instead of the game surface. Restore it after the transition.
         setTimeout(focusGameCanvas, 0);
     }
     document.addEventListener('fullscreenchange', syncFullscreenCursor);
     document.addEventListener('webkitfullscreenchange', syncFullscreenCursor);
+    function captureGamePointer() {
+        if (touch || game.state !== 'PLAYING' || document.pointerLockElement === canvas ||
+            typeof canvas.requestPointerLock !== 'function') return;
+        try {
+            // requestFullscreen consumes the activation, so pointer lock must
+            // be requested first and without awaiting its optional Promise.
+            const request = canvas.requestPointerLock();
+            if (request && typeof request.catch === 'function') request.catch(() => {});
+        } catch (_) { /* Fullscreen remains usable if pointer lock is denied. */ }
+    }
+    document.addEventListener('pointerlockchange', () => {
+        if (document.pointerLockElement === canvas && !isGameFullscreen() && !fullscreenEntryPending) {
+            document.exitPointerLock?.();
+            return;
+        }
+        if (game.pointerLockReleaseForMenu && document.pointerLockElement !== canvas) {
+            game.pointerLockReleaseForMenu = false;
+            return;
+        }
+        // Escape can release pointer lock before its keyup reaches the page.
+        // In that case also leave fullscreen, so one press still toggles it off.
+        if (document.pointerLockElement !== canvas && isGameFullscreen() &&
+            game.state === 'PLAYING' && !fullscreenExitPending) {
+            fullscreenExitPending = true;
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            try { exit?.call(document); } catch (_) { fullscreenExitPending = false; }
+        }
+    });
     window.addEventListener('focus', focusGameCanvas);
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) focusGameCanvas();
@@ -70,6 +112,7 @@
     syncFullscreenCursor();
 
     window.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' && isGameFullscreen() && game.state === 'PLAYING') captureGamePointer();
         if (event.code !== 'Escape' || event.repeat) return;
         event.preventDefault();
         escapeActionOnKeyup = isGameFullscreen() ? 'exit' : 'enter';
@@ -88,18 +131,40 @@
             : (fullscreenRoot.requestFullscreen || fullscreenRoot.webkitRequestFullscreen);
         if (!action) return;
         try {
+            if (requestedAction === 'enter') {
+                fullscreenEntryPending = true;
+                captureGamePointer();
+            }
+            else fullscreenExitPending = true;
             const result = requestedAction === 'exit'
                 ? action.call(document)
-                : action.call(fullscreenRoot);
+                : action.call(fullscreenRoot, { navigationUI: 'hide' });
             if (result && typeof result.then === 'function') {
-                result.then(syncFullscreenCursor, syncFullscreenCursor);
+                result.then(() => {
+                    fullscreenEntryPending = false;
+                    syncFullscreenCursor();
+                }, () => {
+                    fullscreenEntryPending = false;
+                    fullscreenExitPending = false;
+                    syncFullscreenCursor();
+                });
             } else {
                 syncFullscreenCursor();
             }
         } catch (_) {
+            fullscreenEntryPending = false;
+            fullscreenExitPending = false;
+            if (!isGameFullscreen() && document.pointerLockElement === canvas) document.exitPointerLock?.();
             // Fullscreen can be unavailable in embedded browsers; gameplay is unaffected.
         }
     }, true);
+
+    // Clicking to resume or confirming an upgrade is a fresh user gesture,
+    // so restore capture after those menus close. A canvas click also lets a
+    // player grant pointer-lock permission after entering fullscreen.
+    window.addEventListener('click', () => {
+        if (isGameFullscreen() && game.state === 'PLAYING') captureGamePointer();
+    });
 
     // Music tracks are optional: drop files in audio/ and they play, otherwise
     // the game runs with effects only.
