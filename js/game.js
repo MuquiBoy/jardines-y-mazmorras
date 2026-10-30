@@ -678,7 +678,6 @@ class Game {
         for (const bullet of this.enemyBullets) {
             bullet.x += bullet.vx;
             bullet.y += bullet.vy;
-            if (bullet.ignoreFrames > 0) bullet.ignoreFrames--;
 
             // Pop against room and corridor walls, so enemies can't shoot the
             // player through geometry they can't themselves cross. Checked
@@ -698,23 +697,14 @@ class Game {
                 continue;
             }
 
-            // Optional role modifiers stay neutral for Bastion: full damage,
-            // with no projectile ricochet passive.
-            const ricochetChance = this.player.enemyProjectileRicochetChance ?? 0;
-            const damageMultiplier = this.player.incomingDamageMultiplier ?? 1;
-            const isProtectedFromThisBullet = bullet.ignorePlayerId === (this.player.id ?? 'local') && bullet.ignoreFrames > 0;
-            if (!isProtectedFromThisBullet && bulletHitsPlayer(bullet, this.player)) {
+            if (bulletHitsPlayer(bullet, this.player)) {
                 const before = this.player.health;
-                this.player.takeDamage(bullet.damage * damageMultiplier);
+                this.player.takeDamage(bullet.damage);
                 if (this.player.health < before) {
                     this.addImpact(8, 6);
                     this.audio.playerHurt();
                 }
                 this.spawnParticles(this.player.x, this.player.y, PALETTE.danger, 5);
-                if (ricochetChance > 0 && Math.random() < ricochetChance) {
-                    ricochetEnemyBulletTowardParty(bullet, this.player, [this.player]);
-                    continue;
-                }
                 this.enemyProjectilePool.release(bullet);
             }
         }
