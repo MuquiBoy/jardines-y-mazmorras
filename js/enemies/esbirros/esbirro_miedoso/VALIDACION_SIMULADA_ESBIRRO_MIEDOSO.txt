@@ -1,0 +1,32 @@
+JARDINES Y MAZMORRAS — VALIDACIÓN TÁCTICA
+Esbirro Miedoso: cobertura, retirada y respuesta de ataque
+
+MÉTODO
+Se usó la simulación autoritativa de server/simulation.js, las estadísticas actuales de cada rol y plantillas reales con obstáculos azules #0000FF. Se ejecutaron escenarios a 60 ticks por segundo con 35 HP iniciales en el Esbirro Miedoso.
+
+Perfiles de jugador:
+- Tirador: combate a larga distancia, desplazamiento lateral y disparo cargado.
+- Pistolero: mantiene distancia media con movimiento lateral y fuego continuo.
+- Bastión: fuego sostenido desde una posición estable o con desplazamiento lateral lento.
+
+RESULTADOS DE NUEVE ESCENARIOS DE ESTRÉS
+Se hicieron tres variantes de movimiento por rol. En los nueve casos el enemigo seleccionó una cobertura válida; en ocho de nueve lanzó al menos un proyectil después de entrar en modo defensivo.
+
+- Tirador: sobrevivió en 2/3; en uno derrotó al jugador, en uno fue derrotado y en otro ambos siguieron vivos hasta el límite de simulación.
+- Pistolero: fue derrotado en 3/3. Aun así, disparó después de buscar cobertura en los tres escenarios. Su alta cadencia y daño pueden eliminar al enemigo antes de que su velocidad 0,50 alcance un refugio lejano.
+- Bastión: sobrevivió en 1/3 y derrotó al jugador en uno. El fuego sostenido lo obliga a alternar cobertura y líneas breves de ataque.
+
+COMPROBACIÓN ADICIONAL CON PUERTAS CERRADAS
+Se ejecutó un escenario adicional por rol con la sala bloqueada como durante un encuentro real. Los jugadores permanecieron dentro de la sala. Tirador y Bastión alcanzaron la cobertura y dispararon al menos una vez después del cambio defensivo. El Esbirro Miedoso no llegó a la cobertura antes de ser derrotado por el Pistolero en ese escenario.
+
+DECISIONES DE IA DERIVADAS
+- Conservar el disparador exacto de 17 HP; no se anticipa la cobertura antes del umbral solicitado.
+- Reconocer una cobertura azul que ya protege la posición y no salir de ella por pequeños movimientos del jugador.
+- Limitar la primera selección a una cobertura cercana; si no la hay, evadir y volver a buscar, en vez de atravesar la sala expuesto.
+- Si el punto de refugio sigue oculto, conservarlo. Para atacar, buscar un punto de tiro alcanzable, asomarse brevemente, disparar con su cadencia normal y volver.
+- Mantener la navegación y las colisiones del mapa, y dejar que las diferencias entre roles produzcan resultados distintos. No se aumentó la velocidad, el daño, la vida ni la cadencia del enemigo.
+
+LÍMITE OBSERVADO
+La cobertura no garantiza que el Esbirro Miedoso venza a todos los roles. Con velocidad 0,50, puede morir antes de llegar a un obstáculo si el jugador Pistolero mantiene impactos frecuentes y el refugio está lejos. Es un resultado de las estadísticas actuales, no una colisión atravesada ni una falla de navegación; el enemigo sí intenta retirarse.
+
+La simulación usa patrones de control programados, no aprendizaje automático, y no sustituye una partida humana. Sirve para comparar respuestas repetibles y detectar situaciones donde la IA pierde la cobertura o deja de atacar.

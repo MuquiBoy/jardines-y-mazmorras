@@ -1,16 +1,16 @@
 JARDINES Y MAZMORRAS
 EXPERIENCIA DE ENEMIGOS Y SUBIDA DE NIVEL
 
-Los valores corresponden al primer piso y al balance actual del juego.
+Los valores corresponden al balance actual.
 
 EXPERIENCIA POR ENEMIGO DERROTADO
-Enemigo                 XP total
-Básico (basic)           10 XP
-Mosca Tirador (mosca_tirador)        15 XP
-Espiral (spiral)         20 XP
-Jefe (boss)              200 XP
+Enemigo                            XP total
+Esbirro Miedoso (esbirro_miedoso)  10 XP
+Mosca Tirador (mosca_tirador)      15 XP
+Espiral (spiral)                   20 XP
+Jefe (boss)                       200 XP
 
-La XP se suelta como orbes. Cada orbe vale como máximo 5 XP; el total de orbes por enemigo se calcula para repartir todo el valor de XP. El jugador debe recoger los orbes para recibir la experiencia.
+La experiencia está configurada en las fichas, pero la recompensa de experiencia por derrotar enemigos está deshabilitada en el juego.
 
 EXPERIENCIA PARA SUBIR DE NIVEL
 Nivel actual → siguiente   XP requerida
@@ -36,6 +36,6 @@ BONIFICACIÓN DE SALA
 Sala de tesoro: concede 30 XP directamente, además de 30 HP de curación.
 
 NOTAS
-Los valores de XP configurados por enemigo no reciben modificadores por piso. La cantidad y composición de enemigos de una sala sí puede variar entre pisos. Las salas de combate comunes generan 2–4 enemigos, las difíciles 4–6, y la sala del jefe contiene al jefe y enemigos acompañantes.
+Los valores configurados por enemigo no reciben modificadores por piso. La cantidad y composición pueden variar entre pisos.
 
-Fuente: configuración actual de js/enemy.js, js/player.js y js/map.js.
+Fuente: js/enemy.js, js/player.js y js/map.js.

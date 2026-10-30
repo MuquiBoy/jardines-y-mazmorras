@@ -37,12 +37,13 @@ const ENEMY_CLASSES = Object.freeze({
 /** Load authored enemy art once before either solo or co-op gameplay is shown. */
 async function loadEnemyArtwork() {
     // Esbirro Tirador shares Mosca Tirador's current animation and decoded frames.
-    const [mosca, babosa, cochinilla] = await Promise.all([
+    const [miedoso, mosca, babosa, cochinilla] = await Promise.all([
+        EsbirroMiedoso.loadAnimation(),
         MoscaTirador.loadAnimation(),
         BabosaPersecucion.loadAnimation(),
         CochinillaEsquinero.loadSprite()
     ]);
-    if (!mosca?.frames?.length || !babosa?.frames?.length || !cochinilla?.naturalWidth) {
+    if (!miedoso?.frames?.length || !mosca?.frames?.length || !babosa?.frames?.length || !cochinilla?.naturalWidth) {
         throw new Error('No se pudieron cargar todas las texturas de los enemigos.');
     }
 }

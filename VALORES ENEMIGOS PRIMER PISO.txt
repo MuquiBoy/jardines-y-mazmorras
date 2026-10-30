@@ -1,32 +1,33 @@
 JARDINES Y MAZMORRAS
 ESTADÍSTICAS FIJAS DE ENEMIGOS — TODOS LOS PISOS
 
-La velocidad se configura como multiplicador de la velocidad universal del jugador: 1,00 = 2,5 px/frame de simulación (150 px/s). Entre paréntesis figura la velocidad resultante en el mundo. La cadencia es el intervalo repetido entre ataques a 60 frames por segundo.
+La velocidad se expresa como multiplicador de la velocidad universal del jugador: 1,00 = 2,5 px/frame (150 px/s) a 60 FPS. Entre paréntesis aparece su resultado actual. La cadencia es el intervalo entre ataques.
 
 ESBIRROS
-Enemigo       Vida     Velocidad                 Cadencia fija
-Básico        30 HP    0,70 (1,75 px/frame)      180 frames (3 s)
-Mosca Tirador 28 HP    0,70 (1,75 px/frame)       60 frames (1 s)
-Espiral       50 HP    0,50 (1,25 px/frame)      300 frames (5 s)
+Enemigo          Vida     Velocidad                  Cadencia fija
+Esbirro Miedoso  35 HP    0,50 (1,25 px/frame)      120 frames (2 s)
+Mosca Tirador    28 HP    0,70 (1,75 px/frame)       60 frames (1 s)
+Esbirro Tirador  28 HP    0,70 (1,75 px/frame)       60 frames (1 s)
+Espiral          50 HP    0,50 (1,25 px/frame)      300 frames (5 s)
 
-Mini-jefe             Vida     Velocidad                 Ataque
-Cochinilla Esquinero  100 HP   0,00 (0 px/frame)         Espera 180 f; aviso 120 f; rayo 300 f; recuperación 300 f.
-Babosa Persecución    500 HP   0,70 (1,75 px/frame)      Contacto: 12 HP por choque nuevo.
+Mini-jefe               Vida     Velocidad                  Ataque
+Cochinilla Esquinero    100 HP   0,00 (0 px/frame)          Espera 180 f; aviso 120 f; rayo 300 f; recuperación 300 f.
+Babosa Persecución      500 HP   0,70 (1,75 px/frame)       Contacto: 12 HP por choque nuevo.
 
 JEFE
-Enemigo                  Vida     Velocidad                 Cadencia/patrón
-Jefe                     500 HP   0,16 (0,40 px/frame)      Un ataque cada 30 f; cambia de patrón cada 100 f.
+Enemigo  Vida     Velocidad                  Cadencia/patrón
+Jefe     500 HP   0,16 (0,40 px/frame)      Un ataque cada 30 f; cambia de patrón cada 100 f.
 
 PROYECTILES Y DAÑO
-- Los proyectiles estándar de los esbirros causan 6 HP por impacto.
-- Velocidad de proyectiles: Básico 1,50 px/frame; Mosca Tirador 2,50 px/frame; Espiral 1,25 px/frame.
-- El jefe dispara proyectiles especiales de 12 HP, con velocidades de 1,25, 2,50 y 1,00 px/frame según el patrón.
-- Cochinilla Esquinero causa 6 HP por tick mientras el jugador toca el rayo activo. Babosa Persecución causa 12 HP por contacto nuevo.
-- El campo interno `damage` de algunas clases no equivale al daño que aplica un proyectil estándar; el valor efectivo se establece al crear el proyectil.
+- Los proyectiles estándar de esbirros causan 6 HP por impacto.
+- Velocidad: Esbirro Miedoso 2,00 px/frame; Mosca Tirador 2,50 px/frame; Esbirro Tirador 2,50 px/frame; Espiral 1,25 px/frame.
+- El jefe usa proyectiles especiales de 12 HP; sus velocidades dependen del patrón.
+- Cochinilla Esquinero causa 6 HP por tick del rayo activo. Babosa Persecución causa 12 HP por nuevo contacto.
+- El campo interno damage no siempre coincide con el daño efectivo del proyectil estándar; este se fija al crear el proyectil.
 
 REGLAS ENTRE PISOS
-- Los multiplicadores de movimiento, la vida, el daño, las cadencias y las velocidades de proyectil provienen de la configuración del enemigo y permanecen iguales al avanzar de piso.
-- El primer disparo de las unidades con cadencia recibe un retraso aleatorio entre 0,6 y 1,2 veces su intervalo; los ataques siguientes mantienen el intervalo de la tabla.
-- La dificultad de pisos superiores puede cambiar la cantidad y composición de enemigos. No se aplican modificadores de piso a las estadísticas individuales.
+- Los valores individuales de vida, velocidad, daño, cadencia y velocidad de proyectil no escalan automáticamente por piso.
+- La composición y cantidad de enemigos puede variar según el piso.
+- Esbirro Miedoso inicia el primer ataque con un retraso aleatorio de 108–216 frames. Los demás usan su configuración de retraso inicial.
 
-Fuentes: `js/enemy.js`, `js/enemies/`, `js/enemy-projectile-pool.js`, `js/map.js` y `server/simulation.js`.
+Fuente: js/enemy.js, js/enemies/, js/enemy-projectile-pool.js, js/map.js y server/simulation.js.
