@@ -156,3 +156,18 @@
 - El catálogo actual registra dos mini-jefes (Cochinilla Esquinero y Babosa Persecución); el encuentro boss sigue usando BossEnemy genérico. El roster jugable mantiene seis roles y requiere continuar su balance con pruebas de juego.
 - Auditoría de balance documental: `js/characters/roles.js` coincide con los valores v4 de Pistolero/Tirador; la ficha general tenía daños antiguos (12/32) y ya fue corregida a 7/28. No se tocaron estadísticas de juego ni se ejecutó una partida.
 - Verificación de esta limpieza: node --check pasó para js/enemy.js y js/game.js, y la búsqueda del nombre retirado no encontró referencias en el proyecto local. No se ejecutó una sesión de juego completa.
+
+## 2026-10-30 — Primera referencia teórica para balance de roles
+
+- Se comparó el daño sostenido ideal usando la configuración vigente: daño total del cargador dividido por el ciclo de cadencia y recarga, convertido a HP/s. Es una referencia de techo teórico, no una medición de partida.
+
+ROL          DAÑO SOSTENIDO TEÓRICO
+Pistolero    17,9 HP/s
+Tirador      14,7 HP/s
+Perdigonero  23,0 HP/s
+Invocador    22,5 HP/s
+Piromano      9,4 HP/s
+Bastión      10,8 HP/s
+
+- Supuestos: todos los disparos impactan; los cinco perdigones golpean al mismo objetivo; la quemadura mantiene su cadencia máxima sin acumulación; las seis invocaciones sobreviven y atacan constantemente al mismo objetivo; todos los proyectiles del Bastión impactan pese a su dispersión. Por tanto, estos valores no bastan por sí solos para declarar un rol demasiado fuerte o débil.
+- El cálculo señala dónde enfocar futuras pruebas: precisión y posicionamiento para Perdigonero/Bastión, supervivencia y tiempo de contacto de las invocaciones, y alcance/ventanas de exposición para Piromano. No se cambiaron estadísticas de juego; las cifras deberán validarse con partidas reales.
