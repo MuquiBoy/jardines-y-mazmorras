@@ -5,7 +5,7 @@ const PLAYER_SPRITE_ROOT = '00-sprites/jugador/';
 const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
 const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
-const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v3';
+const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v4';
 const PLAYER_BASTION_FORM_VERSION = 'bastion-debil-form-v1';
 const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
 const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;

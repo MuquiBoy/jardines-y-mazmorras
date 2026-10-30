@@ -55,9 +55,9 @@ class CharacterRole {
 const CHARACTER_ROLES = Object.freeze({
     // Player movement speed uses the universal multiplier scale:
     // 1.00 equals UNIVERSAL_MOVEMENT_SPEED_PX_PER_FRAME (150 px/s) at 60 Hz.
-    // The invisible 24x24 pistolero_hitbox.png mask has a 20x23px occupied
-    // silhouette; approximate it with an 11px circle for the current physics.
-    pistolero: new CharacterRole({ id: 'pistolero', name: 'Pistolero', color: '#55d64b', health: 36, grayHearts: 0, movementSpeed: 1.00, damage: 7, fireRate: 18, bulletSpeed: 4.5, magazine: 10, reloadFrames: 72, range: 320, spread: 0.035, collisionRadius: 11, hitboxWidth: 20, hitboxHeight: 22, spriteWidth: 22, spriteHeight: 28, visualScale: 1, weaponKind: 'gun', sprite: 'pistolero', damageMask: 'pistolero_take damage.aseprite', damageMaskLayer: 'mask' }),
+    // Pistolero uses a 24x24 px sprite and the 20x23 px occupied silhouette
+    // from pistolero_hitbox.png as its independent collision rectangle.
+    pistolero: new CharacterRole({ id: 'pistolero', name: 'Pistolero', color: '#55d64b', health: 36, grayHearts: 0, movementSpeed: 1.00, damage: 7, fireRate: 18, bulletSpeed: 4.5, magazine: 10, reloadFrames: 72, range: 320, spread: 0.035, collisionRadius: 11, hitboxWidth: 20, hitboxHeight: 23, spriteWidth: 24, spriteHeight: 24, visualScale: 1, weaponKind: 'gun', sprite: 'pistolero', damageMask: 'pistolero_take damage.aseprite', damageMaskLayer: 'mask' }),
     // The invisible 24x24 tirador_hitbox.png mask has the same 20x23px
     // occupied silhouette as Pistolero, so its circle-physics radius is 11px.
     tirador: new CharacterRole({ id: 'tirador', name: 'Tirador', color: '#48a9ff', health: 24, grayHearts: 0, movementSpeed: 1.00, damage: 28, fireRate: 72, bulletSpeed: 7.5, magazine: 3, reloadFrames: 198, range: 960, spread: 0.006, collisionRadius: 11, visualScale: 1, weaponKind: 'gun', sprite: 'tirador', damageMask: 'tirador_take damage.aseprite', damageMaskLayer: 'mask' }),
