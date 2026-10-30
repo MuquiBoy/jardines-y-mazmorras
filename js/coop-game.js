@@ -81,6 +81,8 @@
             player._drawState.time = performance.now();
         }
         Object.assign(player, state, { className: characterNames[state.character] || state.character });
+        // The server sends gray HP and form, not the static pixel mask data.
+        if (player.character === 'bastion') player.updateBastionForm();
         return player;
     }
 

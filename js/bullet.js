@@ -25,6 +25,9 @@ function circleCollision(x1, y1, r1, x2, y2, r2) {
  * @returns {boolean}
  */
 function bulletHitsPlayer(bullet, player) {
+    if (player.hitboxMask && typeof circleIntersectsPixelHitbox === 'function') {
+        return circleIntersectsPixelHitbox(bullet.x, bullet.y, bullet.radius, player.x, player.y, player.hitboxMask);
+    }
     if (player.hitboxWidth > 0 && player.hitboxHeight > 0) {
         const halfWidth = player.hitboxWidth / 2;
         const halfHeight = player.hitboxHeight / 2;

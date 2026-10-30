@@ -1336,6 +1336,20 @@ class DungeonMap {
         return true;
     }
 
+    /** Check the occupied pixels of a role-specific transparent hitbox mask. */
+    canOccupyPixelMask(x, y, mask) {
+        if (!mask || !Array.isArray(mask.spans) || !mask.spans.length) return false;
+        const left = x - mask.originX;
+        const top = y - mask.originY;
+        for (const [row, start, end] of mask.spans) {
+            const sampleY = top + row + 0.5;
+            for (let pixelX = start; pixelX < end; pixelX++) {
+                if (!this.isWalkable(left + pixelX + 0.5, sampleY)) return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * True when a circle can travel from A to B in a straight line without
      * touching a solid cell.

@@ -250,6 +250,10 @@ class CochinillaEsquinero extends Enemy {
         const dy = this.beamEndY - emitter.y;
         const length = Math.hypot(dx, dy);
         if (length < 1) return false;
+        if (point.hitboxMask && typeof segmentIntersectsPixelHitbox === 'function') {
+            return segmentIntersectsPixelHitbox(emitter.x, emitter.y, this.beamEndX, this.beamEndY,
+                this.beamWidth / 2, point.x, point.y, point.hitboxMask);
+        }
         const t = ((point.x - emitter.x) * dx + (point.y - emitter.y) * dy) / (length * length);
         if (t < 0 || t > 1) return false;
         const projectionX = emitter.x + dx * t;

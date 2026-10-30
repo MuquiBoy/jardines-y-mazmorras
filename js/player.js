@@ -6,7 +6,7 @@ const PLAYER_SPRITE_VERSION = 'player-role-sprites-v1';
 
 const PLAYER_WALK_VERSION = 'role-walk-v2-authored-timing';
 const PLAYER_PISTOLERO_DIRECTION_VERSION = 'pistolero-directional-walk-v4';
-const PLAYER_BASTION_FORM_VERSION = 'bastion-front-forms-v2';
+const PLAYER_BASTION_FORM_VERSION = 'bastion-directional-forms-v2';
 const PLAYER_DAMAGE_MASK_VERSION = 'player-role-damage-masks-v2';
 const PLAYER_DAMAGE_FLASH_PHASE_FRAMES = 10;
 
@@ -197,11 +197,13 @@ class Player {
         if (typeof fetch !== 'function' || typeof DecompressionStream === 'undefined' ||
             typeof document === 'undefined') return;
         for (const role of Object.values(CHARACTER_ROLES)) {
-            const sources = [{
+            const sources = role.id === 'bastion' ? [
+                { key: 'bastion:back', filename: 'bastion_walk-back.aseprite', version: PLAYER_BASTION_FORM_VERSION },
+                { key: 'bastion:front', filename: 'bastion_walk-front.aseprite', version: PLAYER_BASTION_FORM_VERSION }
+            ] : [{
                 key: role.id,
                 name: role.sprite,
-                filename: role.id === 'bastion' ? 'bastion_walk-front.aseprite' : undefined,
-                version: role.id === 'bastion' ? PLAYER_BASTION_FORM_VERSION : PLAYER_WALK_VERSION
+                version: PLAYER_WALK_VERSION
             }];
             if (role.id === 'pistolero') {
                 sources.push(
@@ -210,12 +212,14 @@ class Player {
                 );
             }
             if (role.depletedSprite) {
-                sources.push({
-                    key: `${role.id}:debil`,
-                    name: role.depletedSprite,
-                    filename: role.id === 'bastion' ? 'bastion-debil_walk-front.aseprite' : undefined,
-                    version: PLAYER_BASTION_FORM_VERSION
-                });
+                if (role.id === 'bastion') {
+                    sources.push(
+                        { key: 'bastion:debil:back', filename: 'bastion-debil_walk-back.aseprite', version: PLAYER_BASTION_FORM_VERSION },
+                        { key: 'bastion:debil:front', filename: 'bastion-debil_walk-front.aseprite', version: PLAYER_BASTION_FORM_VERSION }
+                    );
+                } else {
+                    sources.push({ key: role.id + ':debil', name: role.depletedSprite, version: PLAYER_WALK_VERSION });
+                }
             }
             for (const source of sources) {
                 if ((!source.name && !source.filename) || Player.animations[source.key] || Player.animationPromises[source.key]) continue;
@@ -250,11 +254,15 @@ class Player {
 
     /** Select a frame by its authored Aseprite duration; looping never depends on movement. */
     static walkFrameFor(character, now = (typeof performance !== 'undefined' ? performance.now() : Date.now()), form = null, facing = null) {
-        const directionalKey = character === 'pistolero' && (facing === 'back' || facing === 'front')
-            ? 'pistolero:' + facing
-            : null;
-        const animationKey = character === 'bastion' && form === 'bastion-debil' ? 'bastion:debil' : character;
-        const animation = (directionalKey && Player.animations[directionalKey]) || Player.animations[animationKey];
+        let animationKey = character;
+        if (character === 'pistolero' && (facing === 'back' || facing === 'front')) {
+            animationKey = 'pistolero:' + facing;
+        } else if (character === 'bastion' && (facing === 'back' || facing === 'front')) {
+            animationKey = form === 'bastion-debil'
+                ? 'bastion:debil:' + facing
+                : 'bastion:' + facing;
+        }
+        const animation = Player.animations[animationKey];
         if (!animation) return null;
         let time = now % animation.totalDuration;
         for (let i = 0; i < animation.frames.length; i++) {
@@ -299,6 +307,7 @@ class Player {
         Player.loadSprites();
         this.x = x; this.y = y; this.radius = 12; this.visualScale = 1;
         this.hitboxWidth = 0; this.hitboxHeight = 0; this.spriteWidth = 24; this.spriteHeight = 24;
+        this.hitboxMask = null; this.depletedHitboxMask = null;
         this.maxHealth = 100; this.health = 100; this.maxGrayHealth = 0; this.grayHealth = 0;
         this.bastionForm = null; this.bastionTransformEvent = 0;
         this.speed = 2.25; this.damage = 10;
@@ -315,12 +324,16 @@ class Player {
         this.knockbackImpulse = null;
         this.aimX = 0; this.aimY = -1; this.angle = 0; this.character = 'pistolero';
         this.pistoleroFacing = 'front';
+        this.bastionFacing = 'front';
     }
 
     cancelSniperAim() { this.sniperAiming = false; }
 
     canOccupyAt(map, x, y) {
         if (!map) return true;
+        if (this.hitboxMask && typeof map.canOccupyPixelMask === 'function') {
+            return map.canOccupyPixelMask(x, y, this.hitboxMask);
+        }
         if (this.hitboxWidth > 0 && this.hitboxHeight > 0 && typeof map.canOccupyRect === 'function') {
             return map.canOccupyRect(x, y, this.hitboxWidth, this.hitboxHeight);
         }
@@ -329,6 +342,9 @@ class Player {
 
     overlapsCircleAt(x, y, circle) {
         const radius = Math.max(0, circle?.radius || 0);
+        if (this.hitboxMask && typeof circleIntersectsPixelHitbox === 'function') {
+            return circleIntersectsPixelHitbox(circle.x, circle.y, radius, x, y, this.hitboxMask);
+        }
         if (this.hitboxWidth > 0 && this.hitboxHeight > 0) {
             const halfWidth = this.hitboxWidth / 2;
             const halfHeight = this.hitboxHeight / 2;
@@ -361,6 +377,9 @@ class Player {
             ? role.depletedMovementSpeed
             : role.movementSpeed;
         this.speed = movementSpeedFromMultiplier(multiplier);
+        this.hitboxMask = this.bastionForm === 'bastion-debil'
+            ? role.depletedHitboxMask
+            : role.hitboxMask;
         return previousForm !== this.bastionForm;
     }
 
@@ -495,8 +514,13 @@ class Player {
         if (map) {
             const halfWidth = this.hitboxWidth > 0 ? this.hitboxWidth / 2 : this.radius;
             const halfHeight = this.hitboxHeight > 0 ? this.hitboxHeight / 2 : this.radius;
-            this.x = Math.max(halfWidth, Math.min(this.x, map.width - halfWidth));
-            this.y = Math.max(halfHeight, Math.min(this.y, map.height - halfHeight));
+            const bounds = this.hitboxMask?.bounds;
+            const left = bounds?.left ?? halfWidth;
+            const right = bounds?.right ?? halfWidth;
+            const top = bounds?.top ?? halfHeight;
+            const bottom = bounds?.bottom ?? halfHeight;
+            this.x = Math.max(left, Math.min(this.x, map.width - right));
+            this.y = Math.max(top, Math.min(this.y, map.height - bottom));
         }
 
         this.updateKnockbackImpulse(map, blockers);
@@ -663,11 +687,18 @@ class Player {
             if (pointerY <= py - 1) this.pistoleroFacing = 'back';
             else if (pointerY >= py + 1) this.pistoleroFacing = 'front';
         }
+        else if (this.character === 'bastion') {
+            if (!this.bastionFacing) this.bastionFacing = 'front';
+            // Both forms preserve the last orientation within the center dead zone.
+            if (pointerY <= py - 1) this.bastionFacing = 'back';
+            else if (pointerY >= py + 1) this.bastionFacing = 'front';
+        }
         const invulnerable = this.invincibleTimer > 0;
         const elapsedInvulnerability = PLAYER_DAMAGE_INVULNERABILITY_FRAMES - this.invincibleTimer;
         const redFlash = invulnerable &&
             Math.floor(elapsedInvulnerability / PLAYER_DAMAGE_FLASH_PHASE_FRAMES) % 2 === 0;
-        const walkFrame = Player.walkFrameFor(this.character, undefined, this.bastionForm, this.pistoleroFacing);
+        const facing = this.character === 'bastion' ? this.bastionFacing : this.pistoleroFacing;
+        const walkFrame = Player.walkFrameFor(this.character, undefined, this.bastionForm, facing);
         const sprite = Player.spriteFor(this.character, this.bastionForm);
         const spriteReady = sprite && sprite.complete && sprite.naturalWidth > 0;
         const sourceWidth = walkFrame?.width || (spriteReady ? sprite.naturalWidth : this.spriteWidth || 24);

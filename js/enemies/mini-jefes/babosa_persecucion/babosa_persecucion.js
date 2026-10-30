@@ -142,7 +142,9 @@ class BabosaPersecucion extends Enemy {
                     const nextX = player.x + nx * step;
                     const nextY = player.y + ny * step;
                     if (map) {
-                        const canOccupy = player.hitboxWidth > 0 && player.hitboxHeight > 0 && typeof map.canOccupyRect === 'function'
+                        const canOccupy = typeof player.canOccupyAt === 'function'
+                            ? player.canOccupyAt(map, nextX, nextY)
+                            : player.hitboxWidth > 0 && player.hitboxHeight > 0 && typeof map.canOccupyRect === 'function'
                             ? map.canOccupyRect(nextX, nextY, player.hitboxWidth, player.hitboxHeight)
                             : map.canOccupy(nextX, nextY, player.radius || 12);
                         if (!canOccupy) break;
