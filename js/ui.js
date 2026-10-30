@@ -29,25 +29,38 @@ class UI {
     updateHUD(player, floor = 1) {
         // One heart contains 12 HP; each visible half represents 6 HP.
         if (this.hpHearts) {
-            const heartCount = Math.ceil(player.maxHealth / 12);
-            const filledHalfHearts = Math.ceil(Math.max(0, player.health) / 6);
-            const layout = `${heartCount}:${filledHalfHearts}`;
+            const grayHealth = Math.max(0, player.grayHealth || 0);
+            const permanentHealth = Math.max(0, player.permanentHealth ?? (player.health - grayHealth));
+            const permanentHeartCount = Math.ceil(player.maxHealth / 12);
+            // Lost gray hearts vanish from the row instead of remaining as
+            // empty permanent containers.
+            const grayHeartCount = Math.ceil(grayHealth / 12);
+            const filledGrayHalves = Math.ceil(grayHealth / 6);
+            const filledPermanentHalves = Math.ceil(permanentHealth / 6);
+            const heartCount = permanentHeartCount + grayHeartCount;
+            const layout = `${permanentHeartCount}:${grayHeartCount}:${filledPermanentHalves}:${filledGrayHalves}`;
             if (layout !== this._heartLayout) {
                 this._heartLayout = layout;
                 this.hpHearts.innerHTML = Array.from({ length: heartCount }, (_, i) => {
-                    const halves = Math.max(0, Math.min(2, filledHalfHearts - i * 2));
+                    const isGray = i >= permanentHeartCount;
+                    const heartIndex = isGray ? i - permanentHeartCount : i;
+                    const filledHalves = isGray ? filledGrayHalves : filledPermanentHalves;
+                    const halves = Math.max(0, Math.min(2, filledHalves - heartIndex * 2));
                     const state = halves === 2 ? 'full' : halves === 1 ? 'half' : 'empty';
-                    const gradientId = `hp-heart-half-${i}`;
-                    const fill = state === 'full' ? '#e74756' : state === 'half' ? `url(#${gradientId})` : '#35252a';
+                    const gradientId = `hp-heart-half-${isGray ? 'gray' : 'red'}-${heartIndex}`;
+                    const color = isGray ? '#aab3c0' : '#e74756';
+                    const fill = state === 'full' ? color : state === 'half' ? `url(#${gradientId})` : '#35252a';
                     const gradient = state === 'half'
-                        ? `<defs><linearGradient id="${gradientId}"><stop offset="50%" stop-color="#e74756"/><stop offset="50%" stop-color="#35252a"/></linearGradient></defs>`
+                        ? `<defs><linearGradient id="${gradientId}"><stop offset="50%" stop-color="${color}"/><stop offset="50%" stop-color="#35252a"/></linearGradient></defs>`
                         : '';
-                    return `<svg class="health-heart ${state}" viewBox="0 0 16 15" aria-hidden="true" shape-rendering="crispEdges">${gradient}<path d="M1 1h4v1h2v1h2V2h2V1h4v1h1v4h-1v2h-1v2h-2v2h-2v1H6v-1H4v-2H3V9H2V7H1V5H0V2h1z" fill="${fill}" stroke="#170e12" stroke-width="0.8"/></svg>`;
+                    return `<svg class="health-heart ${isGray ? 'gray' : 'red'} ${state}" viewBox="0 0 16 15" aria-hidden="true" shape-rendering="crispEdges">${gradient}<path d="M1 1h4v1h2v1h2V2h2V1h4v1h1v4h-1v2h-1v2h-2v2h-2v1H6v-1H4v-2H3V9H2V7H1V5H0V2h1z" fill="${fill}" stroke="#170e12" stroke-width="0.8"/></svg>`;
                 }).join('');
-                this.hpHearts.setAttribute('aria-label', `${filledHalfHearts} medios corazones de ${heartCount * 2}`);
+                this.hpHearts.setAttribute('aria-label', `${filledGrayHalves} medios corazones grises temporales y ${filledPermanentHalves} medios corazones normales`);
             }
         }
-        this.hpText.textContent = `${Math.ceil(player.health)} / ${player.maxHealth}`;
+        const grayHealth = Math.max(0, player.grayHealth || 0);
+        const permanentHealth = Math.max(0, player.permanentHealth ?? (player.health - grayHealth));
+        this.hpText.textContent = `${Math.ceil(permanentHealth)} / ${player.maxHealth}${grayHealth > 0 ? ` + ${Math.ceil(grayHealth)} gris` : ''}`;
 
         // XP bar
         const xpNeeded = player.xpToNext();
@@ -273,3 +286,4 @@ class UI {
         this._notification.duration--;
     }
 }
+

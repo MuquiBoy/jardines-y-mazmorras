@@ -118,6 +118,8 @@ class BabosaPersecucion extends Enemy {
             const damage = BABOSA_PERSECUCION_CONTACT_DAMAGE;
             if (typeof player.takeDamage === 'function') player.takeDamage(damage);
             else if (player.invincibleTimer <= 0) {
+                const absorbed = Math.min(player.grayHealth || 0, damage);
+                player.grayHealth = Math.max(0, (player.grayHealth || 0) - absorbed);
                 player.health = Math.max(0, player.health - damage);
                 player.invincibleTimer = PLAYER_DAMAGE_INVULNERABILITY_FRAMES;
             }

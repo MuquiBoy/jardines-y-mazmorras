@@ -262,7 +262,8 @@ class Player {
     constructor(x, y) {
         Player.loadSprites();
         this.x = x; this.y = y; this.radius = 12; this.visualScale = 1;
-        this.maxHealth = 100; this.health = 100; this.speed = 2.25; this.damage = 10;
+        this.maxHealth = 100; this.health = 100; this.maxGrayHealth = 0; this.grayHealth = 0;
+        this.speed = 2.25; this.damage = 10;
         this.fireRate = 12; this.bulletSpeed = 3.5; this.bulletCount = 1;
         this.bulletPierce = 0; this.magnetRange = 100;
         this.ammoCapacity = 15; this.ammo = 15; this.reloadFrames = 54; this.reloadTimer = 0;
@@ -309,8 +310,16 @@ class Player {
 
     takeDamage(amount) {
         if (this.invincibleTimer > 0 || amount <= 0 || this.health <= 0) return;
-        this.health = Math.max(0, this.health - amount);
+        const damage = Math.max(0, amount);
+        this.health = Math.max(0, this.health - damage);
+        // Gray hearts are temporary: damage consumes them before red health.
+        // They never regenerate through healing, upgrades, or revival.
+        this.grayHealth = Math.max(0, (this.grayHealth || 0) - damage);
         this.invincibleTimer = PLAYER_DAMAGE_INVULNERABILITY_FRAMES;
+    }
+
+    get permanentHealth() {
+        return Math.max(0, this.health - (this.grayHealth || 0));
     }
 
     /** Apply an outward momentum impulse that normal movement cannot cancel. */
@@ -334,7 +343,11 @@ class Player {
         };
     }
 
-    heal(amount) { this.health = Math.min(this.maxHealth, this.health + amount); }
+    heal(amount) {
+        const grayHealth = this.grayHealth || 0;
+        const restoredPermanentHealth = Math.min(this.maxHealth, this.permanentHealth + Math.max(0, amount));
+        this.health = restoredPermanentHealth + grayHealth;
+    }
 
     startReload() {
         if (this.reloadTimer > 0 || this.ammo >= this.ammoCapacity) return false;

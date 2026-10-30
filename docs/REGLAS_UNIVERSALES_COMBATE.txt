@@ -9,8 +9,16 @@ Mientras esté activa, el personaje parpadea suavemente con un destello rojo par
 2. Vida visual en corazones
 El HUD muestra la vida como corazones. Cada corazón completo equivale a 12 HP y se divide en dos mitades de 6 HP. La cifra numérica de HP se conserva junto al indicador visual.
 
+Corazones grises temporales
+- Cada rol declara en su configuración cuántos corazones grises obtiene al comenzar. El selector de rol muestra esta cantidad antes de iniciar la partida.
+- Un corazón gris contiene 12 HP y absorbe daño antes que los corazones normales. El daño de 6 HP elimina media unidad gris.
+- Al agotarse, sus corazones desaparecen del HUD; no dejan recipientes vacíos ni se vuelven vida permanente.
+- Curaciones, mejoras de vida, tesoros y reanimaciones cooperativas restauran solamente vida normal. Nunca reponen corazones grises perdidos.
+- Los roles actuales están configurados con 0 corazones grises, hasta que se asigne una cantidad específica a alguno.
+
 Referencia numérica de daño
 Los esbirros infligen 6 HP por proyectil. Los cálculos y aplicación de daño siguen usando HP numéricos; los corazones son solo la lectura visual de esos valores.
 
 3. Reaparición cooperativa al despejar una sala
 En partidas cooperativas, cuando uno o más jugadores caen, el servidor conserva su posición exacta. Cuando los compañeros vivos despejan una sala y se desbloquea la puerta, los jugadores caídos reaparecen en el lugar donde murieron. Regresan con la mitad de su vida máxima (redondeada hacia arriba) y 60 frames de invulnerabilidad para evitar una muerte instantánea. La reaparición conserva rol, mejoras y progreso. En solitario, la muerte mantiene el comportamiento actual de fin de partida.
+

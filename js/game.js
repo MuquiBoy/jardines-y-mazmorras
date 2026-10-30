@@ -1138,7 +1138,7 @@ class Game {
 
         // Low-health pulse
         if (this.player && this.player.health > 0 &&
-            this.player.health / this.player.maxHealth < 0.3) {
+            this.player.permanentHealth / this.player.maxHealth < 0.3) {
             const pulse = 0.12 + 0.08 * Math.sin(this.frameCount * 0.15);
             ctx.globalAlpha = pulse;
             ctx.fillStyle = PALETTE.blood;
@@ -1184,3 +1184,4 @@ class Game {
         ctx.fillRect(0, 0, w, h);
     }
 }
+

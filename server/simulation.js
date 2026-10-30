@@ -75,6 +75,7 @@ function reviveDownedPlayers(run) {
         player.x = death.x;
         player.y = death.y;
         player.teleportTick = run.tick;
+        player.grayHealth = 0;
         player.health = Math.max(1, Math.ceil((player.maxHealth || 100) * COOP_RESPAWN_HEALTH_RATIO));
         player.invincibleTimer = COOP_RESPAWN_INVINCIBILITY_FRAMES;
         player.turretActive = false;
@@ -419,7 +420,7 @@ function mapState(map) {
 }
 
 function playerState(player) {
-    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','aimPointerDistance','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','sniperAiming','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
+    return Object.fromEntries(['id','name','character','x','y','radius','visualScale','color','weaponKind','maxHealth','health','maxGrayHealth','grayHealth','speed','damage','incomingDamageMultiplier','enemyProjectileRicochetChance','fireRate','bulletSpeed','bulletCount','bulletPierce','magnetRange','level','xp','pendingLevelUps','fireTimer','invincibleTimer','aimX','aimY','aimPointerDistance','ammo','ammoCapacity','reloadFrames','reloadTimer','range','pelletCount','spread','turretActive','sniperAiming','burn','summon','teleportTick'].filter(key => player[key] !== undefined).map(key => [key, player[key]]));
 }
 function enemyState(enemy) {
     const base = ['id','type','roomIndex','x','y','health','maxHealth','speed','movementSpeedMultiplier','damage','radius','color','xpValue','shootCooldown','shootTimer','alive','deathTimer','angle','phase','phaseTimer','phaseDuration','centerX','centerY','driftAngle','spiralAngle','burnTimer','burnTickTimer','burnDamage','burnInterval','burnPulse','corner','anchorX','anchorY','beamEndX','beamEndY','targetId'];
@@ -457,3 +458,4 @@ function applyUpgrade(run, playerId, upgradeId) {
 
 module.exports = { createRun, stepRun, snapshot, applyUpgrade,
     getProjectilePoolStats: run => run?.enemyProjectilePool?.getStats() || null };
+

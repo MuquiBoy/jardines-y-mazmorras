@@ -18,6 +18,7 @@
             <option value="piromano">Piromano</option>
             <option value="bastion">Bastión</option>
         </select>
+        <p id="coop-heart-note" class="coop-stage-note" aria-live="polite"></p>
         <div class="coop-actions">
             <button id="coop-create" class="btn">Crear sala</button>
             <button id="coop-solo" class="btn">Jugar en solitario</button>
@@ -34,6 +35,7 @@
 
     const name = panel.querySelector('#coop-name');
     const character = panel.querySelector('#coop-character');
+    const heartNote = panel.querySelector('#coop-heart-note');
     const status = panel.querySelector('#coop-status');
     const inviteLink = panel.querySelector('#coop-invite');
     const players = panel.querySelector('#coop-players');
@@ -41,6 +43,15 @@
     const soloButton = panel.querySelector('#coop-solo');
     const offlineButton = panel.querySelector('#coop-offline');
     const testButton = panel.querySelector('#coop-test');
+
+    function updateRoleHeartNote() {
+        const count = Math.max(0, Math.floor(CHARACTER_ROLES[character.value]?.grayHearts || 0));
+        if (heartNote) heartNote.textContent = count
+            ? `Corazones grises: ${count} (${count === 1 ? 'no recuperable' : 'no recuperables'}).`
+            : 'Corazones grises: ninguno.';
+    }
+    character.addEventListener('change', updateRoleHeartNote);
+    updateRoleHeartNote();
     const copyButton = panel.querySelector('#coop-copy');
     const startButton = document.getElementById('start-btn');
     startButton.textContent = 'Iniciar expedición';
@@ -178,3 +189,4 @@
     }, true);
     connect();
 }());
+
