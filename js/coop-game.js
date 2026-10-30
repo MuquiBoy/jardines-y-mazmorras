@@ -12,7 +12,9 @@
     let retrySnapshot = null;
     let sendTimer = null;
     let edgeListenersBound = false;
+    let lastParticleFrameAt = 0;
     const seenNoticeIds = new Set();
+    const seenDeathEffectIds = new Set();
     // Level-up flow: the server owns pendingLevelUps. offeredOwed is the count
     // currently on screen; awaitingOwed is what we expect after a sent choice.
     let offeredOwed = 0;
@@ -149,7 +151,14 @@
         // show a still-recent notice twice.
         if (state.floor !== game.floor) {
             seenNoticeIds.clear();
+            seenDeathEffectIds.clear();
+            game.clearParticles();
             game.audio.nextTrack();
+        }
+        for (const effect of state.deathEffects || []) {
+            if (!effect?.id || seenDeathEffectIds.has(effect.id)) continue;
+            seenDeathEffectIds.add(effect.id);
+            game.spawnEnemyDeathParticles(effect);
         }
         for (const notice of state.notices || []) {
             if (!notice || seenNoticeIds.has(notice.id)) continue;
@@ -248,9 +257,10 @@
             const aimDistance = player._drawAimDistanceState;
             player.renderAimPointerDistance = interpolateAimPointerDistance(aimDistance.from, aimDistance.to, alpha);
         }
-        // The co-op client only renders authoritative snapshots; advance its
-        // presentation-only particles locally so synced Bastion bursts expire.
-        game.updateParticles();
+        // Visual effects use elapsed 60 Hz ticks, independent of the monitor's
+        // refresh rate. Gameplay itself still comes from server snapshots.
+        game.updateParticles(lastParticleFrameAt ? (now - lastParticleFrameAt) / FIXED_STEP_MS : 0);
+        lastParticleFrameAt = now;
         const viewer = playersById.get(window.coopClient.playerId) || game.player;
         const cameraSelection = resolveSpectatorCameraTarget(
             viewer, [...playersById.values()], spectatorTargetId
@@ -270,6 +280,12 @@
             if (!game) return;
             retrySnapshot = initialSnapshot;
             spectatorTargetId = null;
+            seenDeathEffectIds.clear();
+            // Effects already present when joining happened before this client
+            // began rendering; newer events during loading still play once.
+            for (const effect of initialSnapshot?.deathEffects || []) {
+                if (effect?.id) seenDeathEffectIds.add(effect.id);
+            }
             game.spectatorTarget = null;
             game.ui.showLoading();
             // The online flow starts from a WebSocket message, not from a
@@ -277,7 +293,8 @@
             // the page-wide gesture listener is what actually resumes the
             // context when the browser requires a user gesture.
             game.audio.unlock();
-            return Promise.all([RoomTemplateLibrary.load(), loadEnemyArtwork()]).then(() => {
+            return Promise.all([RoomTemplateLibrary.load(), loadEnemyArtwork(),
+                Promise.resolve().then(() => game.prepareParticlePool())]).then(() => {
                 templatesReady = true;
                 game.clearEnemyProjectiles(); // only clears any old local run before remote snapshots take over
                 game.input.keys = {};
@@ -294,6 +311,7 @@
                 applySnapshot(pendingSnapshot || initialSnapshot);
                 pendingSnapshot = null;
                 game.ui.hideLoading();
+                lastParticleFrameAt = performance.now();
                 if (!renderStarted) { renderStarted = true; requestAnimationFrame(renderFrame); }
                 if (sendTimer) clearInterval(sendTimer);
                 if (!edgeListenersBound) {

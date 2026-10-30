@@ -107,6 +107,7 @@
             if (message.type === 'game_loading' || message.type === 'floor_loading') {
                 client.phase = 'loading';
                 window.abyssGame?.ui.showLoading(`Preparando piso ${message.floor || 1}…`);
+                window.abyssGame?.prepareParticlePool();
                 return;
             }
             if (message.type === 'game_start') {
@@ -195,4 +196,3 @@
     }, true);
     connect();
 }());
-

@@ -102,6 +102,9 @@ function awardKill(run, enemy, ownerId) {
 
 function generateFloor(run) {
     refreshTemplateCatalog(); // rescans the author folders once per floor
+    // The server owns enemy projectiles and restores the pool before this
+    // floor's map and dormant encounters are prepared behind the loading UI.
+    run.enemyProjectilePool.ensureCapacity(Engine.EnemyProjectilePool.INITIAL_CAPACITY);
     const nextFloor = run.floor + 1;
     const map = new Engine.DungeonMap(14000, 14000);
     map.generate(nextFloor);
@@ -114,6 +117,7 @@ function generateFloor(run) {
     run.enemyProjectilePool.releaseAll(run.enemyBullets);
     run.summons = [];
     run.notices = [];
+    run.deathEffects = [];
     run.visitedRooms = new Set([0]);
     run.floor = nextFloor;
     const start = map.playerStart;
@@ -133,7 +137,7 @@ function generateFloor(run) {
 
 function createRun(members, reusableProjectilePool = null) {
     const run = { floor: 0, players: new Map(), enemies: [], playerBullets: [], enemyBullets: [],
-        enemyProjectilePool: reusableProjectilePool || new Engine.EnemyProjectilePool(), summons: [], notices: [],
+        enemyProjectilePool: reusableProjectilePool || new Engine.EnemyProjectilePool(), summons: [], notices: [], deathEffects: [],
         visitedRooms: new Set(), mapVersion: 0, phase: 'playing', tick: 0, spectatorTargetId: null, roomCompletionPending: false };
     run.enemyProjectilePool.releaseAll(run.enemyBullets);
     run.enemyProjectilePool.resetRunStats();
@@ -273,6 +277,13 @@ function stepRun(run, inputs) {
     // Notices only exist to be shown once by each client. Keep the snapshot
     // small without assuming the clients have already consumed them.
     if (run.notices?.length) run.notices = run.notices.filter(notice => run.tick - notice.tick < 300);
+    // Keep death events long enough for several snapshots, then discard them
+    // in place. Clients deduplicate by enemy id and own the visual particles.
+    let effectCount = 0;
+    for (const effect of run.deathEffects) {
+        if (run.tick - effect.tick < 120) run.deathEffects[effectCount++] = effect;
+    }
+    run.deathEffects.length = effectCount;
     const players = [...run.players.values()];
     for (const player of players) {
         if (player.health <= 0) { player.cancelSniperAim?.(); continue; }
@@ -406,6 +417,14 @@ function stepRun(run, inputs) {
     }
     run.enemyBullets.length = keptEnemyBulletCount;
 
+    // All kill paths converge here, including projectiles, summons and burn.
+    // A single lightweight event lets every co-op client display one burst.
+    for (const enemy of run.enemies) {
+        if (enemy.alive || enemy.deathEffectRecorded) continue;
+        enemy.deathEffectRecorded = true;
+        run.deathEffects.push({ id: enemy.id || crypto.randomUUID(), type: enemy.type,
+            x: enemy.x, y: enemy.y, color: enemy.color, tick: run.tick });
+    }
     run.enemies = run.enemies.filter(enemy => enemy.alive);
     for (const room of run.map.rooms) {
         const roomIndex = run.map.rooms.indexOf(room);
@@ -468,7 +487,8 @@ function snapshot(run) {
         spectatorTargetId: run.spectatorTargetId || null,
         players: [...run.players.values()].map(playerState), enemies: run.enemies.map(enemyState),
         playerBullets: run.playerBullets.map(bulletState), enemyBullets: run.enemyBullets.map(bulletState),
-        summons: run.summons.map(summonState), notices: run.notices || [] };
+        summons: run.summons.map(summonState), notices: run.notices || [],
+        deathEffects: run.deathEffects || [] };
 }
 
 /**

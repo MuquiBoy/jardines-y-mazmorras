@@ -85,6 +85,7 @@ class Game {
         // the server's projectile snapshots and do not allocate their own pool.
         this.enemyProjectilePool = null;
         this.xpOrbs = [];
+        this.particlePool = null;
         this.particles = [];
         this.summons = [];
         // Dormant room encounters prepared once during this floor's loading phase.
@@ -343,11 +344,29 @@ class Game {
 
     /** Prepare and reuse enemy projectile storage before a new offline run. */
     prepareForNewRun() {
+        this.preparePoolsForFloor();
+        this.enemyProjectilePool.resetRunStats();
+        return this.enemyProjectilePool.getStats();
+    }
+
+    /** Both visual pools are ready before the floor loading cover closes. */
+    preparePoolsForFloor() {
         if (!this.enemyProjectilePool) this.enemyProjectilePool = new EnemyProjectilePool();
         this.enemyProjectilePool.ensureCapacity(EnemyProjectilePool.INITIAL_CAPACITY);
         this.enemyProjectilePool.releaseAll(this.enemyBullets);
-        this.enemyProjectilePool.resetRunStats();
-        return this.enemyProjectilePool.getStats();
+        this.prepareParticlePool();
+    }
+
+    /** Prepare visual particles on the loading screen and reuse them between runs. */
+    prepareParticlePool() {
+        if (!this.particlePool) this.particlePool = new ParticlePool();
+        else this.particlePool.clear();
+        this.particles = this.particlePool.active;
+        return this.particlePool.getStats();
+    }
+
+    clearParticles() {
+        this.particlePool?.clear();
     }
 
     /** Developer diagnostics; the pool is owned by this solo simulation. */
@@ -363,6 +382,7 @@ class Game {
 
     /** Generate a new map and populate it. */
     generateMap() {
+        this.preparePoolsForFloor();
         this.preparedEnemiesByRoom?.clear();
         this.preparedEnemiesByRoom = new Map();
         this.enemies = [];
@@ -379,14 +399,13 @@ class Game {
 
         // Clear other entities
         this.bullets = [];
-        this.clearEnemyProjectiles();
         this.xpOrbs = [];
-        this.particles = [];
         this.summons = [];
     }
 
     /** Generate the private five-room 0-0 route and start at its entry. */
     generateTestMap() {
+        this.preparePoolsForFloor();
         this.preparedEnemiesByRoom?.clear();
         this.preparedEnemiesByRoom = new Map();
         this.enemies = [];
@@ -396,7 +415,7 @@ class Game {
         this.player.y = this.map.playerStart.y;
         this.currentRoom = this.map.rooms[0];
         this.preparedEnemiesByRoom = this.map.prepareEnemiesForFloor(this.floor);
-        this.bullets = []; this.clearEnemyProjectiles(); this.xpOrbs = []; this.particles = []; this.summons = [];
+        this.bullets = []; this.xpOrbs = []; this.summons = [];
     }
     /** Move a prepared room encounter into the active simulation. */
     activatePreparedRoomEnemies(room) {
@@ -765,29 +784,32 @@ class Game {
         const event = player?.bastionTransformEvent || 0;
         if (!player || event <= (this._seenBastionTransformEvent || 0)) return;
         this._seenBastionTransformEvent = event;
-        this.spawnParticles(player.x, player.y, '#ff951f', 8);
+        this.spawnParticles(player.x, player.y, '#ff951f', 8, 'death');
     }
 
     /** Update particles. */
-    updateParticles() {
-        for (const p of this.particles) {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.life--;
-            p.radius *= 0.95;
-        }
+    updateParticles(ticks = 1) {
+        this.particlePool?.update(ticks);
+    }
 
-        this.particles = this.particles.filter(p => p.life > 0);
+    /** Use the same burst for every enemy type in solo and co-op. */
+    spawnEnemyDeathParticles(enemy) {
+        const type = enemy.type;
+        const count = type === 'boss' ? 20 :
+            ['cochinilla-esquinero', 'cochinilla_esquinero', 'corner-cochinilla',
+                'babosa_persecucion'].includes(type) ? 12 : 8;
+        this.spawnParticles(enemy.x, enemy.y, enemy.color || PALETTE.danger, count, 'death');
     }
 
     /** Handle enemy death. */
     enemyKilled(enemy) {
+        if (!enemy || enemy._deathEffectEmitted) return;
+        enemy._deathEffectEmitted = true;
         this.enemiesKilled++;
 
         if (enemy.type === 'boss') this.onBossDefeated();
 
-        // Spawn death particles
-        this.spawnParticles(enemy.x, enemy.y, enemy.color, 8);
+        this.spawnEnemyDeathParticles(enemy);
         this.addImpact(enemy.type === 'boss' ? 7 : 2, 0);
         this.audio.enemyDeath();
 
@@ -831,21 +853,8 @@ class Game {
     }
 
     /** Spawn particles at a position. */
-    spawnParticles(x, y, color, count) {
-        for (let i = 0; i < count; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 1 + Math.random() * 3;
-            this.particles.push({
-                x: x,
-                y: y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                life: 20 + Math.random() * 15,
-                maxLife: 35,
-                color: color,
-                radius: 2 + Math.random() * 3
-            });
-        }
+    spawnParticles(x, y, color, count, kind = 'normal') {
+        return this.particlePool?.spawn(x, y, color, count, kind) || 0;
     }
 
     /** Check for room transitions (exit, clearing rooms, room entry). */
