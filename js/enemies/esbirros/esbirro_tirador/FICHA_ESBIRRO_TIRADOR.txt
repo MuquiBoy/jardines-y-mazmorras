@@ -15,7 +15,7 @@ Dispersión: aleatoria e independiente por disparo, entre -12° y +12° respecto
 Recarga: 198 frames = 3,30 s desde el quinto disparo o desde una interrupción.
 Retraso inicial antes de la primera ráfaga: conserva la demora general heredada de Mosca Tirador (36–72 frames, según la semilla aleatoria).
 Valor XP heredado: 15; la entrega de experiencia por bajas está desactivada en la demo.
-Arte: comparte la animación actual de Mosca Tirador para quietud y movimiento.
+Arte: esbirro_tirador_walk.aseprite, animación de 36 × 36 px que se reproduce en bucle en reposo, movimiento, ataque y recarga.
 Peso relativo de generación: 20; las casillas magenta de las plantillas señalan plazas de esbirros.
 
 CICLO DE COMPORTAMIENTO
@@ -27,4 +27,4 @@ CICLO DE COMPORTAMIENTO
 Si el objetivo sale de los 160 px, se oculta tras un muro o cambia a otro jugador vivo durante una ráfaga, descarta los disparos pendientes e inicia una recarga completa. El servidor decide objetivos, movimiento, temporizadores y disparos en cooperativo.
 
 MECÁNICA COMPARTIDA
-SmartCover reside en js/enemies/smart-cover.js. Esbirro Tirador también reutiliza la navegación, la selección de jugadores, la comprobación del radio del proyectil y el dibujo de Mosca Tirador. Sus tres estados y parámetros de combate permanecen en esbirro_tirador.js. Las mejoras de geometría y selección de refugios hechas en SmartCover se aplicarán a los enemigos que lo llamen.
+SmartCover reside en js/enemies/smart-cover.js. Esbirro Tirador reutiliza la navegación, selección de jugadores y comprobación de disparo de Mosca Tirador. Mantiene un recurso gráfico independiente; su animación no depende del estado de combate. Sus tres estados y parámetros permanecen en esbirro_tirador.js. Las mejoras de geometría y selección de refugios hechas en SmartCover se aplicarán a los enemigos que lo llamen.

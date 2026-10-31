@@ -1,5 +1,10 @@
 /* Common shooter: shared Mosca navigation and SmartCover geometry, distinct attack cycle. */
 class EsbirroTirador extends MoscaTirador {
+    static animation = null;
+    static animationPromise = null;
+    static DRAW_SIZE = 36;
+    static WALK_PATH = '00-sprites/enemigos/2_esbirros/esbirro_tirador/esbirro_tirador_walk.aseprite';
+    static WALK_VERSION = 'esbirro-tirador-walk-v1';
     static ATTACK_RANGE = 160;
     static BURST_SIZE = 5;
     static BURST_INTERVAL_FRAMES = 36;
@@ -16,6 +21,46 @@ class EsbirroTirador extends MoscaTirador {
         this.burstShotsFired = 0;
         this.burstTimer = 0;
         this.reloadTimer = 0;
+        this.animationStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        EsbirroTirador.loadAnimation();
+    }
+
+    static loadAnimation() {
+        if (EsbirroTirador.animation) return EsbirroTirador.animation;
+        if (EsbirroTirador.animationPromise) return EsbirroTirador.animationPromise;
+        if (typeof decodeAsepriteAnimation !== 'function') return null;
+        const url = EsbirroTirador.WALK_PATH + '?v=' + EsbirroTirador.WALK_VERSION;
+        EsbirroTirador.animationPromise = decodeAsepriteAnimation(url)
+            .then(animation => {
+                if (animation) EsbirroTirador.animation = animation;
+                return animation;
+            })
+            .catch(error => {
+                EsbirroTirador.animationPromise = null;
+                console.warn('No se pudo cargar la animación walk de Esbirro Tirador.', error);
+                return null;
+            });
+        return EsbirroTirador.animationPromise;
+    }
+
+    draw(ctx) {
+        const animation = EsbirroTirador.animation;
+        if (!animation?.frames?.length || animation.totalDuration <= 0) return;
+
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        let frameTime = (now - this.animationStartTime) % animation.totalDuration;
+        let frameIndex = 0;
+        while (frameIndex < animation.durations.length - 1 &&
+               frameTime >= animation.durations[frameIndex]) {
+            frameTime -= animation.durations[frameIndex++];
+        }
+
+        const frame = animation.frames[frameIndex];
+        const width = frame.width || EsbirroTirador.DRAW_SIZE;
+        const height = frame.height || EsbirroTirador.DRAW_SIZE;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(frame, snap(this.x - width / 2), snap(this.y - height / 2), width, height);
+        this.drawHealth(ctx, Math.max(width, height));
     }
 
     canAttack(target, map) {

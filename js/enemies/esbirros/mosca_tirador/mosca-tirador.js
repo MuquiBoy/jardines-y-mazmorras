@@ -25,7 +25,8 @@ class MoscaTirador extends Enemy {
         this.tacticalGoalFrames = 0;
         this.trackedPlayer = null;
         this.animationStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        MoscaTirador.loadAnimation();
+        // Subclasses with their own authored art load that resource themselves.
+        if (new.target === MoscaTirador) MoscaTirador.loadAnimation();
     }
 
     static loadAnimation() {
