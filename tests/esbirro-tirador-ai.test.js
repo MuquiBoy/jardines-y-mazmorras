@@ -178,6 +178,7 @@ test('cooperative targeting follows living players and ignores summons; Mosca re
     enemy.update(summon, [], map, [first, second, summon]);
     assert.equal(enemy.trackedPlayer, second);
     assert.equal(enemy.attackState, 'RELOAD_COVER');
+    assert.equal(enemy.reloadTimer, 198, 'switching players during a burst starts a full reload');
     const fly = new MoscaTirador(320, 300);
     assert.equal(fly.speed, 1.75);
     assert.equal(fly.shootCooldown, 60);

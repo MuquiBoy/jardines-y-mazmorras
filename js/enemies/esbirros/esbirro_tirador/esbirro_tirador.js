@@ -96,8 +96,12 @@ class EsbirroTirador extends MoscaTirador {
         const room = map?.pointInRoom?.(this.x, this.y) || null;
         const target = this.selectPlayer(player, allTargets, map, room);
         if (!target) return [];
+        let interruptedByTargetChange = false;
         if (target !== this.trackedPlayer) {
-            if (this.attackState === 'BURST_ATTACK') this.beginReload();
+            if (this.attackState === 'BURST_ATTACK') {
+                this.beginReload();
+                interruptedByTargetChange = true;
+            }
             this.trackedPlayer = target;
             this.coverPoint = null;
             this.coverSearchTimer = 0;
@@ -108,7 +112,9 @@ class EsbirroTirador extends MoscaTirador {
         this.tacticalReplanTimer = Math.max(0, this.tacticalReplanTimer - 1);
 
         if (this.attackState === 'RELOAD_COVER') {
-            this.reloadTimer = Math.max(0, this.reloadTimer - 1);
+            if (!interruptedByTargetChange) {
+                this.reloadTimer = Math.max(0, this.reloadTimer - 1);
+            }
             if (this.reloadTimer > 0) {
                 this.moveDuringReload(target, map, room);
                 return [];
