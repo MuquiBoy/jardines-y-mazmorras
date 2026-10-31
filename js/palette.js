@@ -34,7 +34,7 @@ const PALETTE = {
     floorLight:  '#407b8f',
     floorGrime:  '#1b1513',
     wall:        '#5c4638',
-    wallLit:     '#b32034',
+    wallLit:     '#6a97b8',
     corridor:    '#284b5d',  // same as floorDark; see DungeonMap.fillFloor()
 
     // Player
