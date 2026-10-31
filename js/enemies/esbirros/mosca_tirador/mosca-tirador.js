@@ -183,9 +183,13 @@ class MoscaTirador extends Enemy {
 
         const distance = Math.hypot(target.x - this.x, target.y - this.y);
         const clear = this.hasShotLane(target, map);
-        if (this.coverPoint && map?.hasLineOfSight?.(
-            target.x, target.y, this.coverPoint.x, this.coverPoint.y, this.radius)) {
+        const coverTooClose = this.coverPoint &&
+            Math.hypot(target.x - this.coverPoint.x,
+                       target.y - this.coverPoint.y) < 180;
+        if (this.coverPoint && (coverTooClose || map?.hasLineOfSight?.(
+            target.x, target.y, this.coverPoint.x, this.coverPoint.y, this.radius))) {
             this.coverPoint = null;
+            this.coverSearchTimer = 0;
             if (this.tacticalGoal?.kind === 'cover') this.clearTacticalGoal();
         }
         if (this.tacticalGoal && this.tacticalReplanTimer === 0 &&

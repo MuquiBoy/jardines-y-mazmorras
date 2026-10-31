@@ -23,7 +23,11 @@ ENEMIGOS QUE LA USAN AHORA
   con toda su vida y antes de recibir daño. Usa SmartCover para elegir
   refugio a 180 px o más y un ángulo de disparo; conserva en su clase la distancia mínima
   segura aproximada de 180 px, la comprobación del radio del proyectil,
-  el cambio de objetivo y los tiempos de reevaluación.
+  el cambio de objetivo y los tiempos de reevaluación. Si el jugador se acerca
+  a menos de 180 px de un refugio ya ocupado, busca otro o retrocede.
+- Esbirro Miedoso no recibe esa regla de distancia: su prioridad al bajar
+  de la mitad de vida es permanecer protegido y sobrevivir, incluso si
+  el jugador se acerca al obstáculo.
 - Esbirro Tirador y los demás enemigos no usan esta mecánica actualmente.
 
 USO PARA UN NUEVO ENEMIGO

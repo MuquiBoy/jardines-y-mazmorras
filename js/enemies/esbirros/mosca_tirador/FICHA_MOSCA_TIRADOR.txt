@@ -63,6 +63,8 @@ SECUENCIA DE COMBATE
    un ángulo con línea de disparo, ataca y puede volver al refugio.
 6. Si la cobertura deja de protegerla o no existe salida de disparo viable,
    la abandona y busca otra posición. No debe quedarse oculta para siempre.
+   También abandona el refugio si el jugador se acerca a menos de 180 px
+   de ese punto, aunque el obstáculo todavía bloquee los disparos.
 7. Si está a más de 250 px, se acerca; en la franja de 180–250 px con línea
    despejada mantiene la posición y sigue atacando.
 

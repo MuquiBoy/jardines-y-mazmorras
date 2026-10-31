@@ -135,6 +135,27 @@ test('180 px is the fly safe-distance threshold when no cover exists', () => {
     assert.equal(safe.x, 320, 'at 181 px with a clear lane it may hold position');
 });
 
+test('fly abandons cover when a player closes in; scared esbirro may stay hidden', () => {
+    const { map } = makeRoom([{ x: 9, y: 6, h: 3 }]);
+    const target = player('one', 200, 300);
+    const fly = new MoscaTirador(440, 300);
+    const scared = new EsbirroMiedoso(440, 300);
+    scared.health = 17;
+    fly.shootTimer = 80;
+    scared.shootTimer = 80;
+    fly.update(target, [], map, [target]);
+    scared.update(target, [], map, [target]);
+    assert.ok(fly.coverPoint && scared.coverPoint);
+
+    target.x = 320;
+    const oldFlyX = fly.x;
+    fly.update(target, [], map, [target]);
+    scared.update(target, [], map, [target]);
+    assert.equal(fly.coverPoint, null, 'cover inside 180 px is no longer safe for the fly');
+    assert.ok(fly.x > oldFlyX, 'fly retreats from a nearby player');
+    assert.ok(scared.coverPoint, 'scared esbirro keeps cover without the fly distance rule');
+});
+
 test('complex obstacles and cooperative targets remain stable; clone keeps old AI', () => {
     const { map } = makeRoom([
         { x: 8, y: 3, h: 8 }, { x: 8, y: 10, w: 6 }
