@@ -26,6 +26,30 @@ function armRoomWithMinions(run, players) {
 
     const enemies = run.map.getEnemiesForRoom(room, players[0], 280, run.floor);
     assert.ok(enemies.length > 0, 'ordinary combat room should spawn minions');
+    // Put the first generated minion inside a real open firing lane. A random
+    // authored room may otherwise place every minion beyond the new 160 px
+    // limit, so a one-tick projectile-pool check would be nondeterministic.
+    const anchor = enemies[0];
+    const distances = [100, 120, 80, 140];
+    const angles = Array.from({ length: 16 }, (_, index) => index * Math.PI / 8);
+    let firingTarget = null;
+    for (const distance of distances) {
+        for (const angle of angles) {
+            const x = anchor.x + Math.cos(angle) * distance;
+            const y = anchor.y + Math.sin(angle) * distance;
+            if (run.map.pointInRoom(x, y) !== room ||
+                !run.map.canOccupy(x, y, players[0].radius) ||
+                !run.map.hasLineOfSight(anchor.x, anchor.y, x, y, Math.max(anchor.radius, 4))) continue;
+            firingTarget = { x, y };
+            break;
+        }
+        if (firingTarget) break;
+    }
+    assert.ok(firingTarget, 'authored combat room needs one clear nearby firing lane');
+    for (const player of players) {
+        player.x = firingTarget.x;
+        player.y = firingTarget.y;
+    }
     for (let index = 0; index < enemies.length; index++) {
         const enemy = enemies[index];
         enemy.id = `enemy-projectile-${index}`;

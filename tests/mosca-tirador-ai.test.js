@@ -211,3 +211,57 @@ test('both cover users call the same shared strategy without inheriting each oth
         SmartCover.findCoverPoint = original;
     }
 });
+
+test('twelve full encounters keep Mosca and Miedoso on shared cover without changing their tactics', t => {
+    const scenarios = [
+        { walls: [], playerX: 220, enemyX: 520 },
+        { walls: [], playerX: 300, enemyX: 520 },
+        { walls: [{ x: 9, y: 6, h: 3 }], playerX: 200, enemyX: 560 },
+        { walls: [{ x: 9, y: 6, h: 3 }], playerX: 240, enemyX: 560 },
+        { walls: [{ x: 8, y: 3, h: 8 }, { x: 8, y: 10, w: 6 }], playerX: 200, enemyX: 600 },
+        { walls: [{ x: 8, y: 3, h: 8 }, { x: 8, y: 10, w: 6 }], playerX: 240, enemyX: 600 }
+    ];
+    const calls = { mosca_tirador: 0, esbirro_miedoso: 0 };
+    const shots = { mosca_tirador: 0, esbirro_miedoso: 0 };
+    const originalCover = SmartCover.findCoverPoint;
+    SmartCover.findCoverPoint = function (enemy, ...args) {
+        calls[enemy.type]++;
+        return originalCover.call(this, enemy, ...args);
+    };
+    try {
+        for (const scenario of scenarios) {
+            for (const Type of [MoscaTirador, EsbirroMiedoso]) {
+                const { map } = makeRoom(scenario.walls);
+                const enemy = new Type(scenario.enemyX, 300);
+                const target = player('solo', scenario.playerX, 300);
+                if (enemy.type === 'esbirro_miedoso') enemy.health = 17;
+                enemy.shootTimer = 1;
+                for (let frame = 0; frame < 360; frame++) {
+                    if (frame > 0 && frame % 120 === 0) {
+                        const nextY = target.y === 300 ? 340 : 300;
+                        if (map.canOccupy(target.x, nextY, 12)) target.y = nextY;
+                    }
+                    const fired = enemy.update(target, [], map, [target]);
+                    shots[enemy.type] += fired.length;
+                    assert.ok(map.canOccupy(enemy.x, enemy.y, enemy.radius),
+                        `${enemy.type} must never cross authored walls`);
+                    for (const bullet of fired) {
+                        assert.equal(bullet.radius, 4);
+                        assert.equal(bullet.damage, 6);
+                        assert.ok(map.hasLineOfSight(bullet.x, bullet.y, target.x, target.y, 4),
+                            `${enemy.type} should fire only through a clear lane`);
+                    }
+                }
+                if (enemy.type === 'esbirro_miedoso') assert.equal(enemy.defensiveMode, true);
+            }
+        }
+        assert.ok(calls.mosca_tirador > 0 && calls.esbirro_miedoso > 0,
+            'both original enemies must still consult the same SmartCover function');
+        assert.ok(shots.mosca_tirador > 0 && shots.esbirro_miedoso > 0,
+            'both enemies must remain offensive after tactical movement');
+        t.diagnostic(JSON.stringify({ encounters: scenarios.length * 2, framesPerEncounter: 360,
+            coverQueries: calls, projectiles: shots }));
+    } finally {
+        SmartCover.findCoverPoint = originalCover;
+    }
+});
