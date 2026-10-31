@@ -3,8 +3,8 @@
  *
  * The look is "loose modern retro": a chunky pixel grid and a tight, grimy
  * palette, but without the hard constraints of a real 8-bit target (no fixed
- * colour count, no sprite/tile limits). Vegetal greens distinguish the floor
- * from the warm warning colours used for combat and interactive landmarks.
+ * colour count, no sprite/tile limits). Cool blue floor tones contrast with
+ * the warm warning colours used for combat and interactive landmarks.
  */
 
 /**
@@ -30,12 +30,12 @@ const TIRADOR_AIM_ZOOM = 2.0;
 const PALETTE = {
     // World
     void:        '#07050a',  // outside the level
-    floorDark:   '#227060',
-    floorLight:  '#29a37a',
+    floorDark:   '#284b5d',
+    floorLight:  '#407b8f',
     floorGrime:  '#1b1513',
     wall:        '#5c4638',
-    wallLit:     '#8a6a52',
-    corridor:    '#227060',  // same as floorDark; see DungeonMap.fillFloor()
+    wallLit:     '#b32034',
+    corridor:    '#284b5d',  // same as floorDark; see DungeonMap.fillFloor()
 
     // Player
     player:      '#e8dcc8',  // bone
