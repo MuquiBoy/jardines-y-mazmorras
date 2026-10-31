@@ -2,7 +2,7 @@ JARDINES Y MAZMORRAS — ESBIRRO TIRADOR
 Versión táctica de menor dificultad; categoría: esbirro.
 
 ESTADÍSTICAS
-Vida: 28 HP.
+Vida: 35 HP.
 Movimiento: 0,50 × velocidad universal (1,25 px/frame, 75 px/s con referencia de 2,5 px/frame).
 Radio de colisión: 12 px.
 Daño de cada proyectil estándar: 6 HP; el valor interno heredado damage es 15, pero no determina el daño de este proyectil.

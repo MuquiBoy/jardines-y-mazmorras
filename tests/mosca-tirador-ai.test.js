@@ -55,7 +55,27 @@ test('visible player: unchanged damage and cadence from a clear firing band', ()
     assert.equal(bullets[0].radius, 4);
     assert.equal(fly.shootTimer, 60);
     assert.equal(fly.health, 28);
-    assert.equal(fly.speed, 1.75);
+    assert.equal(fly.speed, 1.50);
+});
+
+test('each Mosca shot samples its own angular spread between -3 and +3 degrees', () => {
+    const { map } = makeRoom();
+    const fly = new MoscaTirador(320, 300);
+    const target = player('one', 520, 300);
+    fly.shootTimer = 1;
+    vm.runInContext('globalThis.__savedRandom = Math.random; Math.random = () => 0', context);
+    try {
+        const first = fly.update(target, [], map, [target])[0];
+        vm.runInContext('Math.random = () => 1', context);
+        fly.shootTimer = 1;
+        const second = fly.update(target, [], map, [target])[0];
+        assert.ok(Math.abs(Math.atan2(first.vy, first.vx) + Math.PI / 60) < 1e-9);
+        assert.ok(Math.abs(Math.atan2(second.vy, second.vx) - Math.PI / 60) < 1e-9);
+        assert.equal(first.damage, 6);
+        assert.equal(second.damage, 6);
+    } finally {
+        vm.runInContext('Math.random = globalThis.__savedRandom; delete globalThis.__savedRandom', context);
+    }
 });
 
 test('wall: holds a ready shot and routes to a clear firing angle', () => {
@@ -178,7 +198,7 @@ test('complex obstacles and cooperative targets remain stable; esbirro keeps dis
         'must navigate around the L-shaped obstruction');
 
     const esbirro = new EsbirroTirador(320, 300);
-    assert.equal(esbirro.health, 28);
+    assert.equal(esbirro.health, 35);
     assert.equal(esbirro.shootCooldown, 36);
     assert.equal(esbirro.movementSpeedMultiplier, 0.50);
     assert.notEqual(Object.getPrototypeOf(esbirro).update,

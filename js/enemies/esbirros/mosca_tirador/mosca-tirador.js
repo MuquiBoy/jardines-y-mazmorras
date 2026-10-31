@@ -4,13 +4,14 @@ class MoscaTirador extends Enemy {
     static animation = null;
     static animationPromise = null;
     static DRAW_SIZE = 28;
+    static SHOT_SPREAD_RADIANS = Math.PI / 60; // +/-3 degrees per shot.
 
     constructor(x, y) {
         super(x, y, 'mosca_tirador');
         this.name = 'Mosca Tirador';
         this.health = 28;
         this.maxHealth = 28;
-        this.setMovementSpeedMultiplier(0.70);
+        this.setMovementSpeedMultiplier(0.60);
         this.damage = 15;
         this.radius = 12;
         this.color = '#aa44ff';
@@ -245,7 +246,8 @@ class MoscaTirador extends Enemy {
         // A blocked shot stays ready; the normal 60-frame cadence resumes only
         // after a real projectile leaves a clear lane.
         if (this.shootTimer > 0 || !this.hasShotLane(target, map)) return [];
-        const angle = Math.atan2(target.y - this.y, target.x - this.x);
+        const angle = Math.atan2(target.y - this.y, target.x - this.x) +
+            (Math.random() * 2 - 1) * MoscaTirador.SHOT_SPREAD_RADIANS;
         this.shootTimer = this.shootCooldown;
         if (this.coverPoint && distance < 300 && !this.tacticalGoal && !atCover &&
             this.reachable(this.coverPoint, map)) {

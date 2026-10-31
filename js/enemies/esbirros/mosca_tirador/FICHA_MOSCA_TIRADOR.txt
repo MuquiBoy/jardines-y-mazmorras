@@ -12,8 +12,8 @@ IDENTIDAD Y APARICIÓN
 
 ESTADÍSTICAS FIJAS
 - Vida: 28 HP.
-- Velocidad de movimiento: 0,70 de la velocidad universal. Con la referencia
-  actual de 2,5 px/frame, se desplaza a 1,75 px/frame (105 px/s a 60 FPS).
+- Velocidad de movimiento: 0,60 de la velocidad universal. Con la referencia
+  actual de 2,5 px/frame, se desplaza a 1,50 px/frame (90 px/s a 60 FPS).
 - Radio de colisión del cuerpo: 12 px. No se cambió para la nueva IA.
 - Distancia mínima segura aproximada: 180 px respecto al objetivo. Por debajo
   de ella intenta alejarse. Entre 180 y 250 px puede mantener posición si
@@ -22,6 +22,8 @@ ESTADÍSTICAS FIJAS
 - Primer disparo: espera inicial aleatoria de 36 a 72 frames (0,60–1,20 s).
 - Proyectil enemigo estándar: 10 × 10 px; radio de impacto de 4 px;
   velocidad de 2,5 px/frame (150 px/s); daño real de 6 HP por impacto.
+- Cada disparo tiene una desviación angular aleatoria independiente entre
+  -3° y +3° respecto a la dirección del jugador seleccionado.
 - El campo interno damage = 15 se conserva por compatibilidad, pero el
   proyectil estándar aplica 6 HP, conforme a la regla global del juego.
 - Valor interno xpValue = 15. La entrega de experiencia por bajas está
@@ -35,8 +37,7 @@ FORMA VISUAL
   fotogramas de 100 ms cada uno y se repite continuamente tanto al desplazarse
   como al detenerse o disparar.
 - Se muestra a su tamaño original, sin estiramiento ni sprite placeholder.
-- Esta revisión modifica decisiones de movimiento y disparo, no el aspecto,
-  la hitbox, los proyectiles ni los efectos de muerte.
+- La animación conserva su aspecto, tamaño, hitbox y efectos de muerte.
 
 OBJETIVO EN SOLITARIO Y COOPERATIVO
 - Escoge entre jugadores vivos; no confunde una invocación con un jugador.
@@ -49,8 +50,9 @@ OBJETIVO EN SOLITARIO Y COOPERATIVO
 SECUENCIA DE COMBATE
 1. Comprueba si la trayectoria desde su centro hasta el jugador está libre
    para un proyectil con radio de 4 px, usando las colisiones reales del mapa.
-2. Si el trayecto está libre y vence el temporizador, dispara hacia la
-   posición actual del objetivo y reinicia la cadencia de 60 frames.
+2. Si el trayecto está libre y vence el temporizador, apunta a la
+   posición actual del objetivo, aplica una desviación aleatoria de ±3°
+   y reinicia la cadencia de 60 frames.
 3. Si un muro bloquea el disparo, conserva el tiro preparado sin gastarlo.
    Busca un punto transitable desde el cual pueda disparar, de preferencia
    sin acercarse a menos de 180 px del jugador.
@@ -94,8 +96,7 @@ COMPROBACIÓN REALIZADA
 - Sala con obstáculos en L: conserva una ruta válida y sale del bloqueo.
 - Cooperativo: ignora invocaciones como objetivo, sustituye a un jugador
   muerto por otro vivo y conserva las mismas reglas de colisión y disparo.
-- Regresión: Esbirro Tirador mantiene su IA separada; Mosca Tirador conserva
-  sus estadísticas, sprite, pool de proyectiles y reglas de aparición.
+- Esbirro Tirador conserva su ciclo de ráfaga y su animación propia.
 
 Fuentes: mosca-tirador.js, js/enemies/smart-cover.js, js/enemy.js, js/map.js,
 js/enemy-projectile-pool.js, js/enemies/catalog.js,

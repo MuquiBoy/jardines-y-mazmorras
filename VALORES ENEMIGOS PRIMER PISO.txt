@@ -6,8 +6,8 @@ La velocidad se expresa como multiplicador de la velocidad universal del jugador
 ESBIRROS
 Enemigo          Vida     Velocidad                  Cadencia fija
 Esbirro Miedoso  35 HP    0,50 (1,25 px/frame)      120 frames (2 s)
-Mosca Tirador    28 HP    0,70 (1,75 px/frame)       60 frames (1 s)
-Esbirro Tirador  28 HP    0,70 (1,75 px/frame)       60 frames (1 s)
+Mosca Tirador    28 HP    0,60 (1,50 px/frame)       60 frames (1 s); dispersión ±3°
+Esbirro Tirador  35 HP    0,50 (1,25 px/frame)       36 frames entre disparos; recarga 198 frames
 Espiral          50 HP    0,50 (1,25 px/frame)      300 frames (5 s)
 
 Mini-jefe               Vida     Velocidad                  Ataque

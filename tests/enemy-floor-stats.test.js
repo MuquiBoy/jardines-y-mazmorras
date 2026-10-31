@@ -9,8 +9,8 @@ const Simulation = require('../server/simulation');
 
 const expected = {
     esbirro_miedoso: { health: 35, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 120 },
-    mosca_tirador: { health: 28, movementSpeedMultiplier: 0.70, speed: 1.75, shootCooldown: 60 },
-    esbirro_tirador: { health: 28, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 36 },
+    mosca_tirador: { health: 28, movementSpeedMultiplier: 0.60, speed: 1.50, shootCooldown: 60 },
+    esbirro_tirador: { health: 35, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 36 },
     spiral: { health: 50, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 300 },
     'cochinilla-esquinero': { health: 280, movementSpeedMultiplier: 0, speed: 0 },
     babosa_persecucion: { health: 500, movementSpeedMultiplier: 0.70, speed: 1.75 },

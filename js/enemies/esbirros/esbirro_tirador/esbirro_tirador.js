@@ -16,6 +16,8 @@ class EsbirroTirador extends MoscaTirador {
         super(x, y);
         this.type = 'esbirro_tirador';
         this.name = 'Esbirro Tirador';
+        this.health = 35;
+        this.maxHealth = 35;
         this.setMovementSpeedMultiplier(0.50);
         this.shootCooldown = EsbirroTirador.BURST_INTERVAL_FRAMES;
         this.attackState = 'SEEK_ATTACK_POSITION';
