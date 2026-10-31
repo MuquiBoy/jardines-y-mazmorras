@@ -3,9 +3,8 @@
  *
  * The look is "loose modern retro": a chunky pixel grid and a tight, grimy
  * palette, but without the hard constraints of a real 8-bit target (no fixed
- * colour count, no sprite/tile limits). Colours lean on DOOM's register —
- * rust and dried blood for the world, hot amber and fire for anything that
- * demands attention, sickly green for pickups.
+ * colour count, no sprite/tile limits). Vegetal greens distinguish the floor
+ * from the warm warning colours used for combat and interactive landmarks.
  */
 
 /**
@@ -31,12 +30,12 @@ const TIRADOR_AIM_ZOOM = 2.0;
 const PALETTE = {
     // World
     void:        '#07050a',  // outside the level
-    floorDark:   '#2a211d',
-    floorLight:  '#372a24',
+    floorDark:   '#227060',
+    floorLight:  '#29a37a',
     floorGrime:  '#1b1513',
     wall:        '#5c4638',
     wallLit:     '#8a6a52',
-    corridor:    '#2a211d',  // same as floorDark; see DungeonMap.fillFloor()
+    corridor:    '#227060',  // same as floorDark; see DungeonMap.fillFloor()
 
     // Player
     player:      '#e8dcc8',  // bone
