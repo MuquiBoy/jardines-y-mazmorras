@@ -23,6 +23,7 @@ Condiciones de esquina válida
 - Puertas, paredes, obstáculos u otras casillas con un valor distinto de 1 invalidan esa esquina. En particular, una puerta dentro del bloque impide usarla.
 - El bloque se ubica una casilla hacia dentro desde los bordes de la plantilla. Para la esquina superior izquierda abarca las casillas (1,1) a (3,3); las otras esquinas usan el bloque equivalente reflejado en sus bordes.
 - Las casillas de suelo miden 40 × 40 px. El cuerpo visual del mini-jefe mide 120 × 120 px y queda centrado sobre el bloque de 3 × 3.
+- Los impactos se comprueban contra los píxeles rojos de cochinilla_esquinero_hitbox.png, reflejados según la esquina. Las zonas transparentes no reciben impactos.
 
 Resumen del flujo
 1. El generador crea una sala «combat-hard».

@@ -439,9 +439,13 @@ class Game {
         const roomIndex = this.map.rooms.indexOf(room);
         const enemies = this.preparedEnemiesByRoom.get(roomIndex) || [];
         this.preparedEnemiesByRoom.delete(roomIndex);
-        for (const enemy of enemies) enemy.roomIndex = roomIndex;
+        for (const enemy of enemies) {
+            enemy.roomIndex = roomIndex;
+            enemy.beginEncounter?.(room.spawnWarningDuration || 0);
+        }
         this.enemies.push(...enemies);
         room.spawnWarningTimer = 0;
+        room.spawnWarningDuration = 0;
         room.spawnWarningMarkers = [];
         room.spawned = true;
     }
@@ -456,6 +460,7 @@ class Game {
             return;
         }
         room.spawnWarningTimer = 36; // 0.6 s at the fixed 60 Hz simulation rate
+        room.spawnWarningDuration = 36;
         room.spawnWarningMarkers = enemies.map(enemy => ({ x: enemy.x, y: enemy.y }));
     }
 
@@ -596,7 +601,7 @@ class Game {
             const event = typeof updateResult === 'string' ? updateResult : null;
             const bullets = Array.isArray(updateResult) ? updateResult : null;
             if (enemy instanceof CochinillaEsquinero) {
-                if (event === 'warning') this.audio.cochinillaCharge();
+                if (event === 'charge') this.audio.cochinillaCharge();
             }
             if (enemy instanceof CochinillaEsquinero && enemy.touchesBeam && enemy.touchesBeam(this.player) && this.player.invincibleTimer <= 0) {
                 // Universal rule: a laser tick is 6 HP, once per simulation tick.
@@ -612,7 +617,7 @@ class Game {
             }
         }
         this.audio.setCochinillaBeam(this.enemies.some(enemy =>
-            enemy.alive && enemy instanceof CochinillaEsquinero && enemy.phase === 'active'));
+            enemy.alive && enemy instanceof CochinillaEsquinero && enemy.phase === 'attack'));
         if (burnSound) this.audio.burnTick();
         // Update player bullets
         this.updatePlayerBullets();
@@ -682,7 +687,7 @@ class Game {
             // Check collision with enemies
             for (const enemy of this.enemies) {
                 if (!enemy.alive || toRemove.has(bullet)) continue;
-                if (circleCollision(bullet.x, bullet.y, bullet.radius, enemy.x, enemy.y, enemy.radius)) {
+                if (bulletHitsEnemy(bullet, enemy)) {
                     enemy.takeDamage(bullet.damage);
                     if (bullet.burn) enemy.applyBurn(bullet.burn);
                     bullet.hits++;
@@ -822,6 +827,12 @@ class Game {
         if (!enemy || enemy._deathEffectEmitted) return;
         enemy._deathEffectEmitted = true;
         this.enemiesKilled++;
+
+        if (enemy instanceof CochinillaEsquinero) {
+            this.audio.setCochinillaBeam(this.enemies.some(other =>
+                other !== enemy && other.alive && other instanceof CochinillaEsquinero &&
+                other.phase === 'attack'));
+        }
 
         if (enemy.type === 'boss') this.onBossDefeated();
 

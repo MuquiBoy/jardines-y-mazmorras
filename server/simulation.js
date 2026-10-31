@@ -35,7 +35,7 @@ for (const file of [
 ]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8'), context, { filename: file });
 }
-const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, EsbirroMiedoso, MoscaTirador, EsbirroTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, circleCollision, bulletBlockedByMap, bulletHitsPlayer, selectPartySpectatorTargetId, UPGRADE_DEFS })', context);
+const Engine = vm.runInContext('({ Enemy, DungeonMap, Player, SummonedUnit, EsbirroMiedoso, MoscaTirador, EsbirroTirador, SpiralEnemy, BossEnemy, CochinillaEsquinero, BabosaPersecucion, EnemyProjectilePool, ENEMY_CLASSES, ENEMY_CATEGORY, ENEMY_TYPES_BY_CATEGORY, ENEMY_CATEGORIES_BY_ROOM, enemyCategoriesForRoom, enemyCategoryForType, enemyTypeAllowedInRoom, createEnemy, randomEnemyType, randomMiniBossType, hardEnemyType, circleCollision, bulletBlockedByMap, selectPartySpectatorTargetId, bulletHitsPlayer, bulletHitsEnemy, UPGRADE_DEFS })', context);
 const ENEMY_CLASSES = Engine.ENEMY_CLASSES;
 
 // Co-op room-clear revive tuning. The server remains authoritative.
@@ -152,9 +152,11 @@ function spawnEnemiesForRoom(run, room, player) {
     run.preparedEnemiesByRoom.delete(roomIndex);
     for (const enemy of enemies) {
         enemy.roomIndex = roomIndex;
+        enemy.beginEncounter?.(room.spawnWarningDuration || 0);
         run.enemies.push(enemy);
     }
     room.spawnWarningTimer = 0;
+    room.spawnWarningDuration = 0;
     room.spawnWarningMarkers = [];
     room.spawned = true;
 }
@@ -168,6 +170,7 @@ function beginRoomSpawnWarning(run, room) {
         return;
     }
     room.spawnWarningTimer = 36; // 0.6 s at 60 Hz
+    room.spawnWarningDuration = 36;
     room.spawnWarningMarkers = enemies.map(enemy => ({ x: enemy.x, y: enemy.y }));
 }
 
@@ -380,7 +383,7 @@ function stepRun(run, inputs) {
         if (Engine.bulletBlockedByMap(run.map, bullet)) continue;
         let hit = false;
         for (const enemy of run.enemies) {
-            if (!enemy.alive || !Engine.circleCollision(bullet.x, bullet.y, bullet.radius, enemy.x, enemy.y, enemy.radius)) continue;
+            if (!enemy.alive || !Engine.bulletHitsEnemy(bullet, enemy)) continue;
             enemy.takeDamage(bullet.damage);
             if (bullet.burn) enemy.applyBurn({ ...bullet.burn, ownerId: bullet.ownerId });
             hit = true;

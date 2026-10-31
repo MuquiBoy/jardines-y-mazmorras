@@ -132,15 +132,21 @@
         game.remotePlayers = [...playersById.values()].filter(p => p.id !== local.id && p.health > 0);
 
         let burnSound = false;
+        let cochinillaStartedCharge = false;
         const nextEnemies = new Map();
         for (const record of state.enemies) {
             const oldEnemy = enemiesById.get(record.id);
             if (oldEnemy && (record.burnPulse || 0) > (oldEnemy.burnPulse || 0)) burnSound = true;
+            if (record.type === 'cochinilla-esquinero' && record.phase === 'charge' &&
+                oldEnemy?.phase !== 'charge') cochinillaStartedCharge = true;
             nextEnemies.set(record.id, enemyObject(record, oldEnemy));
         }
         if (burnSound) game.audio.burnTick();
+        if (cochinillaStartedCharge) game.audio.cochinillaCharge();
         enemiesById = nextEnemies;
         game.enemies = [...enemiesById.values()];
+        game.audio.setCochinillaBeam(game.enemies.some(enemy =>
+            enemy.alive && enemy.type === 'cochinilla-esquinero' && enemy.phase === 'attack'));
         game.summons = state.summons || [];
         game.bullets = state.playerBullets;
         game.enemyBullets = state.enemyBullets;

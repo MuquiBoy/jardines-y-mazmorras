@@ -41,9 +41,11 @@ async function loadEnemyArtwork() {
         EsbirroMiedoso.loadAnimation(),
         MoscaTirador.loadAnimation(),
         BabosaPersecucion.loadAnimation(),
-        CochinillaEsquinero.loadSprite()
+        CochinillaEsquinero.loadArtwork()
     ]);
-    if (!miedoso?.frames?.length || !mosca?.frames?.length || !babosa?.frames?.length || !cochinilla?.naturalWidth) {
+    if (!miedoso?.frames?.length || !mosca?.frames?.length || !babosa?.frames?.length ||
+        !cochinilla?.idle?.frames?.length || !cochinilla?.charge?.naturalWidth ||
+        !cochinilla?.attack?.naturalWidth) {
         throw new Error('No se pudieron cargar todas las texturas de los enemigos.');
     }
 }

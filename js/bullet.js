@@ -26,7 +26,10 @@ function circleCollision(x1, y1, r1, x2, y2, r2) {
  */
 function bulletHitsPlayer(bullet, player) {
     if (player.hitboxMask && typeof circleIntersectsPixelHitbox === 'function') {
-        return circleIntersectsPixelHitbox(bullet.x, bullet.y, bullet.radius, player.x, player.y, player.hitboxMask);
+        return circleIntersectsPixelHitbox(
+            bullet.x, bullet.y, bullet.radius,
+            player.x, player.y, player.hitboxMask
+        );
     }
     if (player.hitboxWidth > 0 && player.hitboxHeight > 0) {
         const halfWidth = player.hitboxWidth / 2;
@@ -38,6 +41,16 @@ function bulletHitsPlayer(bullet, player) {
         return dx * dx + dy * dy < bullet.radius * bullet.radius;
     }
     return circleCollision(bullet.x, bullet.y, bullet.radius, player.x, player.y, player.radius);
+}
+
+/** A named enemy mask takes precedence over its broad collision radius. */
+function bulletHitsEnemy(bullet, enemy) {
+    if (enemy.hitboxMask && typeof circleIntersectsPixelHitbox === 'function') {
+        return circleIntersectsPixelHitbox(
+            bullet.x, bullet.y, bullet.radius, enemy.x, enemy.y, enemy.hitboxMask
+        );
+    }
+    return circleCollision(bullet.x, bullet.y, bullet.radius, enemy.x, enemy.y, enemy.radius);
 }
 
 /**

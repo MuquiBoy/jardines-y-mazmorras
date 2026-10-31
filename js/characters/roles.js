@@ -1,7 +1,7 @@
 /* Configuración de combate: los números son una primera pasada ajustable.
- * El cuerpo visible mide 24 px por visualScale; con sprite, ese tamaño incluye
- * el contorno dibujado por el autor. `sprite` es el nombre de la carpeta y del
- * PNG en 00-sprites/jugador/<sprite>/<sprite>_sticker.png. */
+ * Los sprites usan 24x24 px por defecto, con dimensiones específicas cuando
+ * el arte del rol lo requiere. Las dimensiones visuales y las hitboxes son
+ * independientes. sprite identifica la carpeta del arte del personaje. */
 const UNIVERSAL_MOVEMENT_SPEED_PX_PER_FRAME = 2.5; // 1.00 movement = 2.5 px/frame (150 px/s) at 60 Hz.
 
 /** Convert any authored movement multiplier through the one universal reference. */
@@ -123,7 +123,6 @@ function segmentIntersectsPixelHitbox(x1, y1, x2, y2, radius, playerX, playerY, 
     return false;
 }
 
-
 class CharacterRole {
     constructor(config) {
         Object.assign(this, config);
@@ -182,6 +181,7 @@ const CHARACTER_ROLES = Object.freeze({
     perdigonero: new CharacterRole({ id: 'perdigonero', name: 'Perdigonero', color: '#f044b5', health: 36, grayHearts: 0, movementSpeed: 1.00, damage: 6, fireRate: 66, bulletSpeed: 3.5, magazine: 5, reloadFrames: 128, range: 270, spread: 0.58, pelletCount: 5, collisionRadius: 12, visualScale: 1, weaponKind: 'shotgun', sprite: 'perdigonero' }),
     invocador: new CharacterRole({ id: 'invocador', name: 'Invocador', color: '#ae64e8', health: 36, grayHearts: 0, movementSpeed: 1.00, damage: 2, fireRate: 32, bulletSpeed: 0, magazine: 6, reloadFrames: 272, range: 0, spread: 0, collisionRadius: 12, visualScale: 32 / 24, weaponKind: 'summoner', sprite: 'invocador', summon: { health: 28, speed: 1.9, damage: 2, attackRate: 32, lifetime: 900, radius: 9, maxActive: 6, color: '#ae64e8' } }),
     piromano: new CharacterRole({ id: 'piromano', name: 'Piromano', color: '#ff453a', health: 24, grayHearts: 0, movementSpeed: 1.00, damage: 6, fireRate: 72, bulletSpeed: 3.5, magazine: 7, reloadFrames: 142, range: 235, spread: 0.07, collisionRadius: 12, visualScale: 1, weaponKind: 'fire', sprite: 'piromano', burn: { damage: 2, interval: 24, duration: 144 } }),
+    // Both armored and depleted forms share these weapon timings.
     bastion: new CharacterRole({ id: 'bastion', name: 'Bastión', color: '#ff951f', health: 36, grayHearts: 1, movementSpeed: 0.85, depletedMovementSpeed: 1.00, turretMovementSpeed: 0.60, depletedSprite: 'bastion-debil', hitboxMask: BASTION_HITBOX_MASKS.armored, depletedHitboxMask: BASTION_HITBOX_MASKS.depleted, damage: 2, fireRate: 9, bulletSpeed: 3.75, magazine: 35, reloadFrames: 300, range: 480, spread: 0.30, collisionRadius: 17, visualScale: 40 / 24, weaponKind: 'turret', sprite: 'bastion' })
 });
 
@@ -224,7 +224,11 @@ class SummonedUnit {
         }
         if (!target) return null;
         const reach = this.radius + target.radius + 7;
-        if (best <= reach) {
+        const canStrike = target.hitboxMask
+            ? circleIntersectsPixelHitbox(this.x, this.y, this.radius + 7,
+                target.x, target.y, target.hitboxMask)
+            : best <= reach;
+        if (canStrike) {
             if (this.attackTimer <= 0) {
                 this.attackTimer = this.attackRate;
                 target.takeDamage(this.damage);

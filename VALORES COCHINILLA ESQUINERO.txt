@@ -3,24 +3,35 @@ COCHINILLA ESQUINERO — VALORES Y MECÁNICAS ACTUALES
 Fuente: js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js, js/enemy.js y server/simulation.js.
 
 VIDA
-- Vida fija: 100 HP en todos los pisos.
-- Recibe daño de ataques del jugador durante todas las fases del ciclo.
+- Vida fija: 280 HP en todos los pisos.
+- El cuerpo visual mide 120 × 120 px. La hitbox sigue únicamente los píxeles rojos
+  de cochinilla_esquinero_hitbox.png, reflejados con el sprite en cada esquina.
+- Solo recibe daño durante attack. Es inmune a impactos, invocaciones y ticks de
+  quemadura durante entry, idle y charge.
 
 SEGUIMIENTO DEL RAYO
 - No hay una velocidad de giro o persecución en píxeles por segundo configurada.
-- Durante el aviso/casteo, fija la dirección del objetivo elegido y no lo persigue.
-- Durante el rayo activo, actualiza la dirección hacia la posición actual del objetivo en cada paso de simulación: 60 veces por segundo (un paso cada 16,67 ms). En la práctica, el rayo reajusta su dirección de forma inmediata en cada actualización; no tiene una aceleración ni un giro gradual.
-- Si el objetivo deja de ser válido, busca otro objetivo válido, priorizando el más cercano.
+- Al comenzar charge elige aleatoriamente un jugador vivo de la sala. Mantiene ese
+  objetivo durante los 5 segundos de carga y la línea blanca sigue su posición.
+- Al terminar charge bloquea el último ángulo calculado. Durante attack el rayo
+  queda fijo, aunque el objetivo se mueva.
+- Si el objetivo deja de ser válido durante charge, conserva la última dirección
+  válida y no salta a otro jugador hasta el ciclo siguiente.
 
 DAÑO DEL RAYO
 - Daño: 6 HP por tick de simulación en contacto con el rayo.
 - La simulación funciona a 60 ticks por segundo: equivale a 360 HP por segundo si el jugador permanece dentro del rayo.
-- La regla universal de inmunidad tras daño es de 60 frames (1 s). Por ello, aunque el rayo conserva su daño nominal de 6 HP por tick, contra un jugador sin inmunidad inicial una fase continua de 5 s puede aplicar aproximadamente 30 HP en vez de causar daño cada frame. El resultado depende del momento en que comienza el contacto respecto al ciclo.
+- La regla universal de inmunidad tras daño es de 60 frames (1 s). Por ello el
+  daño no se aplica cada frame mientras el jugador permanece dentro del rayo.
 - El daño del rayo permanece fijo en 6 por tick en todos los pisos.
+- Alcance máximo: 4000 px, detenido por la primera pared u obstáculo sólido.
+- Grosor: 34 px; dibujo y daño usan la misma geometría.
 
 TIEMPOS DEL CICLO DE ATAQUE
-- Espera antes del casteo: 3,00 s (180 frames).
-- Casteo/aviso: 2,00 s (120 frames). Durante este tiempo fija la dirección del rayo.
-- Ataque: 5,00 s (300 frames). Es la duración nominal del rayo activo.
-- Enfriamiento tras el ataque: 5,00 s (300 frames).
-- Después del enfriamiento vuelve a esperar 3,00 s antes del siguiente casteo.
+- Entrada: 1,00 s (60 frames) una sola vez desde el inicio del encuentro. Incluye
+  los 0,60 s de advertencia de aparición de la sala. Es inmune durante este tiempo.
+- Idle: 5,00 s (300 frames). Animación de 8 fotogramas de 100 ms en bucle.
+- Charge: 5,00 s (300 frames). Imagen fija, línea de aviso móvil sin daño.
+- Attack: 7,00 s (420 frames). Imagen fija, rayo bloqueado y ventana de daño.
+- Después de attack vuelve directamente a idle. No hay enfriamiento adicional.
+- Si muere durante attack, el rayo y los temporizadores se cancelan de inmediato.

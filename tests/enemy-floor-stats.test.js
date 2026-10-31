@@ -11,7 +11,7 @@ const expected = {
     esbirro_miedoso: { health: 35, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 120 },
     mosca_tirador: { health: 28, movementSpeedMultiplier: 0.70, speed: 1.75, shootCooldown: 60 },
     spiral: { health: 50, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 300 },
-    'cochinilla-esquinero': { health: 100, movementSpeedMultiplier: 0, speed: 0 },
+    'cochinilla-esquinero': { health: 280, movementSpeedMultiplier: 0, speed: 0 },
     babosa_persecucion: { health: 500, movementSpeedMultiplier: 0.70, speed: 1.75 },
     boss: { health: 500, movementSpeedMultiplier: 0.16, speed: 0.40, shootCooldown: 30 }
 };
