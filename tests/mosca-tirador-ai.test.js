@@ -133,26 +133,32 @@ test('fly seeks safe cover from room activation at full health and normal firing
     fly.update(target, [], map, [target]);
     scared.update(target, [], map, [target]);
     assert.ok(fly.coverPoint, 'fly should look for cover before being injured');
-    assert.ok(Math.hypot(fly.coverPoint.x - target.x, fly.coverPoint.y - target.y) >= 180,
+    assert.ok(Math.hypot(fly.coverPoint.x - target.x, fly.coverPoint.y - target.y) >= 160,
         'cover must respect the fly safe distance');
     assert.equal(fly.tacticalGoal?.kind, 'cover');
     assert.equal(scared.coverPoint, null,
         'scared esbirro keeps its own half-health activation condition');
 });
 
-test('180 px is the fly safe-distance threshold when no cover exists', () => {
+test('fly retreats below 160 px, holds at 160–180 px, and approaches beyond 180 px', () => {
     const { map } = makeRoom();
     const tooClose = new MoscaTirador(320, 300);
-    const closePlayer = player('close', 499, 300);
+    const closePlayer = player('close', 479, 300);
     tooClose.shootTimer = 50;
     tooClose.update(closePlayer, [], map, [closePlayer]);
-    assert.ok(tooClose.x < 320, 'at 179 px it must retreat');
+    assert.ok(tooClose.x < 320, 'at 159 px it must retreat');
 
     const safe = new MoscaTirador(320, 300);
-    const safePlayer = player('safe', 501, 300);
+    const safePlayer = player('safe', 481, 300);
     safe.shootTimer = 50;
     safe.update(safePlayer, [], map, [safePlayer]);
-    assert.equal(safe.x, 320, 'at 181 px with a clear lane it may hold position');
+    assert.equal(safe.x, 320, 'at 161 px with a clear lane it may hold position');
+
+    const far = new MoscaTirador(320, 300);
+    const farPlayer = player('far', 501, 300);
+    far.shootTimer = 50;
+    far.update(farPlayer, [], map, [farPlayer]);
+    assert.ok(far.x > 320, 'at 181 px it approaches the firing band');
 });
 
 test('fly abandons cover when a player closes in; scared esbirro may stay hidden', () => {
@@ -171,7 +177,7 @@ test('fly abandons cover when a player closes in; scared esbirro may stay hidden
     const oldFlyX = fly.x;
     fly.update(target, [], map, [target]);
     scared.update(target, [], map, [target]);
-    assert.equal(fly.coverPoint, null, 'cover inside 180 px is no longer safe for the fly');
+    assert.equal(fly.coverPoint, null, 'cover inside 160 px is no longer safe for the fly');
     assert.ok(fly.x > oldFlyX, 'fly retreats from a nearby player');
     assert.ok(scared.coverPoint, 'scared esbirro keeps cover without the fly distance rule');
 });

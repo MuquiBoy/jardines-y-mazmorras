@@ -15,8 +15,8 @@ ESTADÍSTICAS FIJAS
 - Velocidad de movimiento: 0,60 de la velocidad universal. Con la referencia
   actual de 2,5 px/frame, se desplaza a 1,50 px/frame (90 px/s a 60 FPS).
 - Radio de colisión del cuerpo: 12 px. No se cambió para la nueva IA.
-- Distancia mínima segura aproximada: 180 px respecto al objetivo. Por debajo
-  de ella intenta alejarse. Entre 180 y 250 px puede mantener posición si
+- Distancia mínima segura aproximada: 160 px respecto al objetivo. Por debajo
+  de ella intenta alejarse. Entre 160 y 180 px puede mantener posición si
   dispone de una línea de disparo válida.
 - Cadencia: un disparo cada 60 frames (1,00 s a 60 FPS) después de disparar.
 - Primer disparo: espera inicial aleatoria de 36 a 72 frames (0,60–1,20 s).
@@ -55,19 +55,19 @@ SECUENCIA DE COMBATE
    y reinicia la cadencia de 60 frames.
 3. Si un muro bloquea el disparo, conserva el tiro preparado sin gastarlo.
    Busca un punto transitable desde el cual pueda disparar, de preferencia
-   sin acercarse a menos de 180 px del jugador.
+   sin acercarse a menos de 160 px del jugador.
 4. Desde el primer instante de la sala, incluso con 28 HP y sin haber
    recibido daño, evalúa los obstáculos azules cercanos mediante SmartCover.
-   Solo acepta refugios a unos 180 px o más del jugador. Si encuentra uno,
+   Solo acepta refugios a unos 160 px o más del jugador. Si encuentra uno,
    intenta ocuparlo. Si el jugador se aproxima
-   a menos de 180 px, también intenta alejarse para conservar distancia.
+   a menos de 160 px, también intenta alejarse para conservar distancia.
 5. Desde la cobertura espera a que el tiro esté casi listo; luego sale por
    un ángulo con línea de disparo, ataca y puede volver al refugio.
 6. Si la cobertura deja de protegerla o no existe salida de disparo viable,
    la abandona y busca otra posición. No debe quedarse oculta para siempre.
-   También abandona el refugio si el jugador se acerca a menos de 180 px
+   También abandona el refugio si el jugador se acerca a menos de 160 px
    de ese punto, aunque el obstáculo todavía bloquee los disparos.
-7. Si está a más de 250 px, se acerca; en la franja de 180–250 px con línea
+7. Si está a más de 180 px, se acerca; en la franja de 160–180 px con línea
    despejada mantiene la posición y sigue atacando.
 
 NAVEGACIÓN Y ESTABILIDAD

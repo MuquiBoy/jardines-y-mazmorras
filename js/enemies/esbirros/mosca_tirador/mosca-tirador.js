@@ -5,6 +5,9 @@ class MoscaTirador extends Enemy {
     static animationPromise = null;
     static DRAW_SIZE = 28;
     static SHOT_SPREAD_RADIANS = Math.PI / 60; // +/-3 degrees per shot.
+    static SAFE_MIN_DISTANCE = 160;
+    static FIRING_BAND_MAX = 180;
+    static PREFERRED_FIRING_DISTANCE = 170;
 
     constructor(x, y) {
         super(x, y, 'mosca_tirador');
@@ -121,8 +124,14 @@ class MoscaTirador extends Enemy {
     findFiringPoint(target, map, room) {
         if (!room || !map?.canOccupy || !map?.hasLineOfSight) return null;
         const suggested = SmartCover.findAttackPoint(
-            this, target, map, room, this.coverPoint || { x: this.x, y: this.y });
-        const safe = point => point && Math.hypot(point.x - target.x, point.y - target.y) >= 180 &&
+            this, target, map, room, this.coverPoint || { x: this.x, y: this.y }, {
+                preferredRange: MoscaTirador.PREFERRED_FIRING_DISTANCE,
+                minRange: MoscaTirador.SAFE_MIN_DISTANCE,
+                maxRange: MoscaTirador.FIRING_BAND_MAX
+            });
+        const safe = point => point &&
+            Math.hypot(point.x - target.x, point.y - target.y) >= MoscaTirador.SAFE_MIN_DISTANCE &&
+            Math.hypot(point.x - target.x, point.y - target.y) <= MoscaTirador.FIRING_BAND_MAX &&
             this.hasShotLane(target, map, point.x, point.y) && this.reachable(point, map);
         if (safe(suggested)) return suggested;
 
@@ -138,9 +147,11 @@ class MoscaTirador extends Enemy {
             const y = room.y + (cellY + oy + 0.5) * tile;
             const travel = Math.hypot(x - this.x, y - this.y);
             const range = Math.hypot(x - target.x, y - target.y);
-            if (travel > 320 || range < 180 || range > 650 ||
+            if (travel > 320 || range < MoscaTirador.SAFE_MIN_DISTANCE ||
+                range > MoscaTirador.FIRING_BAND_MAX ||
                 map.pointInRoom?.(x, y) !== room || !map.canOccupy(x, y, this.radius)) continue;
-            options.push({ x, y, score: travel + Math.abs(range - 220) * 0.35 });
+            options.push({ x, y, score: travel +
+                Math.abs(range - MoscaTirador.PREFERRED_FIRING_DISTANCE) * 0.35 });
         }
         options.sort((a, b) => a.score - b.score);
         for (const point of options.slice(0, 80)) {
@@ -187,7 +198,7 @@ class MoscaTirador extends Enemy {
         const clear = this.hasShotLane(target, map);
         const coverTooClose = this.coverPoint &&
             Math.hypot(target.x - this.coverPoint.x,
-                       target.y - this.coverPoint.y) < 180;
+                       target.y - this.coverPoint.y) < MoscaTirador.SAFE_MIN_DISTANCE;
         if (this.coverPoint && (coverTooClose || map?.hasLineOfSight?.(
             target.x, target.y, this.coverPoint.x, this.coverPoint.y, this.radius))) {
             this.coverPoint = null;
@@ -197,11 +208,14 @@ class MoscaTirador extends Enemy {
         if (this.tacticalGoal && this.tacticalReplanTimer === 0 &&
             Math.hypot(target.x - this.tacticalGoal.targetX,
                        target.y - this.tacticalGoal.targetY) >= 120) this.clearTacticalGoal();
-        if (this.tacticalGoal?.kind === 'fire' && clear && distance >= 180 && distance <= 250) {
+        if (this.tacticalGoal?.kind === 'fire' && clear &&
+            distance >= MoscaTirador.SAFE_MIN_DISTANCE &&
+            distance <= MoscaTirador.FIRING_BAND_MAX) {
             this.clearTacticalGoal();
         }
         if (this.tacticalGoal?.kind === 'fire' &&
-            Math.hypot(target.x - this.tacticalGoal.x, target.y - this.tacticalGoal.y) < 180) {
+            Math.hypot(target.x - this.tacticalGoal.x, target.y - this.tacticalGoal.y) <
+                MoscaTirador.SAFE_MIN_DISTANCE) {
             this.clearTacticalGoal();
         }
 
@@ -222,12 +236,13 @@ class MoscaTirador extends Enemy {
             // Seek shared blue-obstacle cover from the first active frame,
             // even at full health and inside the ordinary firing band.
             const cover = SmartCover.findCoverPoint(this, target, map, room,
-                { minThreatDistance: 180 });
+                { minThreatDistance: MoscaTirador.SAFE_MIN_DISTANCE });
             this.coverPoint = this.reachable(cover, map) ? cover : null;
             this.coverSearchTimer = 90;
             if (this.coverPoint) this.setTacticalGoal(this.coverPoint, 'cover', target);
         }
-        if (!this.tacticalGoal && !clear && !atCover && distance >= 180 &&
+        if (!this.tacticalGoal && !clear && !atCover &&
+            distance >= MoscaTirador.SAFE_MIN_DISTANCE &&
             this.tacticalReplanTimer === 0) {
             const firing = this.findFiringPoint(target, map, room);
             if (firing) this.setTacticalGoal(firing, 'fire', target);
@@ -236,8 +251,10 @@ class MoscaTirador extends Enemy {
 
         if (this.tacticalGoal) this.moveToTacticalGoal(map);
         else if (atCover && !clear) { /* Wait for the next peek; never camp forever. */ }
-        else if (distance < 180) this.retreatFrom(target.x, target.y, map);
-        else if (!clear || distance > 250) this.steerTo(target.x, target.y, map);
+        else if (distance < MoscaTirador.SAFE_MIN_DISTANCE)
+            this.retreatFrom(target.x, target.y, map);
+        else if (!clear || distance > MoscaTirador.FIRING_BAND_MAX)
+            this.steerTo(target.x, target.y, map);
         else {
             this._navPath = null;
             this._navTimer = 0;

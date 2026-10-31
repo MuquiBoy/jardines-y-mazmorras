@@ -35,7 +35,8 @@ ESBIRRO MIEDOSO — perseguidor que busca cobertura
 - Su ficha completa está en esbirros/esbirro_miedoso/FICHA_ESBIRRO_MIEDOSO.txt.
 
 MOSCA TIRADOR — hostigadora de media distancia
-- Prefiere conservar entre 180 y 250 px del jugador vivo que persigue.
+- Busca una distancia de 160–180 px del jugador vivo: retrocede por debajo de
+  160 px y puede mantener posición en esa franja si tiene línea de tiro.
 - Comprueba el trayecto completo del proyectil, incluido su radio de 4 px. Si hay muro, no dispara ni consume la cadencia: busca un ángulo despejado.
 - Busca cobertura azul desde el inicio de la sala, incluso con toda su vida. Cuando el jugador se acerca, retrocede; desde el refugio busca una salida para disparar y lo abandona si no sirve.
 - La selección del refugio y del punto para asomarse usa SmartCover, compartido con Esbirro Miedoso.
