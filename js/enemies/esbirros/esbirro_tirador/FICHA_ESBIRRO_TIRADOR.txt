@@ -2,9 +2,10 @@ JARDINES Y MAZMORRAS — FICHA DE ESBIRRO
 ESBIRRO TIRADOR
 
 ESTADO
-Clon funcional de Mosca Tirador. Por ahora conserva exactamente sus estadísticas,
-comportamiento de combate y animación. Esta copia permite ajustar el balance y la
-identidad por separado en una iteración posterior.
+Variante independiente creada como copia de la Mosca Tirador original. Conserva sus
+estadísticas y animación, pero no incorpora la nueva IA táctica de la mosca: su
+comportamiento de combate sigue siendo el descrito abajo. Esto permite ajustar el
+balance y la identidad de ambas unidades por separado.
 
 ESTADÍSTICAS
 - Vida: 28 HP.
@@ -34,9 +35,8 @@ COMPORTAMIENTO
 APARICIÓN
 - Categoría: esbirro.
 - Elegible en salas `combat`, `combat-simple` y `combat-hard`.
-- Comparte la proporción total que antes correspondía a los tiradores en las tablas
-  de generación: en esas selecciones, Mosca Tirador y Esbirro Tirador tienen el mismo
-  peso. No modifica la frecuencia total de la familia de tiradores.
+- Peso relativo de generación: 20; el de Mosca Tirador es 10. Las probabilidades
+  se normalizan entre todos los esbirros elegibles de la sala.
 
 RECURSOS VISUALES
 - Usa temporalmente la animación de Mosca Tirador desde:

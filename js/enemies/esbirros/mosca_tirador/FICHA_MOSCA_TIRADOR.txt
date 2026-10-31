@@ -1,0 +1,93 @@
+JARDINES Y MAZMORRAS — FICHA DETALLADA DE MOSCA TIRADOR
+Estado: esbirro jugable en la demo; IA táctica verificada en simulaciones.
+
+IDENTIDAD Y APARICIÓN
+- Nombre interno: mosca_tirador. Clase: MoscaTirador.
+- Categoría: esbirro. Puede poblar salas de combate ordinario y acompañar a un
+  minijefe en combat-hard, según las casillas de aparición de cada plantilla.
+- Peso relativo de selección entre esbirros: 10. Los pesos actuales son
+  Esbirro Miedoso 25, Mosca Tirador 10, Esbirro Tirador 20 y Espiral 20;
+  cuando los cuatro son elegibles, 10/75 equivale aproximadamente al 13,33 %
+  de cada selección. Cada casilla disponible se selecciona por separado.
+
+ESTADÍSTICAS FIJAS
+- Vida: 28 HP.
+- Velocidad de movimiento: 0,70 de la velocidad universal. Con la referencia
+  actual de 2,5 px/frame, se desplaza a 1,75 px/frame (105 px/s a 60 FPS).
+- Radio de colisión del cuerpo: 12 px. No se cambió para la nueva IA.
+- Distancia de combate preferida: de 180 a 250 px respecto al objetivo.
+- Cadencia: un disparo cada 60 frames (1,00 s a 60 FPS) después de disparar.
+- Primer disparo: espera inicial aleatoria de 36 a 72 frames (0,60–1,20 s).
+- Proyectil enemigo estándar: 10 × 10 px; radio de impacto de 4 px;
+  velocidad de 2,5 px/frame (150 px/s); daño real de 6 HP por impacto.
+- El campo interno damage = 15 se conserva por compatibilidad, pero el
+  proyectil estándar aplica 6 HP, conforme a la regla global del juego.
+- Valor interno xpValue = 15. La entrega de experiencia por bajas está
+  desactivada globalmente: este valor no concede experiencia actualmente.
+- Las estadísticas anteriores no aumentan automáticamente al subir de piso.
+
+FORMA VISUAL
+- Usa la animación mosca_tirador.aseprite de
+  00-sprites/enemigos/2_esbirros/mosca_tirador/.
+- El lienzo de cada fotograma mide 28 × 28 px. La animación tiene tres
+  fotogramas de 100 ms cada uno y se repite continuamente tanto al desplazarse
+  como al detenerse o disparar.
+- Se muestra a su tamaño original, sin estiramiento ni sprite placeholder.
+- Esta revisión modifica decisiones de movimiento y disparo, no el aspecto,
+  la hitbox, los proyectiles ni los efectos de muerte.
+
+OBJETIVO EN SOLITARIO Y COOPERATIVO
+- Escoge entre jugadores vivos; no confunde una invocación con un jugador.
+- Prioriza jugadores dentro de su sala. Entre ellos prefiere al más cercano.
+- Mantiene el objetivo actual mientras otro no esté claramente más cerca
+  (margen de 70 px), evitando cambios continuos de dirección.
+- Si el objetivo muere, cambia a otro jugador vivo. La IA se calcula en la
+  simulación autoritativa, por lo que ambos clientes ven las mismas decisiones.
+
+SECUENCIA DE COMBATE
+1. Comprueba si la trayectoria desde su centro hasta el jugador está libre
+   para un proyectil con radio de 4 px, usando las colisiones reales del mapa.
+2. Si el trayecto está libre y vence el temporizador, dispara hacia la
+   posición actual del objetivo y reinicia la cadencia de 60 frames.
+3. Si un muro bloquea el disparo, conserva el tiro preparado sin gastarlo.
+   Busca un punto transitable desde el cual pueda disparar, de preferencia
+   sin acercarse a menos de 170 px del jugador.
+4. Si el jugador se aproxima a menos de 180 px, intenta alejarse. Si hay
+   cobertura útil en un obstáculo azul cercano, puede rodearlo y ocultarse.
+5. Desde la cobertura espera a que el tiro esté casi listo; luego sale por
+   un ángulo con línea de disparo, ataca y puede volver al refugio.
+6. Si la cobertura deja de protegerla o no existe salida de disparo viable,
+   la abandona y busca otra posición. No debe quedarse oculta para siempre.
+7. Si está a más de 250 px, se acerca; en la franja de 180–250 px con línea
+   despejada mantiene la posición y sigue atacando.
+
+NAVEGACIÓN Y ESTABILIDAD
+- Reutiliza la búsqueda de cobertura de Esbirro Miedoso sin alterar la IA
+  de ese enemigo. Para moverse usa rutas transitables del mapa y respeta
+  paredes, columnas y su propio radio de colisión.
+- Valida que el punto táctico sea alcanzable antes de comprometerse con él.
+- Reevalúa ángulos de disparo con una pausa de 45 frames; la cobertura se
+  revisa con una pausa de 90 frames. Esto evita oscilaciones rápidas.
+- Si no avanza durante 12 frames, o un objetivo táctico dura 210 frames sin
+  resolverse, lo descarta y vuelve a planificar tras una pausa de 30 frames.
+- Ante un cambio grande de posición del objetivo (120 px o más), revisa el
+  punto táctico. Cuando la posición ya permite atacar, deja de moverse
+  innecesariamente para conservar una trayectoria estable.
+- Si no hay obstáculo que sirva de cobertura, mantiene la evasión y continúa
+  atacando cuando exista una línea de disparo válida.
+
+COMPROBACIÓN REALIZADA
+- Objetivo visible: disparo normal, 6 HP de daño y 60 frames de cadencia.
+- Jugador tras muro: ningún proyectil desperdiciado; rodea el bloqueo hasta
+  encontrar un ángulo de disparo.
+- Jugador cercano: retrocede en sala abierta; con obstáculo azul se cubre,
+  sale a disparar y evita atravesar los sólidos.
+- Sala con obstáculos en L: conserva una ruta válida y sale del bloqueo.
+- Cooperativo: ignora invocaciones como objetivo, sustituye a un jugador
+  muerto por otro vivo y conserva las mismas reglas de colisión y disparo.
+- Regresión: Esbirro Tirador mantiene su IA separada; Mosca Tirador conserva
+  sus estadísticas, sprite, pool de proyectiles y reglas de aparición.
+
+Fuentes: mosca-tirador.js, js/enemy.js, js/map.js,
+js/enemy-projectile-pool.js, js/enemies/catalog.js,
+server/simulation.js y tests/mosca-tirador-ai.test.js.

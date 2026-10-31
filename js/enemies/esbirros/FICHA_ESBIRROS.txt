@@ -34,14 +34,18 @@ ESBIRRO MIEDOSO — perseguidor que busca cobertura
 - Su ficha completa está en esbirros/esbirro_miedoso/FICHA_ESBIRRO_MIEDOSO.txt.
 
 MOSCA TIRADOR — hostigadora de media distancia
-- Conserva entre 180 y 250 px del objetivo.
-- Si el objetivo está a menos de 180 px, retrocede; si está a más de 250 px, se aproxima. Dentro de esa franja se detiene y dispara.
-- Proyectil: 2,50 px/frame; cadencia: 60 frames.
+- Prefiere conservar entre 180 y 250 px del jugador vivo que persigue.
+- Comprueba el trayecto completo del proyectil, incluido su radio de 4 px. Si hay muro, no dispara ni consume la cadencia: busca un ángulo despejado.
+- Cuando el jugador se acerca, retrocede o usa un obstáculo azul como cobertura. Desde allí busca una salida para disparar; si la cobertura no sirve, la abandona.
+- Navega por rutas transitables y reevalúa posiciones para no quedarse bloqueada ni cambiar de dirección a cada instante.
+- Proyectil: 2,50 px/frame y 6 HP; cadencia: 60 frames.
 - Su animación continúa tanto quieta como en movimiento.
+- La ficha detallada está en esbirros/mosca_tirador/FICHA_MOSCA_TIRADOR.txt.
 
-ESBIRRO TIRADOR — clon temporal de Mosca Tirador
-- Conserva su IA, navegación, estadísticas, cadencia, daño y animación.
-- Comparte el peso de generación de la familia de tiradores.
+ESBIRRO TIRADOR — variante independiente
+- Conserva la IA original de distancia de 180–250 px; la mejora táctica de Mosca Tirador no modifica su código.
+- Conserva estadísticas, cadencia, daño y animación compartida con la mosca.
+- Peso de generación: 20 frente a 10 de Mosca Tirador; se normalizan con el resto de esbirros.
 - Su ficha individual está en esbirros/esbirro_tirador/FICHA_ESBIRRO_TIRADOR.txt.
 
 ESPIRAL — disparo radial
