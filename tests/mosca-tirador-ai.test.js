@@ -88,7 +88,7 @@ test('nearby threat: retreats in open space and uses blue cover to peek and fire
 
     const { map } = makeRoom([{ x: 9, y: 6, h: 3 }]);
     const covered = new MoscaTirador(440, 300);
-    const target = player('one', 300, 300);
+    const target = player('one', 200, 300);
     covered.shootTimer = 1;
     covered.update(target, [], map, [target]);
     assert.ok(covered.coverPoint, 'blue obstacle must be recognized as cover');
@@ -98,6 +98,41 @@ test('nearby threat: retreats in open space and uses blue cover to peek and fire
         assert.equal(map.canOccupy(covered.x, covered.y, covered.radius), true);
     }
     assert.ok(shots > 0, 'cover must not turn into permanent inactivity');
+});
+
+test('fly seeks safe cover from room activation at full health and normal firing distance', () => {
+    const { map } = makeRoom([{ x: 11, y: 6 }]);
+    const target = player('one', 300, 300);
+    const fly = new MoscaTirador(520, 300);
+    const scared = new EsbirroMiedoso(520, 300);
+    fly.shootTimer = 50;
+    scared.shootTimer = 50;
+    assert.equal(fly.health, 28);
+    assert.equal(Math.hypot(fly.x - target.x, fly.y - target.y), 220);
+    assert.equal(map.hasLineOfSight(fly.x, fly.y, target.x, target.y, 4), true);
+    fly.update(target, [], map, [target]);
+    scared.update(target, [], map, [target]);
+    assert.ok(fly.coverPoint, 'fly should look for cover before being injured');
+    assert.ok(Math.hypot(fly.coverPoint.x - target.x, fly.coverPoint.y - target.y) >= 180,
+        'cover must respect the fly safe distance');
+    assert.equal(fly.tacticalGoal?.kind, 'cover');
+    assert.equal(scared.coverPoint, null,
+        'scared esbirro keeps its own half-health activation condition');
+});
+
+test('180 px is the fly safe-distance threshold when no cover exists', () => {
+    const { map } = makeRoom();
+    const tooClose = new MoscaTirador(320, 300);
+    const closePlayer = player('close', 499, 300);
+    tooClose.shootTimer = 50;
+    tooClose.update(closePlayer, [], map, [closePlayer]);
+    assert.ok(tooClose.x < 320, 'at 179 px it must retreat');
+
+    const safe = new MoscaTirador(320, 300);
+    const safePlayer = player('safe', 501, 300);
+    safe.shootTimer = 50;
+    safe.update(safePlayer, [], map, [safePlayer]);
+    assert.equal(safe.x, 320, 'at 181 px with a clear lane it may hold position');
 });
 
 test('complex obstacles and cooperative targets remain stable; clone keeps old AI', () => {
@@ -130,7 +165,7 @@ test('complex obstacles and cooperative targets remain stable; clone keeps old A
 
 test('both cover users call the same shared strategy without inheriting each other', () => {
     const { map } = makeRoom([{ x: 9, y: 6, h: 3 }]);
-    const threat = player('one', 300, 300);
+    const threat = player('one', 200, 300);
     const scared = new EsbirroMiedoso(440, 300);
     const fly = new MoscaTirador(440, 300);
     scared.health = 17;

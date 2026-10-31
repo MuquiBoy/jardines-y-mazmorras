@@ -120,7 +120,7 @@ class MoscaTirador extends Enemy {
         if (!room || !map?.canOccupy || !map?.hasLineOfSight) return null;
         const suggested = SmartCover.findAttackPoint(
             this, target, map, room, this.coverPoint || { x: this.x, y: this.y });
-        const safe = point => point && Math.hypot(point.x - target.x, point.y - target.y) >= 170 &&
+        const safe = point => point && Math.hypot(point.x - target.x, point.y - target.y) >= 180 &&
             this.hasShotLane(target, map, point.x, point.y) && this.reachable(point, map);
         if (safe(suggested)) return suggested;
 
@@ -136,7 +136,7 @@ class MoscaTirador extends Enemy {
             const y = room.y + (cellY + oy + 0.5) * tile;
             const travel = Math.hypot(x - this.x, y - this.y);
             const range = Math.hypot(x - target.x, y - target.y);
-            if (travel > 320 || range < 170 || range > 650 ||
+            if (travel > 320 || range < 180 || range > 650 ||
                 map.pointInRoom?.(x, y) !== room || !map.canOccupy(x, y, this.radius)) continue;
             options.push({ x, y, score: travel + Math.abs(range - 220) * 0.35 });
         }
@@ -195,7 +195,7 @@ class MoscaTirador extends Enemy {
             this.clearTacticalGoal();
         }
         if (this.tacticalGoal?.kind === 'fire' &&
-            Math.hypot(target.x - this.tacticalGoal.x, target.y - this.tacticalGoal.y) < 170) {
+            Math.hypot(target.x - this.tacticalGoal.x, target.y - this.tacticalGoal.y) < 180) {
             this.clearTacticalGoal();
         }
 
@@ -212,9 +212,11 @@ class MoscaTirador extends Enemy {
             }
             this.tacticalReplanTimer = 45;
         }
-        if (!this.tacticalGoal && distance < 180 && !atCover && this.coverSearchTimer === 0 && room) {
-            // Use the shared blue-obstacle cover search.
-            const cover = SmartCover.findCoverPoint(this, target, map, room);
+        if (!this.tacticalGoal && !atCover && this.coverSearchTimer === 0 && room) {
+            // Seek shared blue-obstacle cover from the first active frame,
+            // even at full health and inside the ordinary firing band.
+            const cover = SmartCover.findCoverPoint(this, target, map, room,
+                { minThreatDistance: 180 });
             this.coverPoint = this.reachable(cover, map) ? cover : null;
             this.coverSearchTimer = 90;
             if (this.coverPoint) this.setTacticalGoal(this.coverPoint, 'cover', target);

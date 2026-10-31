@@ -4,10 +4,12 @@ Nombre corto en el código: SmartCover.
 Archivo único de la mecánica: js/enemies/smart-cover.js.
 
 QUÉ COMPARTE
-- findCoverPoint(enemy, threat, map, room): busca un punto de suelo detrás de
+- findCoverPoint(enemy, threat, map, room, options): busca un punto de suelo detrás de
   un obstáculo azul (#0000FF), dentro de la sala y compatible con el radio
   de colisión de ese enemigo. Comprueba que el obstáculo se interponga
-  realmente entre la amenaza y el refugio.
+  realmente entre la amenaza y el refugio. La opción minThreatDistance
+  permite exigir una distancia mínima respecto al jugador sin cambiar
+  el comportamiento de enemigos que no la utilizan.
 - findAttackPoint(enemy, threat, map, room, coverPoint): elige un punto
   transitable desde el que salir de la cobertura y recuperar línea de tiro.
 - Ambas funciones usan la plantilla y las colisiones del mapa. Sus cambios
@@ -17,9 +19,10 @@ ENEMIGOS QUE LA USAN AHORA
 - Esbirro Miedoso: activa su conducta defensiva a 17 HP o menos. Usa
   SmartCover para elegir refugio y punto de ataque. Su vida, cadencia,
   búsqueda periódica y decisión de volver al refugio permanecen en su clase.
-- Mosca Tirador: evalúa la cobertura cuando el jugador se acerca. Usa
-  SmartCover para elegir refugio y un ángulo de disparo; conserva en su
-  clase la distancia preferida, la comprobación del radio del proyectil,
+- Mosca Tirador: evalúa la cobertura desde el inicio de cada encuentro,
+  con toda su vida y antes de recibir daño. Usa SmartCover para elegir
+  refugio a 180 px o más y un ángulo de disparo; conserva en su clase la distancia mínima
+  segura aproximada de 180 px, la comprobación del radio del proyectil,
   el cambio de objetivo y los tiempos de reevaluación.
 - Esbirro Tirador y los demás enemigos no usan esta mecánica actualmente.
 

@@ -5,12 +5,13 @@ const SmartCover = {
      * one radius plus a 10 px gap beyond that obstacle's rear face, and every
      * candidate is checked against the authored room collision mask.
      */
-    findCoverPoint(enemy, threat, map, room = null) {
+    findCoverPoint(enemy, threat, map, room = null, options = {}) {
         if (!threat || !map?.pointInRoom || !map?.canOccupy || !map?.hasLineOfSight) return null;
         room = room || map.pointInRoom(enemy.x, enemy.y);
         const template = room?.template;
         if (!room || !template?.mask || !room.tw || !room.th) return null;
 
+        const minThreatDistance = Math.max(0, Number(options.minThreatDistance) || 0);
         const tileSize = map.tileSize || 40;
         const crossesBlueObstacle = (x1, y1, x2, y2) => {
             const distance = Math.hypot(x2 - x1, y2 - y1);
@@ -26,7 +27,8 @@ const SmartCover = {
         };
         // Do not walk away from a useful shelter: if a blue obstacle already
         // blocks the player's line to this position, it is the best cover.
-        if (!map.hasLineOfSight(threat.x, threat.y, enemy.x, enemy.y, enemy.radius) &&
+        if (Math.hypot(threat.x - enemy.x, threat.y - enemy.y) >= minThreatDistance &&
+            !map.hasLineOfSight(threat.x, threat.y, enemy.x, enemy.y, enemy.radius) &&
             crossesBlueObstacle(threat.x, threat.y, enemy.x, enemy.y)) {
             return { x: enemy.x, y: enemy.y, room, score: 0 };
         }
@@ -67,6 +69,7 @@ const SmartCover = {
 
                     const distance = Math.hypot(point.x - enemy.x, point.y - enemy.y);
                     if (distance > maxCoverTravel ||
+                        Math.hypot(point.x - threat.x, point.y - threat.y) < minThreatDistance ||
                         map.hasLineOfSight(threat.x, threat.y, point.x, point.y, enemy.radius) ||
                         !crossesBlueObstacle(threat.x, threat.y, point.x, point.y)) continue;
                     candidates.push({

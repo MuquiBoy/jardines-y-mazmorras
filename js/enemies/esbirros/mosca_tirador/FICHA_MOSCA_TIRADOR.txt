@@ -15,7 +15,9 @@ ESTADÍSTICAS FIJAS
 - Velocidad de movimiento: 0,70 de la velocidad universal. Con la referencia
   actual de 2,5 px/frame, se desplaza a 1,75 px/frame (105 px/s a 60 FPS).
 - Radio de colisión del cuerpo: 12 px. No se cambió para la nueva IA.
-- Distancia de combate preferida: de 180 a 250 px respecto al objetivo.
+- Distancia mínima segura aproximada: 180 px respecto al objetivo. Por debajo
+  de ella intenta alejarse. Entre 180 y 250 px puede mantener posición si
+  dispone de una línea de disparo válida.
 - Cadencia: un disparo cada 60 frames (1,00 s a 60 FPS) después de disparar.
 - Primer disparo: espera inicial aleatoria de 36 a 72 frames (0,60–1,20 s).
 - Proyectil enemigo estándar: 10 × 10 px; radio de impacto de 4 px;
@@ -51,9 +53,12 @@ SECUENCIA DE COMBATE
    posición actual del objetivo y reinicia la cadencia de 60 frames.
 3. Si un muro bloquea el disparo, conserva el tiro preparado sin gastarlo.
    Busca un punto transitable desde el cual pueda disparar, de preferencia
-   sin acercarse a menos de 170 px del jugador.
-4. Si el jugador se aproxima a menos de 180 px, intenta alejarse. Si hay
-   cobertura útil en un obstáculo azul cercano, puede rodearlo y ocultarse.
+   sin acercarse a menos de 180 px del jugador.
+4. Desde el primer instante de la sala, incluso con 28 HP y sin haber
+   recibido daño, evalúa los obstáculos azules cercanos mediante SmartCover.
+   Solo acepta refugios a unos 180 px o más del jugador. Si encuentra uno,
+   intenta ocuparlo. Si el jugador se aproxima
+   a menos de 180 px, también intenta alejarse para conservar distancia.
 5. Desde la cobertura espera a que el tiro esté casi listo; luego sale por
    un ángulo con línea de disparo, ataca y puede volver al refugio.
 6. Si la cobertura deja de protegerla o no existe salida de disparo viable,
