@@ -25,7 +25,7 @@ for (const file of [
     'player.js',
     'enemy.js',
     'enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
-    'enemies/esbirros/mosca-tirador.js',
+    'enemies/esbirros/mosca_tirador/mosca-tirador.js',
     'enemies/esbirros/esbirro_tirador/esbirro_tirador.js',
     'enemies/esbirros/spiral-enemy.js',
     'enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js',

@@ -93,7 +93,7 @@ test('all enemy movement follows the shared universal player speed reference', (
         const files = [
             'js/enemy.js',
             'js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
-            'js/enemies/esbirros/mosca-tirador.js',
+            'js/enemies/esbirros/mosca_tirador/mosca-tirador.js',
             'js/enemies/esbirros/spiral-enemy.js',
             'js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js',
             'js/enemies/mini-jefes/babosa_persecucion/babosa_persecucion.js'
