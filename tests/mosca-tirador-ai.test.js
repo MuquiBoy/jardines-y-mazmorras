@@ -156,7 +156,7 @@ test('fly abandons cover when a player closes in; scared esbirro may stay hidden
     assert.ok(scared.coverPoint, 'scared esbirro keeps cover without the fly distance rule');
 });
 
-test('complex obstacles and cooperative targets remain stable; clone keeps old AI', () => {
+test('complex obstacles and cooperative targets remain stable; esbirro keeps distinct attack cycle', () => {
     const { map } = makeRoom([
         { x: 8, y: 3, h: 8 }, { x: 8, y: 10, w: 6 }
     ]);
@@ -177,11 +177,12 @@ test('complex obstacles and cooperative targets remain stable; clone keeps old A
     assert.ok(Math.hypot(fly.x - 240, fly.y - 300) > 30,
         'must navigate around the L-shaped obstruction');
 
-    const clone = new EsbirroTirador(320, 300);
-    assert.equal(clone.health, 28);
-    assert.equal(clone.shootCooldown, 60);
-    assert.notEqual(Object.getPrototypeOf(clone).update,
-        Object.getPrototypeOf(fly).update, 'clone must retain its independent AI');
+    const esbirro = new EsbirroTirador(320, 300);
+    assert.equal(esbirro.health, 28);
+    assert.equal(esbirro.shootCooldown, 36);
+    assert.equal(esbirro.movementSpeedMultiplier, 0.50);
+    assert.notEqual(Object.getPrototypeOf(esbirro).update,
+        Object.getPrototypeOf(fly).update, 'esbirro must retain its distinct attack cycle');
 });
 
 test('both cover users call the same shared strategy without inheriting each other', () => {

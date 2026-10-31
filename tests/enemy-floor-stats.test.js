@@ -10,6 +10,7 @@ const Simulation = require('../server/simulation');
 const expected = {
     esbirro_miedoso: { health: 35, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 120 },
     mosca_tirador: { health: 28, movementSpeedMultiplier: 0.70, speed: 1.75, shootCooldown: 60 },
+    esbirro_tirador: { health: 28, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 36 },
     spiral: { health: 50, movementSpeedMultiplier: 0.50, speed: 1.25, shootCooldown: 300 },
     'cochinilla-esquinero': { health: 280, movementSpeedMultiplier: 0, speed: 0 },
     babosa_persecucion: { health: 500, movementSpeedMultiplier: 0.70, speed: 1.75 },
@@ -61,7 +62,7 @@ test('enemy stats stay fixed across floors and named rooms keep their minion cou
         }
     }
 
-    for (const type of ['esbirro_miedoso', 'mosca_tirador', 'spiral', 'babosa_persecucion', 'boss']) {
+    for (const type of ['esbirro_miedoso', 'mosca_tirador', 'esbirro_tirador', 'spiral', 'babosa_persecucion', 'boss']) {
         assert.ok(seen.has(type), `expected to encounter ${type} during generated-room sampling`);
     }
     const average = floor => simpleRoomCounts.get(floor) / 40;
@@ -93,8 +94,9 @@ test('all enemy movement follows the shared universal player speed reference', (
         const files = [
             'js/enemy.js',
             'js/enemies/smart-cover.js',
-    'js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
+            'js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
             'js/enemies/esbirros/mosca_tirador/mosca-tirador.js',
+            'js/enemies/esbirros/esbirro_tirador/esbirro_tirador.js',
             'js/enemies/esbirros/spiral-enemy.js',
             'js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js',
             'js/enemies/mini-jefes/babosa_persecucion/babosa_persecucion.js'
@@ -103,7 +105,7 @@ test('all enemy movement follows the shared universal player speed reference', (
             vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
         }
         return vm.runInContext(`(() => {
-            const types = [EsbirroMiedoso, MoscaTirador, SpiralEnemy, BossEnemy,
+            const types = [EsbirroMiedoso, MoscaTirador, EsbirroTirador, SpiralEnemy, BossEnemy,
                 CochinillaEsquinero, BabosaPersecucion];
             return types.map(Type => new Type(0, 0));
         })()`, context);

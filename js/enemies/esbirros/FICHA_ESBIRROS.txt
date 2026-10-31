@@ -16,10 +16,10 @@ La velocidad universal del jugador es 1,00, equivalente a 2,5 px/frame (150 px/s
 ESBIRRO          VIDA   VELOCIDAD                  CADENCIA FIJA
 Esbirro Miedoso  35 HP  0,50 (1,25 px/frame)      120 frames (2,00 s)
 Mosca Tirador    28 HP  0,70 (1,75 px/frame)       60 frames (1,00 s)
-Esbirro Tirador  28 HP  0,70 (1,75 px/frame)       60 frames (1,00 s)
+Esbirro Tirador  28 HP  0,50 (1,25 px/frame)       36 frames entre disparos; recarga 198 frames
 Espiral          50 HP  0,50 (1,25 px/frame)      300 frames (5,00 s)
 
-El primer disparo del Esbirro Miedoso usa un retraso aleatorio de 108–216 frames (1,80–3,60 s). Las demás cadencias usan el retraso inicial general de 0,6–1,2 veces su intervalo. Después de ese primer disparo, todos mantienen el intervalo fijo de la tabla.
+El primer disparo del Esbirro Miedoso usa un retraso aleatorio de 108–216 frames (1,80–3,60 s). Las demás cadencias usan el retraso inicial general de 0,6–1,2 veces su intervalo, salvo Esbirro Tirador: conserva el retraso inicial heredado de 36–72 frames, pero luego dispara ráfagas de cinco balas cada 36 frames y recarga 198 frames.
 
 PATRONES Y CONDUCTA
 
@@ -44,9 +44,12 @@ MOSCA TIRADOR — hostigadora de media distancia
 - Su animación continúa tanto quieta como en movimiento.
 - La ficha detallada está en esbirros/mosca_tirador/FICHA_MOSCA_TIRADOR.txt.
 
-ESBIRRO TIRADOR — variante independiente
-- Conserva la IA original de distancia de 180–250 px; la mejora táctica de Mosca Tirador no modifica su código.
-- Conserva estadísticas, cadencia, daño y animación compartida con la mosca.
+ESBIRRO TIRADOR — ráfaga de corta distancia y retirada
+- Usa la selección de jugador, navegación y comprobación de línea de tiro de Mosca Tirador, y las funciones compartidas de SmartCover para buscar posición y refugio.
+- Se aproxima hasta 160 px o menos; dispara una ráfaga de cinco proyectiles con dispersión independiente de ±12°, separados 36 frames (0,60 s).
+- Al terminar o interrumpirse la ráfaga, recarga 198 frames (3,30 s) buscando cobertura azul; si no la encuentra, evade.
+- Un jugador fuera de alcance o detrás de un muro interrumpe la ráfaga. Los proyectiles ya disparados conservan el alcance físico estándar.
+- Proyectil: 2,50 px/frame, radio 4 px y 6 HP por impacto. Vida: 28 HP; radio corporal: 12 px.
 - Peso de generación: 20 frente a 10 de Mosca Tirador; se normalizan con el resto de esbirros.
 - Su ficha individual está en esbirros/esbirro_tirador/FICHA_ESBIRRO_TIRADOR.txt.
 

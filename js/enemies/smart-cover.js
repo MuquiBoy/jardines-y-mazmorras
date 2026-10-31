@@ -94,11 +94,14 @@ const SmartCover = {
      * exposes itself long enough to take its scheduled shot, then returns to
      * cover; if no lane exists it keeps its position and cadence.
      */
-    findAttackPoint(enemy, threat, map, room, coverPoint) {
+    findAttackPoint(enemy, threat, map, room, coverPoint, options = {}) {
         const cells = room?.template?.walkableCells;
         if (!threat || !map?.canOccupy || !map?.hasLineOfSight || !cells?.length || !coverPoint) return null;
         const tileSize = map.tileSize || 40;
-        const maxPeekDistance = Math.hypot(room.w, room.h);
+        const maxPeekDistance = options.maxTravel ?? Math.hypot(room.w, room.h);
+        const preferredRange = options.preferredRange ?? 240;
+        const minRange = options.minRange ?? 0;
+        const maxRange = options.maxRange ?? Infinity;
         const candidates = [];
         for (const cell of cells) {
             const point = {
@@ -107,15 +110,18 @@ const SmartCover = {
             };
             const coverDistance = Math.hypot(point.x - coverPoint.x, point.y - coverPoint.y);
             if (coverDistance < tileSize * 0.75 || coverDistance > maxPeekDistance) continue;
+            const targetDistance = Math.hypot(point.x - threat.x, point.y - threat.y);
+            if (targetDistance < minRange || targetDistance > maxRange) continue;
             if (map.pointInRoom(point.x, point.y) !== room || !map.canOccupy(point.x, point.y, enemy.radius)) continue;
             candidates.push({
                 ...point,
-                score: coverDistance + Math.abs(Math.hypot(point.x - threat.x, point.y - threat.y) - 240) * 0.08
+                score: coverDistance + Math.abs(targetDistance - preferredRange) * 0.08
             });
         }
         candidates.sort((a, b) => a.score - b.score);
         for (const candidate of candidates.slice(0, 256)) {
-            if (map.hasLineOfSight(threat.x, threat.y, candidate.x, candidate.y, enemy.radius)) return candidate;
+            if (map.hasLineOfSight(threat.x, threat.y, candidate.x, candidate.y, enemy.radius) &&
+                (!options.isReachable || options.isReachable(candidate))) return candidate;
         }
         return null;
     }

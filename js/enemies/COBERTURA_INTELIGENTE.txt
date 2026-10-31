@@ -10,8 +10,10 @@ QUÉ COMPARTE
   realmente entre la amenaza y el refugio. La opción minThreatDistance
   permite exigir una distancia mínima respecto al jugador sin cambiar
   el comportamiento de enemigos que no la utilizan.
-- findAttackPoint(enemy, threat, map, room, coverPoint): elige un punto
+- findAttackPoint(enemy, threat, map, room, coverPoint, options): elige un punto
   transitable desde el que salir de la cobertura y recuperar línea de tiro.
+  Las opciones permiten fijar alcance preferido y máximo, distancia de viaje
+  y validar una ruta, sin cambiar los valores usados por los enemigos previos.
 - Ambas funciones usan la plantilla y las colisiones del mapa. Sus cambios
   futuros se aplicarán a todos los enemigos que llamen a SmartCover.
 
@@ -28,7 +30,10 @@ ENEMIGOS QUE LA USAN AHORA
 - Esbirro Miedoso no recibe esa regla de distancia: su prioridad al bajar
   de la mitad de vida es permanecer protegido y sobrevivir, incluso si
   el jugador se acerca al obstáculo.
-- Esbirro Tirador y los demás enemigos no usan esta mecánica actualmente.
+- Esbirro Tirador: usa findAttackPoint para acercarse hasta 160 px o menos
+  con línea libre. Después de una ráfaga de cinco disparos usa findCoverPoint
+  para protegerse durante sus 198 frames de recarga. Sus estados, dispersión,
+  alcance y velocidad siguen definidos únicamente en su propia clase.
 
 USO PARA UN NUEVO ENEMIGO
 1. Cargar smart-cover.js después de enemy.js y antes del archivo del enemigo,

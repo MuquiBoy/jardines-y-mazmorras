@@ -1,45 +1,30 @@
-JARDINES Y MAZMORRAS — FICHA DE ESBIRRO
-ESBIRRO TIRADOR
-
-ESTADO
-Variante independiente creada como copia de la Mosca Tirador original. Conserva sus
-estadísticas y animación, pero no incorpora la nueva IA táctica de la mosca: su
-comportamiento de combate sigue siendo el descrito abajo. Esto permite ajustar el
-balance y la identidad de ambas unidades por separado.
+JARDINES Y MAZMORRAS — ESBIRRO TIRADOR
+Versión táctica de menor dificultad; categoría: esbirro.
 
 ESTADÍSTICAS
-- Vida: 28 HP.
-- Velocidad de movimiento: multiplicador 0,70 de la velocidad universal.
-- Referencia actual: 1,00 = 2,5 px/frame (150 px/s); por tanto 0,70 = 1,75 px/frame
-  (105 px/s).
-- Radio de colisión: 12 px.
-- Cadencia: un disparo cada 60 frames (1,00 s a 60 FPS).
-- Primer disparo: retraso aleatorio de 36 a 72 frames (0,60–1,20 s).
-- Velocidad del proyectil: 2,5 px/frame (150 px/s).
-- Daño real del proyectil estándar: 6 HP por impacto (medio corazón). El campo
-  interno `damage = 15` se conserva del clon original; el proyectil estándar usa
-  la regla universal de 6 HP.
-- `xpValue`: 15, heredado de Mosca Tirador. La experiencia por bajas está desactivada
-  globalmente y este valor no produce una recompensa durante el juego.
+Vida: 28 HP.
+Movimiento: 0,50 × velocidad universal (1,25 px/frame, 75 px/s con referencia de 2,5 px/frame).
+Radio de colisión: 12 px.
+Daño de cada proyectil estándar: 6 HP; el valor interno heredado damage es 15, pero no determina el daño de este proyectil.
+Radio del proyectil: 4 px; sprite estándar enemigo de 10 × 10 px.
+Velocidad del proyectil: 2,5 px/frame.
+Alcance máximo para disparar: 160 px. Puede atacar a distancias menores, incluidas 120, 100 y 80 px.
+Ráfaga: 5 disparos individuales en los frames 0, 36, 72, 108 y 144.
+Intervalo: 36 frames = 0,60 s entre proyectiles, a 60 FPS.
+Dispersión: aleatoria e independiente por disparo, entre -12° y +12° respecto al objetivo.
+Recarga: 198 frames = 3,30 s desde el quinto disparo o desde una interrupción.
+Retraso inicial antes de la primera ráfaga: conserva la demora general heredada de Mosca Tirador (36–72 frames, según la semilla aleatoria).
+Valor XP heredado: 15; la entrega de experiencia por bajas está desactivada en la demo.
+Arte: comparte la animación actual de Mosca Tirador para quietud y movimiento.
+Peso relativo de generación: 20; las casillas magenta de las plantillas señalan plazas de esbirros.
 
-COMPORTAMIENTO
-- Mantiene una distancia de combate de 180–250 px respecto al jugador objetivo.
-- Si el jugador se acerca a menos de 180 px, retrocede usando la navegación que evita
-  paredes y obstáculos.
-- Si el jugador queda a más de 250 px, se aproxima mediante esa misma navegación.
-- Dentro de la franja de 180–250 px se detiene y limpia la ruta de navegación previa.
-- Dispara hacia la posición actual del jugador al llegar a cero su temporizador.
-- Su animación de vuelo se reproduce continuamente, tanto al moverse como al estar quieto.
-- Puede usar la pool de proyectiles enemigos existente.
+CICLO DE COMPORTAMIENTO
+1. SEEK_ATTACK_POSITION: elige un jugador vivo (ignora invocaciones), se acerca por rutas transitables y busca una línea despejada. Para elegir puntos ofensivos llama al módulo compartido SmartCover.findAttackPoint con alcance máximo de 160 px. No se aleja solo para situarse exactamente a 160 px.
+2. BURST_ATTACK: cuando el objetivo está a 160 px o menos y el trayecto de la bala está libre, dispara uno por uno cinco proyectiles. Recalcula la dirección y la dispersión en cada disparo. Los proyectiles siguen su trayectoria normal, chocan con jugadores y muros y no desaparecen por superar 160 px recorridos.
+3. RELOAD_COVER: después del quinto disparo deja de atacar durante 198 frames. Busca refugio tras obstáculos azules mediante SmartCover.findCoverPoint y navega hasta allí. Si no hay cobertura válida, se aleja por rutas permitidas. La recarga continúa mientras se desplaza.
+4. Termina la recarga y vuelve a buscar una posición ofensiva. Si aún no tiene rango o línea despejada, sigue reposicionándose antes de iniciar una nueva ráfaga.
 
-APARICIÓN
-- Categoría: esbirro.
-- Elegible en salas `combat`, `combat-simple` y `combat-hard`.
-- Peso relativo de generación: 20; el de Mosca Tirador es 10. Las probabilidades
-  se normalizan entre todos los esbirros elegibles de la sala.
+Si el objetivo sale de los 160 px, se oculta tras un muro o cambia a otro jugador vivo durante una ráfaga, descarta los disparos pendientes e inicia una recarga completa. El servidor decide objetivos, movimiento, temporizadores y disparos en cooperativo.
 
-RECURSOS VISUALES
-- Usa temporalmente la animación de Mosca Tirador desde:
-  `00-sprites/enemigos/2_esbirros/mosca_tirador/mosca_tirador.aseprite`.
-- La animación se decodifica una sola vez y se comparte con Mosca Tirador.
-- No se dibuja un placeholder mientras carga el recurso.
+MECÁNICA COMPARTIDA
+SmartCover reside en js/enemies/smart-cover.js. Esbirro Tirador también reutiliza la navegación, la selección de jugadores, la comprobación del radio del proyectil y el dibujo de Mosca Tirador. Sus tres estados y parámetros de combate permanecen en esbirro_tirador.js. Las mejoras de geometría y selección de refugios hechas en SmartCover se aplicarán a los enemigos que lo llamen.
