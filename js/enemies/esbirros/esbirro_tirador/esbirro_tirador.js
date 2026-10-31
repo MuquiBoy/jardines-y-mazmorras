@@ -4,7 +4,8 @@ class EsbirroTirador extends MoscaTirador {
     static animationPromise = null;
     static DRAW_SIZE = 36;
     static WALK_PATH = '00-sprites/enemigos/2_esbirros/esbirro_tirador/esbirro_tirador_walk.aseprite';
-    static WALK_VERSION = 'esbirro-tirador-walk-v1';
+    static WALK_VERSION = 'esbirro-tirador-walk-v2';
+    static PLAYBACK_SPEED = 0.5;
     static ATTACK_RANGE = 160;
     static BURST_SIZE = 5;
     static BURST_INTERVAL_FRAMES = 36;
@@ -48,7 +49,8 @@ class EsbirroTirador extends MoscaTirador {
         if (!animation?.frames?.length || animation.totalDuration <= 0) return;
 
         const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        let frameTime = (now - this.animationStartTime) % animation.totalDuration;
+        let frameTime = ((now - this.animationStartTime) * EsbirroTirador.PLAYBACK_SPEED) %
+            animation.totalDuration;
         let frameIndex = 0;
         while (frameIndex < animation.durations.length - 1 &&
                frameTime >= animation.durations[frameIndex]) {

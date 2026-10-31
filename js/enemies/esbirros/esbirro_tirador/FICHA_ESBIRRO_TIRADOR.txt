@@ -15,7 +15,7 @@ Dispersión: aleatoria e independiente por disparo, entre -12° y +12° respecto
 Recarga: 198 frames = 3,30 s desde el quinto disparo o desde una interrupción.
 Retraso inicial antes de la primera ráfaga: conserva la demora general heredada de Mosca Tirador (36–72 frames, según la semilla aleatoria).
 Valor XP heredado: 15; la entrega de experiencia por bajas está desactivada en la demo.
-Arte: esbirro_tirador_walk.aseprite, animación de 36 × 36 px que se reproduce en bucle en reposo, movimiento, ataque y recarga.
+Arte: esbirro_tirador_walk.aseprite, animación de 36 × 36 px que se reproduce en bucle a 0,5× en reposo, movimiento, ataque y recarga.
 Peso relativo de generación: 20; las casillas magenta de las plantillas señalan plazas de esbirros.
 
 CICLO DE COMPORTAMIENTO
