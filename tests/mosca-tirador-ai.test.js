@@ -11,11 +11,14 @@ const context = vm.createContext({ console });
 for (const file of [
     'js/palette.js', 'js/characters/roles.js', 'js/enemy-projectile-pool.js',
     'js/enemy.js', 'js/map.js',
+    'js/enemies/smart-cover.js',
     'js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
     'js/enemies/esbirros/mosca_tirador/mosca-tirador.js',
     'js/enemies/esbirros/esbirro_tirador/esbirro_tirador.js'
 ]) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
 const DungeonMap = vm.runInContext('DungeonMap', context);
+const SmartCover = vm.runInContext('SmartCover', context);
+const EsbirroMiedoso = vm.runInContext('EsbirroMiedoso', context);
 const MoscaTirador = vm.runInContext('MoscaTirador', context);
 const EsbirroTirador = vm.runInContext('EsbirroTirador', context);
 
@@ -123,4 +126,31 @@ test('complex obstacles and cooperative targets remain stable; clone keeps old A
     assert.equal(clone.shootCooldown, 60);
     assert.notEqual(Object.getPrototypeOf(clone).update,
         Object.getPrototypeOf(fly).update, 'clone must retain its independent AI');
+});
+
+test('both cover users call the same shared strategy without inheriting each other', () => {
+    const { map } = makeRoom([{ x: 9, y: 6, h: 3 }]);
+    const threat = player('one', 300, 300);
+    const scared = new EsbirroMiedoso(440, 300);
+    const fly = new MoscaTirador(440, 300);
+    scared.health = 17;
+    scared.shootTimer = 80;
+    fly.shootTimer = 80;
+    const original = SmartCover.findCoverPoint;
+    const users = new Set();
+    SmartCover.findCoverPoint = function (enemy, ...args) {
+        users.add(enemy.type);
+        return original.call(this, enemy, ...args);
+    };
+    try {
+        scared.update(threat, [], map, [threat]);
+        fly.update(threat, [], map, [threat]);
+        assert.deepEqual([...users].sort(), ['esbirro_miedoso', 'mosca_tirador']);
+        assert.equal(Object.hasOwn(EsbirroMiedoso.prototype, 'findCoverPoint'), false);
+        assert.equal(Object.hasOwn(MoscaTirador.prototype, 'findCoverPoint'), false);
+        assert.ok(scared.coverPoint, 'scared esbirro still finds its shelter at half health');
+        assert.ok(fly.coverPoint, 'fly still finds its shelter when threatened');
+    } finally {
+        SmartCover.findCoverPoint = original;
+    }
 });

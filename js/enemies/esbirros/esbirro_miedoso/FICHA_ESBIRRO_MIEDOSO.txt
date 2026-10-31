@@ -23,6 +23,7 @@ COMPORTAMIENTO
 1. Con más de 17 HP, persigue al objetivo actual con movimiento directo o navegación A* alrededor de obstáculos.
 2. Al llegar a 17 HP o menos, entra en modo defensivo de forma permanente durante ese encuentro.
 3. Busca obstáculos internos marcados en la plantilla de sala con el color azul #0000FF. El obstáculo debe quedar entre el jugador y el punto de cobertura; no considera suficiente que haya una pared cualquiera.
+   La búsqueda geométrica y la elección de un punto para asomarse pertenecen a SmartCover ("Búsqueda de cobertura inteligente"), compartido con Mosca Tirador. Su activación a 17 HP o menos sigue siendo exclusiva de este esbirro.
 4. Mantiene su posición si un obstáculo azul ya bloquea la línea de ataque. Si necesita moverse, prioriza una cobertura alcanzable dentro de 160 px. El punto debe ser transitable para un cuerpo de radio 16 px y permanecer dentro de la misma sala.
 5. Usa la navegación y las colisiones del mapa para llegar al refugio; no atraviesa muros ni obstáculos. Conserva una cobertura válida aunque el jugador se mueva, y solo la cambia si deja de protegerlo o deja de ser válida.
 6. Si no hay una cobertura azul cercana válida, se aleja del jugador con la navegación existente y vuelve a buscar periódicamente. No se precipita hacia el jugador mientras está expuesto.
@@ -40,6 +41,7 @@ Se ejecutaron simulaciones con el motor autoritativo del juego contra Pistolero,
 
 FUENTES
 - js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js
+- js/enemies/smart-cover.js
 - js/enemies/catalog.js
 - js/enemy.js
 - js/map.js

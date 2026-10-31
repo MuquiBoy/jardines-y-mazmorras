@@ -24,6 +24,7 @@ for (const file of [
     'enemy-projectile-pool.js',
     'player.js',
     'enemy.js',
+    'enemies/smart-cover.js',
     'enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
     'enemies/esbirros/mosca_tirador/mosca-tirador.js',
     'enemies/esbirros/esbirro_tirador/esbirro_tirador.js',

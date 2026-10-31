@@ -92,7 +92,8 @@ test('all enemy movement follows the shared universal player speed reference', (
         vm.runInContext(rolesSource, context);
         const files = [
             'js/enemy.js',
-            'js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
+            'js/enemies/smart-cover.js',
+    'js/enemies/esbirros/esbirro_miedoso/esbirro_miedoso.js',
             'js/enemies/esbirros/mosca_tirador/mosca-tirador.js',
             'js/enemies/esbirros/spiral-enemy.js',
             'js/enemies/mini-jefes/cochinilla_esquinero/cochinilla_esquinero.js',

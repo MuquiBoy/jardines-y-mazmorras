@@ -118,7 +118,7 @@ class MoscaTirador extends Enemy {
     /** A nearby shooting lane is chosen only if it is safe and reachable. */
     findFiringPoint(target, map, room) {
         if (!room || !map?.canOccupy || !map?.hasLineOfSight) return null;
-        const suggested = EsbirroMiedoso.prototype.findAttackPoint.call(
+        const suggested = SmartCover.findAttackPoint(
             this, target, map, room, this.coverPoint || { x: this.x, y: this.y });
         const safe = point => point && Math.hypot(point.x - target.x, point.y - target.y) >= 170 &&
             this.hasShotLane(target, map, point.x, point.y) && this.reachable(point, map);
@@ -213,8 +213,8 @@ class MoscaTirador extends Enemy {
             this.tacticalReplanTimer = 45;
         }
         if (!this.tacticalGoal && distance < 180 && !atCover && this.coverSearchTimer === 0 && room) {
-            // Reuse the tested blue-obstacle cover search of Esbirro Miedoso.
-            const cover = EsbirroMiedoso.prototype.findCoverPoint.call(this, target, map, room);
+            // Use the shared blue-obstacle cover search.
+            const cover = SmartCover.findCoverPoint(this, target, map, room);
             this.coverPoint = this.reachable(cover, map) ? cover : null;
             this.coverSearchTimer = 90;
             if (this.coverPoint) this.setTacticalGoal(this.coverPoint, 'cover', target);

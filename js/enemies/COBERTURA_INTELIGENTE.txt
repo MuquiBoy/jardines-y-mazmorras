@@ -1,0 +1,41 @@
+JARDINES Y MAZMORRAS — BÚSQUEDA DE COBERTURA INTELIGENTE
+
+Nombre corto en el código: SmartCover.
+Archivo único de la mecánica: js/enemies/smart-cover.js.
+
+QUÉ COMPARTE
+- findCoverPoint(enemy, threat, map, room): busca un punto de suelo detrás de
+  un obstáculo azul (#0000FF), dentro de la sala y compatible con el radio
+  de colisión de ese enemigo. Comprueba que el obstáculo se interponga
+  realmente entre la amenaza y el refugio.
+- findAttackPoint(enemy, threat, map, room, coverPoint): elige un punto
+  transitable desde el que salir de la cobertura y recuperar línea de tiro.
+- Ambas funciones usan la plantilla y las colisiones del mapa. Sus cambios
+  futuros se aplicarán a todos los enemigos que llamen a SmartCover.
+
+ENEMIGOS QUE LA USAN AHORA
+- Esbirro Miedoso: activa su conducta defensiva a 17 HP o menos. Usa
+  SmartCover para elegir refugio y punto de ataque. Su vida, cadencia,
+  búsqueda periódica y decisión de volver al refugio permanecen en su clase.
+- Mosca Tirador: evalúa la cobertura cuando el jugador se acerca. Usa
+  SmartCover para elegir refugio y un ángulo de disparo; conserva en su
+  clase la distancia preferida, la comprobación del radio del proyectil,
+  el cambio de objetivo y los tiempos de reevaluación.
+- Esbirro Tirador y los demás enemigos no usan esta mecánica actualmente.
+
+USO PARA UN NUEVO ENEMIGO
+1. Cargar smart-cover.js después de enemy.js y antes del archivo del enemigo,
+   tanto en index.html como en server/simulation.js si juega en cooperativo.
+2. Llamar a SmartCover.findCoverPoint(this, objetivo, mapa, sala) cuando
+   las reglas particulares del enemigo decidan buscar refugio.
+3. Si necesita salir a atacar, llamar a SmartCover.findAttackPoint(this,
+   objetivo, mapa, sala, puntoDeCobertura).
+4. Validar en la clase del enemigo si puede recorrer la ruta y si el punto
+   de disparo satisface su alcance, su arma y su nivel de exposición.
+5. Mantener la cadencia, el movimiento, la activación de la defensa y la
+   decisión de disparar en la clase específica del enemigo.
+
+LÍMITE DE LA MECÁNICA COMPARTIDA
+SmartCover selecciona puntos geométricos; no decide por sí solo cuándo huir,
+cuándo atacar ni qué jugador perseguir. Esto permite reutilizar la búsqueda
+sin volver idénticos los patrones de combate de los enemigos.

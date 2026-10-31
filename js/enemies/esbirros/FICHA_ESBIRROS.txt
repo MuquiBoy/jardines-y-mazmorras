@@ -26,6 +26,7 @@ PATRONES Y CONDUCTA
 ESBIRRO MIEDOSO — perseguidor que busca cobertura
 - Con más de 17 HP persigue al objetivo seleccionado usando navegación que rodea paredes.
 - Al bajar a 17 HP o menos busca cubrirse detrás de un obstáculo azul #0000FF de la sala.
+- La selección del refugio y del punto para asomarse usa SmartCover, compartido con Mosca Tirador.
 - Comprueba que el obstáculo quede entre el jugador y la cobertura; respeta colisiones y usa rutas válidas.
 - Si ya está protegido, conserva la posición. Si no encuentra cobertura azul cercana, se aleja del jugador y vuelve a buscar.
 - Desde cobertura busca una línea despejada, dispara y vuelve al refugio. Sus disparos no atraviesan obstáculos.
@@ -37,6 +38,7 @@ MOSCA TIRADOR — hostigadora de media distancia
 - Prefiere conservar entre 180 y 250 px del jugador vivo que persigue.
 - Comprueba el trayecto completo del proyectil, incluido su radio de 4 px. Si hay muro, no dispara ni consume la cadencia: busca un ángulo despejado.
 - Cuando el jugador se acerca, retrocede o usa un obstáculo azul como cobertura. Desde allí busca una salida para disparar; si la cobertura no sirve, la abandona.
+- La selección del refugio y del punto para asomarse usa SmartCover, compartido con Esbirro Miedoso.
 - Navega por rutas transitables y reevalúa posiciones para no quedarse bloqueada ni cambiar de dirección a cada instante.
 - Proyectil: 2,50 px/frame y 6 HP; cadencia: 60 frames.
 - Su animación continúa tanto quieta como en movimiento.

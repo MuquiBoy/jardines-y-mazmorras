@@ -62,9 +62,11 @@ SECUENCIA DE COMBATE
    despejada mantiene la posición y sigue atacando.
 
 NAVEGACIÓN Y ESTABILIDAD
-- Reutiliza la búsqueda de cobertura de Esbirro Miedoso sin alterar la IA
-  de ese enemigo. Para moverse usa rutas transitables del mapa y respeta
-  paredes, columnas y su propio radio de colisión.
+- Usa SmartCover ("Búsqueda de cobertura inteligente"), el módulo de
+  geometría compartido con Esbirro Miedoso para hallar refugios y puntos
+  desde los que asomarse. Una mejora de esas funciones se aplica a ambos.
+  Para moverse usa rutas transitables del mapa y respeta paredes, columnas
+  y su propio radio de colisión.
 - Valida que el punto táctico sea alcanzable antes de comprometerse con él.
 - Reevalúa ángulos de disparo con una pausa de 45 frames; la cobertura se
   revisa con una pausa de 90 frames. Esto evita oscilaciones rápidas.
@@ -88,6 +90,6 @@ COMPROBACIÓN REALIZADA
 - Regresión: Esbirro Tirador mantiene su IA separada; Mosca Tirador conserva
   sus estadísticas, sprite, pool de proyectiles y reglas de aparición.
 
-Fuentes: mosca-tirador.js, js/enemy.js, js/map.js,
+Fuentes: mosca-tirador.js, js/enemies/smart-cover.js, js/enemy.js, js/map.js,
 js/enemy-projectile-pool.js, js/enemies/catalog.js,
 server/simulation.js y tests/mosca-tirador-ai.test.js.
